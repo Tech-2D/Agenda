@@ -26,7 +26,7 @@ import {
   UserRound,
   X,
 } from 'lucide-react'
-import { createUserWithEmailAndPassword, onAuthStateChanged, reload, sendEmailVerification, sendPasswordResetEmail, signInWithEmailAndPassword, signOut, type User } from 'firebase/auth'
+import { createUserWithEmailAndPassword, onAuthStateChanged, sendPasswordResetEmail, signInWithEmailAndPassword, signOut, type User } from 'firebase/auth'
 import { FirebaseError } from 'firebase/app'
 import {
   addDoc,
@@ -127,6 +127,21 @@ function readStoredTurma(): string | null {
   } catch {
     return null
   }
+}
+
+async function loadOrClaimAdminProfile(account: User): Promise<AdminProfile | null> {
+  const adminRecord = await getDoc(doc(db, 'admins', account.uid))
+  const profile = adminRecord.data() as AdminProfile | undefined
+  if (profile?.role === 'representante' || profile?.role === 'superadmin') return profile
+  if (adminRecord.exists() || !account.email) return null
+
+  const email = normalizeRepresentativeEmail(account.email)
+  const invite = await getDoc(doc(db, 'representativeInvites', email))
+  const turmaId = invite.data()?.turmaId
+  if (!invite.exists() || invite.data()?.email !== email || !(CLASS_NAMES as readonly string[]).includes(turmaId)) return null
+
+  await setDoc(doc(db, 'admins', account.uid), { role: 'representante', turmaId, createdAt: serverTimestamp() })
+  return { role: 'representante', turmaId }
 }
 
 function App() {
@@ -1134,17 +1149,21 @@ function AdminDialog({ publicTurmaId, onClose }: AdminDialogProps) {
       const currentRequest = ++requestId
       setUser(currentUser)
       setProfile(null)
+      setAccessError('')
       setAuthChecked(!currentUser)
       if (!currentUser) return
       try {
-        const profileDoc = await getDoc(doc(db, 'admins', currentUser.uid))
-        const data = profileDoc.data() as AdminProfile | undefined
+        const data = await loadOrClaimAdminProfile(currentUser)
         if (currentRequest === requestId) {
-          setProfile(data && (data.role === 'representante' || data.role === 'superadmin') ? data : null)
+          setProfile(data)
           if (data?.role === 'representante' && data.turmaId) setManagedTurma(data.turmaId)
+          if (!data) setAccessError('Esta conta ainda não foi aprovada para representar uma turma.')
         }
       } catch {
-        if (currentRequest === requestId) setProfile(null)
+        if (currentRequest === requestId) {
+          setProfile(null)
+          setAccessError('Não foi possível conferir o acesso agora. Tente novamente.')
+        }
       } finally {
         if (currentRequest === requestId) setAuthChecked(true)
       }
@@ -1321,16 +1340,11 @@ function AdminDialog({ publicTurmaId, onClose }: AdminDialogProps) {
         setRequestError('Esta solicitação ainda não está aprovada.')
         return
       }
-      const account = await createUserWithEmailAndPassword(auth, requestRecord.email, registerPassword)
+      await createUserWithEmailAndPassword(auth, requestRecord.email, registerPassword)
       setRegisterPassword('')
-      try {
-        await sendEmailVerification(account.user)
-      } catch {
-        setAccessError('A conta foi criada, mas o envio do e-mail falhou. Use “Reenviar e-mail de confirmação” para tentar novamente.')
-      }
     } catch (error) {
       if (error instanceof FirebaseError && error.code === 'auth/email-already-in-use') {
-        setRequestError('Este e-mail já tem uma conta. Entre com sua senha ou use “Esqueci minha senha” e conclua o acesso.')
+        setRequestError('Este e-mail já tem uma conta. Entre com sua senha ou use “Esqueci minha senha”.')
       } else if (error instanceof FirebaseError && error.code === 'auth/weak-password') {
         setRequestError('Escolha uma senha mais forte, com pelo menos 6 caracteres.')
       } else {
@@ -1341,52 +1355,17 @@ function AdminDialog({ publicTurmaId, onClose }: AdminDialogProps) {
     }
   }
 
-  async function finishRepresentativeAccess() {
+  async function retryRepresentativeAccess() {
     if (!user) return
     setBusy(true)
     setAccessError('')
     try {
-      await reload(user)
-      await user.getIdToken(true)
-      if (!user.emailVerified || !user.email) {
-        setAccessError('Confirme o e-mail pelo link enviado pelo Firebase e depois clique em “Verificar e liberar acesso”.')
-        return
-      }
-      const existing = await getDoc(doc(db, 'admins', user.uid))
-      if (existing.exists()) {
-        const existingProfile = existing.data() as AdminProfile
-        if (existingProfile.role === 'representante' || existingProfile.role === 'superadmin') {
-          setProfile(existingProfile)
-          if (existingProfile.turmaId) setManagedTurma(existingProfile.turmaId)
-          return
-        }
-      }
-      const normalizedEmail = normalizeRepresentativeEmail(user.email)
-      const invite = await getDoc(doc(db, 'representativeInvites', normalizedEmail))
-      if (!invite.exists() || invite.data().email !== normalizedEmail || !(CLASS_NAMES as readonly string[]).includes(invite.data().turmaId)) {
-        setAccessError('Seu e-mail ainda não foi aprovado para uma turma. Aguarde a análise da solicitação.')
-        return
-      }
-      const turmaId = invite.data().turmaId as string
-      await setDoc(doc(db, 'admins', user.uid), { role: 'representante', turmaId, createdAt: serverTimestamp() })
-      setProfile({ role: 'representante', turmaId })
-      setManagedTurma(turmaId)
+      const data = await loadOrClaimAdminProfile(user)
+      setProfile(data)
+      if (data?.role === 'representante' && data.turmaId) setManagedTurma(data.turmaId)
+      if (!data) setAccessError('Esta conta ainda não foi aprovada para representar uma turma.')
     } catch {
-      setAccessError('Não foi possível concluir o acesso. Confira a conexão e tente novamente.')
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  async function resendVerification() {
-    if (!user) return
-    setBusy(true)
-    setAccessError('')
-    try {
-      await sendEmailVerification(user)
-      setNotice('Enviamos outro link de verificação para seu e-mail.')
-    } catch {
-      setAccessError('Não foi possível reenviar o e-mail agora. Aguarde um pouco e tente novamente.')
+      setAccessError('Não foi possível conferir o acesso agora. Tente novamente.')
     } finally {
       setBusy(false)
     }
@@ -1413,7 +1392,7 @@ function AdminDialog({ publicTurmaId, onClose }: AdminDialogProps) {
       } else {
         await updateDoc(doc(db, 'representativeRequests', item.id), { status: 'rejeitada', reviewedAt: serverTimestamp() })
       }
-      setNotice(approved ? 'E-mail aprovado. A pessoa já pode criar a conta e verificar o endereço.' : 'Solicitação recusada.')
+      setNotice(approved ? 'E-mail aprovado. A pessoa já pode criar a conta com uma senha.' : 'Solicitação recusada.')
     } catch {
       setNotice('Não foi possível avaliar a solicitação. Tente novamente.')
     } finally {
@@ -1619,7 +1598,7 @@ function AdminDialog({ publicTurmaId, onClose }: AdminDialogProps) {
                 {requestRecord.status === 'rejeitada' && <p>Esta solicitação não foi aprovada. Se necessário, envie uma nova com os dados corretos.</p>}
                 {requestRecord.status === 'aprovada' && (
                   <form className="access-form" onSubmit={registerRepresentative}>
-                    <p>E-mail aprovado. Crie uma senha para sua conta; depois, confirme o endereço pelo link recebido.</p>
+                    <p>E-mail aprovado. Crie uma senha para entrar diretamente na administração da sua turma.</p>
                     <label htmlFor="representative-password">Criar senha</label>
                     <input id="representative-password" type="password" minLength={6} value={registerPassword} onChange={(event) => setRegisterPassword(event.target.value)} autoComplete="new-password" required />
                     <button className="primary-button" disabled={busy}>{busy ? <LoaderCircle className="spin" /> : 'Criar conta'}</button>
@@ -1650,13 +1629,11 @@ function AdminDialog({ publicTurmaId, onClose }: AdminDialogProps) {
           </div>
         ) : !profile ? (
           <div className="unauthorized access-onboarding">
-            <DoorOpen /><h3>{user.emailVerified ? 'Ative seu acesso de representante' : 'Confirme seu e-mail para ativar o acesso'}</h3>
-            <p>A aprovação da turma só vira permissão depois que você confirma ser o dono de <strong>{user.email}</strong>.</p>
-            {accessError && <p className="form-error" role="alert">{accessError}</p>}
+            <DoorOpen /><h3>Esta conta ainda não tem acesso</h3>
+            <p>{accessError || `Ainda não encontramos uma turma aprovada para ${user.email}.`}</p>
             {notice && <p className="access-notice">{notice}</p>}
             <div className="access-actions">
-              <button className="primary-button" onClick={finishRepresentativeAccess} disabled={busy}>{busy ? <LoaderCircle className="spin" /> : 'Verificar e liberar acesso'}</button>
-              {!user.emailVerified && <button className="secondary-button" onClick={resendVerification} disabled={busy}>Reenviar e-mail de confirmação</button>}
+              <button className="primary-button" onClick={retryRepresentativeAccess} disabled={busy}>{busy ? <LoaderCircle className="spin" /> : 'Atualizar acesso'}</button>
               <button className="access-switch" onClick={() => signOut(auth)}>Entrar com outra conta</button>
             </div>
           </div>
@@ -1766,7 +1743,7 @@ function AdminDialog({ publicTurmaId, onClose }: AdminDialogProps) {
                   {isSuperAdmin && adminTab === 'representatives' && (
                     <>
                       <div className="admin-list-heading"><strong>Pedidos para representar uma turma</strong></div>
-                      <p className="representative-hint">Confira o e-mail e a turma antes de aprovar. A pessoa ainda precisará verificar o e-mail para ativar a conta.</p>
+                      <p className="representative-hint">Confira o e-mail e a turma antes de aprovar. Depois da aprovação, a pessoa poderá criar a conta e entrar diretamente.</p>
                       <div className="admin-list">
                         {representativeRequests.length === 0 ? <p className="admin-empty">Nenhuma solicitação pendente.</p> : representativeRequests.map((item) => (
                           <article key={item.id} className="admin-row compact representative-row">

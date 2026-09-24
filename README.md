@@ -17,11 +17,13 @@ Os sites **Agenda** e **Cadê o professor?** usam o mesmo projeto Firebase centr
 1. No Console do Firebase, abra **Authentication > Sign-in method** e habilite **E-mail/senha**.
 2. Crie a conta do super-admin em **Authentication > Users**. No Firestore, crie `admins/{uid}` com `{ "role": "superadmin" }` (o UID é o ID da conta). Representantes não precisam mais ser cadastrados manualmente.
 3. Publique as regras deste repositório com `firebase deploy --only firestore:rules` ou cole o conteúdo de [`firestore.rules`](firestore.rules) no Console do Firebase. Os dois sites compartilham o mesmo Firestore; mantenha as regras também sincronizadas com o repositório **professores**. **Sempre que `firestore.rules` mudar**, republique.
-4. Na Agenda, o interessado entra em **Sou representante > Solicitar acesso**, informa e-mail e turma e guarda o código da solicitação. O super-admin analisa na aba **Representantes** e aprova ou recusa. Depois de aprovado, o interessado cria a conta com o mesmo e-mail, confirma o link de verificação enviado pelo Firebase e clica em **Verificar e liberar acesso**. Só então o documento `admins/{uid}` é criado com a turma aprovada.
+4. Na Agenda, o interessado entra em **Sou representante > Solicitar acesso**, informa e-mail e turma e guarda o código da solicitação. O super-admin analisa na aba **Representantes** e aprova ou recusa. Depois de aprovado, o interessado cria a conta com o mesmo e-mail e uma senha; o documento `admins/{uid}` é criado automaticamente para a turma aprovada, sem etapa de confirmação por e-mail.
 5. O valor de `turmaId` precisa ser **idêntico, caractere a caractere**, a um dos valores de [`src/classNames.ts`](src/classNames.ts). Se as turmas mudarem, atualize também a lista em `firestore.rules`.
 6. Configure o TTL da coleção `suggestions` para expirar sugestões com mais de 30 dias: **Firestore Database > TTL** no Console, crie uma política apontando para o campo `createdAt` da coleção `suggestions`. Sem isso, as sugestões continuam funcionando normalmente — só não são apagadas sozinhas depois de 30 dias.
 
 > Variáveis `VITE_*` são incorporadas ao JavaScript público. Por isso, nunca coloque senhas em `.env`, no Firestore ou nos secrets do GitHub. O site pede e-mail e senha, valida pelo Firebase Authentication e só libera o painel se o UID autenticado tiver um documento em `admins` com `role` igual a `representante` ou `superadmin`.
+>
+> **Atenção:** sem confirmação por e-mail, quem souber um endereço aprovado pode cadastrar uma senha para esse endereço antes do titular. Aprove solicitações somente quando você conhece e confia em quem as enviou. Para comprovar a posse do endereço, é necessário voltar a exigir a verificação por e-mail.
 
 ## Rodar localmente
 
@@ -59,7 +61,7 @@ O arquivo `.env.local` (baseado em `.env.example`) é opcional e serve só para 
 
 ### `admins/{uid}`
 
-Documento de permissão. O super-admin inicial é criado manualmente no Console. Para um representante, o app cria o documento somente se houver convite aprovado para o e-mail autenticado e verificado.
+Documento de permissão. O super-admin inicial é criado manualmente no Console. Para um representante, o app cria o documento automaticamente quando há convite aprovado para o e-mail autenticado.
 
 ```json
 { "role": "representante", "turmaId": "2° TECH D" }
@@ -75,7 +77,7 @@ A lista de turmas é fixa em [`src/classNames.ts`](src/classNames.ts) — edite 
 
 `representativeRequests` guarda e-mail, turma, status (`pendente`, `aprovada` ou `rejeitada`) e datas de criação/análise. Qualquer visitante pode enviar um pedido e consultar **somente pelo ID aleatório** que recebeu; a listagem é exclusiva do super-admin. Evite enviar dados sensíveis além do e-mail.
 
-Ao aprovar, o app cria `representativeInvites/{email}` com a turma autorizada e atualiza o pedido na mesma gravação atômica. Apenas o super-admin pode criar ou apagar convites. O representante só consegue criar `admins/{uid}` se estiver autenticado com aquele e-mail **verificado** e a turma for exatamente a do convite. Contas criadas antes da aprovação não recebem acesso administrativo automaticamente.
+Ao aprovar, o app cria `representativeInvites/{email}` com a turma autorizada e atualiza o pedido na mesma gravação atômica. Apenas o super-admin pode criar ou apagar convites. O representante só consegue criar `admins/{uid}` se estiver autenticado com aquele e-mail e a turma for exatamente a do convite. Contas criadas antes da aprovação podem receber acesso ao entrar novamente depois da aprovação.
 
 ### `suggestions/{suggestionId}`
 
