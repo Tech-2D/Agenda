@@ -10,6 +10,8 @@ Calendário mensal com tarefas, lições, trabalhos e eventos por turma. A leitu
 
 ## Configurar o Firebase
 
+Os sites **Agenda** e **Cadê o professor?** usam o mesmo projeto Firebase central, `d-tech-56a76`, mantendo coleções separadas no mesmo Firestore.
+
 1. No Console do Firebase, abra **Authentication > Sign-in method** e habilite **E-mail/senha**.
 2. Em **Authentication > Users**, crie uma conta para cada representante e para o super-admin, com e-mail e senha próprios. A senha é definida apenas no Firebase e nunca vai para o código ou para o Firestore.
 3. Copie o UID de cada usuário.
