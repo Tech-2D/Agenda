@@ -177,6 +177,34 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .login-form input { width: 100%; height: 50px; border: 1px solid var(--line); background: var(--paper); padding: 0 13px; outline: none; color: var(--ink); border-radius: 6px; }
 .login-form label[for="admin-password"] { margin-top: 15px; }
 .login-form input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--mint); }
+.access-switch { display: inline-block; margin-top: 18px; padding: 6px; border: 0; background: transparent; color: var(--accent); font: inherit; font-size: 12px; font-weight: 800; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.access-switch:hover { color: var(--accent-hover); }
+.representative-entry { width: min(520px, calc(100% - 36px)); margin: 34px auto 46px; color: var(--text); }
+.representative-entry h3 { margin: 24px 0 7px; color: var(--ink); font-size: 22px; letter-spacing: -.03em; }
+.representative-entry > p, .request-status p { color: var(--ink-soft); font-size: 13px; line-height: 1.55; }
+.access-steps { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-alt); }
+.access-steps span { flex: 1; min-width: 110px; color: var(--ink); font-family: 'DM Mono', monospace; font-size: 10px; text-align: center; }
+.access-form { display: grid; gap: 9px; margin-top: 22px; }
+.access-form label, .request-lookup label { color: var(--text); font-size: 11px; font-weight: 800; }
+.access-form input, .access-form select, .request-lookup input { width: 100%; min-height: 45px; padding: 0 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); color: var(--text); }
+.access-form input:focus, .access-form select:focus, .request-lookup input:focus { border-color: var(--accent); outline: 2px solid var(--mint); }
+.access-form .primary-button { margin-top: 8px; }
+.request-status { display: grid; gap: 4px; margin-top: 18px; padding: 20px; border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 8px; }
+.request-status > strong { margin-top: 7px; overflow-wrap: anywhere; }
+.request-status p { margin: 0; }
+.request-status .status-badge { justify-self: start; }
+.request-code code { overflow-wrap: anywhere; font-family: 'DM Mono', monospace; }
+.request-lookup { display: grid; gap: 8px; margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--line); }
+.request-lookup > div { display: flex; gap: 8px; }
+.request-lookup input { min-width: 0; }
+.access-onboarding { gap: 10px; }
+.access-onboarding p { max-width: 460px; margin: 0; line-height: 1.55; overflow-wrap: anywhere; }
+.access-actions { display: grid; justify-items: center; gap: 9px; width: min(380px, 100%); margin-top: 14px; }
+.access-actions .primary-button, .access-actions .secondary-button { width: 100%; }
+.access-actions .access-switch { margin-top: 2px; }
+.access-notice { color: #086e74 !important; font-weight: 700; }
+.representative-hint { margin: -2px 0 14px; color: var(--ink-soft); font-size: 12px; line-height: 1.5; }
+.representative-row .admin-row-main strong { overflow-wrap: anywhere; }
 .primary-button, .secondary-button { min-height: 45px; display: inline-flex; align-items: center; justify-content: center; gap: 9px; border: 0; padding: 0 20px; cursor: pointer; font-size: 12px; font-weight: 800; border-radius: 6px; }
 .primary-button { color: var(--accent-contrast); background: var(--accent); }
 .primary-button:hover { background: var(--accent-hover); }
@@ -335,6 +363,11 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .dialog-header, .config-content { padding-left: 18px; padding-right: 18px; }
   .admin-main, .admin-sidebar { padding-left: 18px; padding-right: 18px; }
   .admin-row.compact { grid-template-columns: 34px 1fr auto; gap: 10px; }
+  .admin-tabs { overflow-x: auto; }
+  .admin-tabs button { flex: 0 0 auto; padding: 0 11px; }
+  .access-steps span { flex: 1 1 100%; min-width: 0; text-align: left; }
+  .request-lookup > div { flex-direction: column; }
+  .request-lookup .secondary-button { width: 100%; }
   .admin-row-meta { grid-column: 2; }
   .row-actions { grid-column: 3; grid-row: 1 / span 2; }
   .activity-form { padding: 24px 18px; }
