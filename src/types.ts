@@ -43,6 +43,7 @@ export type AdminProfile = {
 
 export const SUGGESTION_STATUSES = ['pendente', 'aprovada', 'rejeitada'] as const
 export type SuggestionStatus = (typeof SUGGESTION_STATUSES)[number]
+export type SuggestionResolution = 'feito' | 'nao_feito'
 
 export const SUGGESTION_STATUS_LABELS: Record<SuggestionStatus, string> = {
   pendente: 'Pendente',
@@ -60,9 +61,12 @@ export type Suggestion = {
   time: string | null
   turmaId: string
   status: SuggestionStatus
+  resolution?: SuggestionResolution
+  reviewComment?: string
+  closedAt?: unknown
 }
 
-export type SuggestionInput = Omit<Suggestion, 'id' | 'status'>
+export type SuggestionInput = Omit<Suggestion, 'id' | 'status' | 'resolution' | 'reviewComment' | 'closedAt'>
 
 export type Feedback = {
   id: string

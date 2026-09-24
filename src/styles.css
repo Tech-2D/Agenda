@@ -165,6 +165,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .activity-subject { margin: 0 0 4px !important; color: var(--accent) !important; font-size: 11px !important; font-weight: 700; }
 .activity-detail p { margin: 0; color: var(--ink-soft); font-size: 12px; line-height: 1.5; }
 .activity-author { margin-top: 8px !important; font-style: italic; font-size: 11px !important; }
+.suggestion-response { margin-top: 13px; padding: 11px 13px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); }
+.suggestion-response strong { color: var(--ink); font-size: 11px; }
+.suggestion-response p { margin-top: 6px; white-space: pre-wrap; overflow-wrap: anywhere; }
 .general-badge { background: #5b6b83; }
 
 .turma-picker { position: relative; width: min(440px, 100%); max-height: min(600px, calc(100vh - 40px)); overflow: auto; background: var(--paper); box-shadow: var(--shadow); border-radius: 10px; padding: 34px 30px; text-align: center; }
@@ -294,6 +297,17 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .toggle input:checked + span::after { transform: translateX(16px); }
 .form-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 25px; padding-top: 20px; border-top: 1px solid var(--line); }
 .activity-form.standalone { width: 100%; min-height: auto; box-shadow: none; padding: 24px 30px 30px; }
+.resolution-form { display: flex; flex-direction: column; gap: 18px; }
+.resolution-form .form-title { margin-bottom: 0; }
+.resolution-context { margin: 0; padding: 12px 14px; border-left: 3px solid var(--accent); background: var(--surface-alt); color: var(--text); font-size: 13px; font-weight: 700; overflow-wrap: anywhere; }
+.resolution-options { display: grid; gap: 8px; margin: 0; padding: 0; border: 0; }
+.resolution-options legend { margin-bottom: 9px; color: var(--ink); font-size: 12px; font-weight: 800; }
+.resolution-options label { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); cursor: pointer; }
+.resolution-options label:has(input:checked) { border-color: var(--accent); background: var(--surface-alt); }
+.resolution-options input { width: auto; margin: 0; padding: 0; accent-color: var(--accent); }
+.resolution-comment { font-size: 12px !important; }
+.resolution-hint { margin: 0; color: var(--ink-soft); font-size: 11px; line-height: 1.5; }
+.resolution-form .form-actions { margin-top: auto; }
 
 .status-badge { padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; }
 .status-pendente { background: #f2c94c; color: #4a3b00; }
@@ -404,6 +418,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .form-title h3 { font-size: 20px; }
   .form-title .icon-button { flex-shrink: 0; }
   .form-actions { position: sticky; bottom: 0; margin: 24px -18px -24px; padding: 14px 18px max(14px, env(safe-area-inset-bottom)); background: var(--paper); }
+  .resolution-form .form-actions { margin: 24px -18px -24px; }
   .form-actions > button { flex: 1; min-width: 0; padding: 0 10px; }
   .admin-list-heading { align-items: stretch; flex-direction: column; }
   .admin-list-heading input { width: 100%; }

@@ -68,6 +68,7 @@ import {
   type Feedback,
   type Suggestion,
   type SuggestionInput,
+  type SuggestionResolution,
 } from './types'
 import { addMySuggestionId, readMySuggestionIds, removeMySuggestionId } from './mySuggestions'
 import { markNotificationsSeenNow, readLastSeen } from './notifications'
@@ -909,6 +910,12 @@ function MySuggestionsDialog({ onClose }: { onClose: () => void }) {
               </div>
               <h3>{item.title}</h3>
               {item.description && <p>{item.description}</p>}
+              {item.resolution && item.reviewComment && (
+                <div className="suggestion-response">
+                  <strong>Resposta da administração · {item.resolution === 'feito' ? 'Foi feito' : 'Não foi feito'}</strong>
+                  <p>{item.reviewComment}</p>
+                </div>
+              )}
             </article>
           ))}
         </div>
@@ -1106,12 +1113,20 @@ function AdminDialog({ publicTurmaId, onClose }: AdminDialogProps) {
   const [hasTime, setHasTime] = useState(false)
   const [saveError, setSaveError] = useState('')
   const [notice, setNotice] = useState('')
+  const [closingSuggestion, setClosingSuggestion] = useState<Suggestion | null>(null)
+  const [resolution, setResolution] = useState<SuggestionResolution>('feito')
+  const [reviewComment, setReviewComment] = useState('')
+  const [resolutionError, setResolutionError] = useState('')
 
   useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => event.key === 'Escape' && onClose()
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      if (closingSuggestion) setClosingSuggestion(null)
+      else onClose()
+    }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [onClose])
+  }, [closingSuggestion, onClose])
 
   useEffect(() => {
     let requestId = 0
@@ -1214,7 +1229,7 @@ function AdminDialog({ publicTurmaId, onClose }: AdminDialogProps) {
     .filter((item) => item.status === 'pendente')
     .sort((a, b) => a.date.localeCompare(b.date))
   const processedSuggestions = managedSuggestions
-    .filter((item) => item.status !== 'pendente')
+    .filter((item) => item.status !== 'pendente' && !item.closedAt)
     .sort((a, b) => a.date.localeCompare(b.date))
 
   async function logIn(event: FormEvent) {
@@ -1494,12 +1509,36 @@ function AdminDialog({ publicTurmaId, onClose }: AdminDialogProps) {
     }
   }
 
-  async function discardSuggestion(suggestion: Suggestion) {
-    if (!window.confirm(`Remover a sugestão "${suggestion.title}" da lista?`)) return
+  function startClosingSuggestion(suggestion: Suggestion) {
+    setClosingSuggestion(suggestion)
+    setResolution('feito')
+    setReviewComment('')
+    setResolutionError('')
+  }
+
+  async function closeSuggestion(event: FormEvent) {
+    event.preventDefault()
+    if (!closingSuggestion) return
+    const comment = reviewComment.trim()
+    if (!comment) {
+      setResolutionError('Escreva um comentário antes de encerrar a sugestão.')
+      return
+    }
+    setBusy(true)
+    setResolutionError('')
     try {
-      await deleteDoc(doc(db, 'suggestions', suggestion.id))
+      await updateDoc(doc(db, 'suggestions', closingSuggestion.id), {
+        resolution,
+        reviewComment: comment,
+        closedAt: serverTimestamp(),
+      })
+      setClosingSuggestion(null)
+      setNotice('Sugestão encerrada. O aluno poderá ver sua resposta em Minhas sugestões.')
+      window.setTimeout(() => setNotice(''), 4000)
     } catch {
-      setNotice('Não foi possível remover a sugestão.')
+      setResolutionError('Não foi possível encerrar a sugestão. Tente novamente.')
+    } finally {
+      setBusy(false)
     }
   }
 
@@ -1715,7 +1754,7 @@ function AdminDialog({ publicTurmaId, onClose }: AdminDialogProps) {
                                 <div className="admin-row-main"><strong>{suggestion.title}</strong><span className={`status-badge status-${suggestion.status}`}>{SUGGESTION_STATUS_LABELS[suggestion.status]}</span></div>
                                 <div className="admin-row-meta"><span>{parseDateLabel(suggestion.date)}</span></div>
                                 <div className="row-actions">
-                                  <button className="danger" onClick={() => discardSuggestion(suggestion)} aria-label={`Remover ${suggestion.title}`}><Trash2 /></button>
+                                  <button onClick={() => startClosingSuggestion(suggestion)} aria-label={`Encerrar ${suggestion.title}`} title="Encerrar e responder"><MessageSquarePlus /></button>
                                 </div>
                               </article>
                             ))}
@@ -1837,6 +1876,32 @@ function AdminDialog({ publicTurmaId, onClose }: AdminDialogProps) {
               </div>
               {saveError && <p className="form-error">{saveError}</p>}
               <div className="form-actions"><button type="button" className="secondary-button" onClick={() => setFormOpen(false)}>Cancelar</button><button className="primary-button compact" disabled={busy}>{busy ? <LoaderCircle className="spin" /> : 'Salvar atividade'}</button></div>
+            </form>
+          </div>
+        )}
+
+        {closingSuggestion && (
+          <div className="form-overlay">
+            <form className="activity-form resolution-form" onSubmit={closeSuggestion} aria-labelledby="resolution-title">
+              <div className="form-title">
+                <div><p className="eyebrow dark">SUGESTÃO</p><h3 id="resolution-title">Encerrar sugestão</h3></div>
+                <button type="button" className="icon-button" onClick={() => setClosingSuggestion(null)} aria-label="Fechar"><X /></button>
+              </div>
+              <p className="resolution-context">{closingSuggestion.title}</p>
+              <fieldset className="resolution-options">
+                <legend>Essa sugestão foi feita?</legend>
+                <label><input type="radio" name="resolution" value="feito" checked={resolution === 'feito'} onChange={() => setResolution('feito')} /> Sim, foi feito</label>
+                <label><input type="radio" name="resolution" value="nao_feito" checked={resolution === 'nao_feito'} onChange={() => setResolution('nao_feito')} /> Não foi feito</label>
+              </fieldset>
+              <label className="resolution-comment">Comentário para o aluno
+                <textarea required maxLength={500} rows={5} value={reviewComment} onChange={(event) => setReviewComment(event.target.value)} placeholder="Explique o que foi feito ou por que a sugestão não foi realizada." />
+              </label>
+              <p className="resolution-hint">Ao encerrar, a sugestão sai desta lista. O aluno poderá ver a resposta em “Minhas sugestões”.</p>
+              {resolutionError && <p className="form-error" role="alert">{resolutionError}</p>}
+              <div className="form-actions">
+                <button type="button" className="secondary-button" onClick={() => setClosingSuggestion(null)}>Cancelar</button>
+                <button className="primary-button compact" disabled={busy}>{busy ? <LoaderCircle className="spin" /> : 'Encerrar sugestão'}</button>
+              </div>
             </form>
           </div>
         )}

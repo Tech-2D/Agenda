@@ -180,13 +180,26 @@ service cloud.firestore {
 
       allow create: if isValidSuggestion(request.resource.data);
 
-      // Representante/superadmin só pode mudar o status (aprovar/rejeitar), nunca
-      // reescrever o conteúdo da sugestão.
+      // A avaliação muda apenas o status; o encerramento registra a resposta
+      // que o aluno poderá consultar pelo ID da própria sugestão.
       allow update: if canManage(resource.data.turmaId)
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt'])
-        && request.resource.data.status in ['aprovada', 'rejeitada'];
+        && (
+          (resource.data.status == 'pendente'
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt'])
+            && request.resource.data.status in ['aprovada', 'rejeitada'])
+          ||
+          (resource.data.status in ['aprovada', 'rejeitada']
+            && !resource.data.keys().hasAny(['closedAt'])
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['resolution', 'reviewComment', 'closedAt'])
+            && request.resource.data.keys().hasAll(['resolution', 'reviewComment', 'closedAt'])
+            && request.resource.data.resolution in ['feito', 'nao_feito']
+            && request.resource.data.reviewComment is string
+            && request.resource.data.reviewComment.size() > 0
+            && request.resource.data.reviewComment.size() <= 500
+            && request.resource.data.closedAt == request.time)
+        );
 
-      allow delete: if canManage(resource.data.turmaId);
+      allow delete: if false;
     }
 
     // Comentários de melhoria sobre o site (não são por turma). Só o super-admin lê.
