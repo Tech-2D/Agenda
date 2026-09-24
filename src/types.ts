@@ -73,6 +73,8 @@ export type Feedback = {
   message: string
   turmaId: string | null
   createdAt: { toDate: () => Date } | null
+  createdBy?: string
+  createdByEmail?: string
 }
 
 export type Announcement = {

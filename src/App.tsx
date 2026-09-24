@@ -944,6 +944,17 @@ function FeedbackDialog({ turmaId, onClose }: { turmaId: string | null; onClose:
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [sent, setSent] = useState(false)
+  const [account, setAccount] = useState<User | null>(null)
+  const [authChecked, setAuthChecked] = useState(false)
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [authNotice, setAuthNotice] = useState('')
+
+  useEffect(() => onAuthStateChanged(auth, (currentUser) => {
+    setAccount(currentUser)
+    setAuthChecked(true)
+  }), [])
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => event.key === 'Escape' && onClose()
@@ -951,12 +962,65 @@ function FeedbackDialog({ turmaId, onClose }: { turmaId: string | null; onClose:
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [onClose])
 
-  async function submit(event: FormEvent) {
+  async function authenticate(event: FormEvent) {
     event.preventDefault()
     setBusy(true)
     setError('')
+    setAuthNotice('')
     try {
-      await addDoc(collection(db, 'feedback'), { message: message.trim(), turmaId: turmaId ?? null, createdAt: serverTimestamp() })
+      if (authMode === 'register') {
+        await createUserWithEmailAndPassword(auth, email.trim(), password)
+      } else {
+        await signInWithEmailAndPassword(auth, email.trim(), password)
+      }
+      setPassword('')
+    } catch (cause) {
+      if (cause instanceof FirebaseError && cause.code === 'auth/email-already-in-use') {
+        setError('Este e-mail já tem conta. Entre com sua senha ou recupere o acesso.')
+      } else if (cause instanceof FirebaseError && cause.code === 'auth/weak-password') {
+        setError('Escolha uma senha com pelo menos 6 caracteres.')
+      } else if (cause instanceof FirebaseError && cause.code === 'auth/network-request-failed') {
+        setError('Sem conexão com o Firebase. Tente novamente.')
+      } else {
+        setError('Não foi possível entrar. Confira o e-mail e a senha.')
+      }
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function recoverPassword() {
+    if (!email.trim()) {
+      setError('Informe seu e-mail para recuperar a senha.')
+      return
+    }
+    setBusy(true)
+    setError('')
+    try {
+      await sendPasswordResetEmail(auth, email.trim())
+      setAuthNotice('Se o e-mail tiver uma conta, você receberá um link para redefinir a senha.')
+    } catch {
+      setError('Não foi possível enviar o link agora. Tente novamente.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function submit(event: FormEvent) {
+    event.preventDefault()
+    const currentUser = auth.currentUser
+    if (!currentUser?.email) {
+      setError('Entre com sua conta para enviar o comentário.')
+      return
+    }
+    setBusy(true)
+    setError('')
+    try {
+      await addDoc(collection(db, 'feedback'), {
+        message: message.trim(), turmaId: turmaId ?? null,
+        createdBy: currentUser.uid, createdByEmail: currentUser.email,
+        createdAt: serverTimestamp(),
+      })
       setSent(true)
     } catch {
       setError('Não foi possível enviar o comentário. Tente novamente.')
@@ -972,10 +1036,30 @@ function FeedbackDialog({ turmaId, onClose }: { turmaId: string | null; onClose:
           <h2 id="feedback-title">Comentar melhoria</h2>
           <button className="icon-button" onClick={onClose} aria-label="Fechar"><X /></button>
         </div>
-        {sent ? (
+        {!authChecked ? (
+          <div className="feedback-auth-loading"><LoaderCircle className="spin" /><p>Verificando sua conta…</p></div>
+        ) : sent ? (
           <div className="state-card"><Check /><p>Obrigado! Seu comentário foi enviado.</p></div>
+        ) : !account ? (
+          <form className="feedback-auth" onSubmit={authenticate}>
+            <p>Entre para enviar sua ideia. Seu e-mail ficará visível apenas para a administração.</p>
+            <label htmlFor="feedback-email">E-mail</label>
+            <input id="feedback-email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" required autoFocus />
+            <label htmlFor="feedback-password">Senha</label>
+            <input id="feedback-password" type="password" minLength={authMode === 'register' ? 6 : undefined} value={password} onChange={(event) => setPassword(event.target.value)} autoComplete={authMode === 'register' ? 'new-password' : 'current-password'} required />
+            {error && <p className="form-error" role="alert">{error}</p>}
+            {authNotice && <p className="access-notice" role="status">{authNotice}</p>}
+            <button className="primary-button" disabled={busy}>{busy ? <LoaderCircle className="spin" /> : authMode === 'register' ? 'Criar conta' : 'Entrar'}</button>
+            <div className="feedback-auth-links">
+              <button type="button" className="access-switch" onClick={() => { setAuthMode(authMode === 'login' ? 'register' : 'login'); setError(''); setAuthNotice('') }} disabled={busy}>
+                {authMode === 'login' ? 'Criar uma conta' : 'Já tenho conta'}
+              </button>
+              {authMode === 'login' && <button type="button" className="access-switch" onClick={recoverPassword} disabled={busy}>Esqueci minha senha</button>}
+            </div>
+          </form>
         ) : (
           <form className="activity-form standalone" onSubmit={submit}>
+            <div className="feedback-account"><span>Enviando como <strong>{account.email}</strong></span><button type="button" className="access-switch" onClick={() => signOut(auth)}>Trocar conta</button></div>
             <div className="form-grid">
               <label className="wide">
                 O que podemos melhorar no site?
@@ -1791,7 +1875,7 @@ function AdminDialog({ publicTurmaId, onClose }: AdminDialogProps) {
                         {feedbackList.length === 0 ? <p className="admin-empty">Nenhum comentário recebido.</p> : feedbackList.map((item) => (
                           <article key={item.id} className="admin-row compact">
                             <div className="avatar"><MessageSquarePlus /></div>
-                            <div className="admin-row-main"><span className="feedback-message">{item.message}</span></div>
+                            <div className="admin-row-main"><strong>{item.createdByEmail ?? 'Enviado antes da identificação obrigatória'}</strong><span className="feedback-message">{item.message}</span></div>
                             <div className="admin-row-meta"><span>{item.turmaId ?? 'Geral'}</span><strong>{item.createdAt ? item.createdAt.toDate().toLocaleDateString('pt-BR') : '—'}</strong></div>
                             <div className="row-actions">
                               <button className="danger" onClick={() => discardFeedback(item)} aria-label="Remover comentário"><Trash2 /></button>

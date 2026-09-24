@@ -102,12 +102,14 @@ Sugestão de atividade enviada por um aluno (sem login), pendente de avaliação
 
 ### `feedback/{feedbackId}`
 
-Comentário de melhoria sobre o site (não é por turma), enviado por qualquer visitante sem login. Só o super-admin lê, dentro da área administrativa.
+Comentário de melhoria sobre o site (não é por turma). Para enviar, a pessoa precisa entrar ou criar uma conta com e-mail e senha. O documento guarda o UID e o e-mail da conta autenticada; somente o super-admin vê o comentário e o autor na área administrativa. Comentários antigos continuam visíveis, mas aparecem sem identificação. O Firebase Authentication não comprova a posse do e-mail sem uma etapa de verificação.
 
 ```json
 {
   "message": "Seria legal ter uma visão semanal também",
   "turmaId": "2° TECH D",
+  "createdBy": "uid-da-conta",
+  "createdByEmail": "aluno@exemplo.com",
   "createdAt": "2026-09-25T14:00:00Z"
 }
 ```
