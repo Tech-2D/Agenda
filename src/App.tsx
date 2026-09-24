@@ -1,4 +1,5 @@
-import { type FormEvent, useEffect, useMemo, useState } from 'react'
+import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import {
   ArrowRight,
   Bell,
@@ -136,6 +137,8 @@ function App() {
   const [loadError, setLoadError] = useState('')
   const [monthCursor, setMonthCursor] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1))
   const [selectedDay, setSelectedDay] = useState<Date | null>(null)
+  const [dayPreview, setDayPreview] = useState<{ key: string; day: Date; activities: Activity[]; left: number; top: number; width: number } | null>(null)
+  const previewCloseTimer = useRef<number | null>(null)
   const [adminOpen, setAdminOpen] = useState(['#admin', '#representante'].includes(window.location.hash))
   const [menuOpen, setMenuOpen] = useState(false)
   const [configOpen, setConfigOpen] = useState(false)
@@ -279,6 +282,32 @@ function App() {
 
   const weeks = useMemo(() => getMonthMatrix(monthCursor.getFullYear(), monthCursor.getMonth()), [monthCursor])
 
+  useEffect(() => () => {
+    if (previewCloseTimer.current !== null) window.clearTimeout(previewCloseTimer.current)
+  }, [])
+
+  function keepDayPreviewOpen() {
+    if (previewCloseTimer.current !== null) window.clearTimeout(previewCloseTimer.current)
+    previewCloseTimer.current = null
+  }
+
+  function closeDayPreviewSoon() {
+    keepDayPreviewOpen()
+    previewCloseTimer.current = window.setTimeout(() => setDayPreview(null), 150)
+  }
+
+  function showDayPreview(button: HTMLButtonElement, day: Date, activities: Activity[]) {
+    if (!activities.length) return
+    keepDayPreviewOpen()
+    const rect = button.getBoundingClientRect()
+    const width = Math.min(360, window.innerWidth - 24)
+    const left = rect.right + width + 12 < window.innerWidth
+      ? rect.right + 8
+      : Math.max(12, rect.left - width - 8)
+    const top = Math.max(12, Math.min(rect.top, window.innerHeight - Math.min(500, window.innerHeight - 24) - 12))
+    setDayPreview({ key: dateKey(day), day, activities, left, top, width })
+  }
+
   const openAdmin = () => {
     window.location.hash = 'admin'
     setAdminOpen(true)
@@ -377,7 +406,12 @@ function App() {
                         type="button"
                         key={key}
                         className={`calendar-day ${outside ? 'outside' : ''} ${isToday(day) ? 'today' : ''}`}
-                        onClick={() => dayActivities.length > 0 && setSelectedDay(day)}
+                        onClick={() => { setDayPreview(null); if (dayActivities.length > 0) setSelectedDay(day) }}
+                        onMouseEnter={(event) => showDayPreview(event.currentTarget, day, dayActivities)}
+                        onMouseLeave={closeDayPreviewSoon}
+                        onFocus={(event) => showDayPreview(event.currentTarget, day, dayActivities)}
+                        onBlur={closeDayPreviewSoon}
+                        aria-describedby={dayPreview?.key === key ? 'calendar-day-preview' : undefined}
                         disabled={dayActivities.length === 0}
                       >
                         <span className="day-number">{day.getDate()}</span>
@@ -399,6 +433,32 @@ function App() {
           )}
         </section>
       </main>
+
+      {dayPreview && createPortal(
+        <div
+          id="calendar-day-preview"
+          className="calendar-day-preview"
+          role="tooltip"
+          style={{ left: dayPreview.left, top: dayPreview.top, width: dayPreview.width }}
+          onMouseEnter={keepDayPreviewOpen}
+          onMouseLeave={closeDayPreviewSoon}
+        >
+          <strong className="preview-date">{dayPreview.day.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}</strong>
+          <div className="preview-activities">
+            {dayPreview.activities.map((activity) => (
+              <div key={activity.id} className="preview-activity">
+                <span className="preview-activity-type"><span className="chip-dot" style={{ background: ACTIVITY_TYPE_COLORS[activity.type] }} />{ACTIVITY_TYPE_LABELS[activity.type]}{activity.time ? ` · ${activity.time}` : ''}{activity.turmaId === null ? ' · Geral' : ''}</span>
+                <strong>{activity.title}</strong>
+                {activity.subject && <span className="preview-subject">{activity.subject}</span>}
+                {activity.description && <p>{activity.description}</p>}
+                {activity.createdByEmail && <span className="preview-author">Publicado por {activity.createdByEmail}</span>}
+              </div>
+            ))}
+          </div>
+          <span className="preview-footnote">Clique no dia para abrir os detalhes.</span>
+        </div>,
+        document.body,
+      )}
 
       {selectedDay && (
         <DayDetail day={selectedDay} activities={activitiesByDay.get(dateKey(selectedDay)) ?? []} onClose={() => setSelectedDay(null)} />

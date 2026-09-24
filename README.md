@@ -2,6 +2,8 @@
 
 Calendário mensal com tarefas, lições, trabalhos e eventos por turma. A leitura é pública (sem login); representantes e o super-admin autenticam para criar, editar e excluir atividades.
 
+Passe o mouse sobre um dia com atividades (ou foque nele pelo teclado) para ler o conteúdo completo sem sair do calendário. No celular, toque no dia para abrir os detalhes.
+
 ## Tecnologias
 
 - React + TypeScript + Vite
