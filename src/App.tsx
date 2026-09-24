@@ -599,7 +599,7 @@ function SideMenu({ onClose, onOpenConfig, onOpenAdmin, onOpenMySuggestions, onO
           <button type="button" onClick={onOpenAdmin}><KeyRound size={18} /> Sou representante</button>
           <button type="button" onClick={onOpenFeedback}><MessageSquarePlus size={18} /> Comentar melhoria</button>
           <button type="button" onClick={onOpenMySuggestions}><ListChecks size={18} /> Minhas sugestões</button>
-          <a className="side-menu-external" href="https://lucaslimaoliveira.github.io/professores/" target="_blank" rel="noopener noreferrer">
+          <a className="side-menu-external" href="https://tech-2d.github.io/professores/" target="_blank" rel="noopener noreferrer">
             <MapPin size={18} /> Cadê o professor?
             <ExternalLink size={14} className="external-icon" />
           </a>
