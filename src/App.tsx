@@ -70,6 +70,7 @@ import {
   type AdminProfile,
   type Announcement,
   type Feedback,
+  type RecurringActivity,
   type Suggestion,
   type SuggestionInput,
   type SuggestionResolution,
@@ -1323,7 +1324,10 @@ function AdminDialog({ publicTurmaId, quickCreateDate, systemUpdates, onClose }:
   const [updateTitle, setUpdateTitle] = useState('')
   const [updateBody, setUpdateBody] = useState('')
   const [adminSearch, setAdminSearch] = useState('')
-  const [adminTab, setAdminTab] = useState<'activities' | 'suggestions' | 'representatives' | 'site'>('activities')
+  const [adminTab, setAdminTab] = useState<'activities' | 'recurrences' | 'suggestions' | 'representatives' | 'site'>('activities')
+  const [recurrences, setRecurrences] = useState<RecurringActivity[]>([])
+  const [repeatWeekly, setRepeatWeekly] = useState(false)
+  const [repeatEndDate, setRepeatEndDate] = useState('')
   const [formOpen, setFormOpen] = useState(false)
   const [quickCreateActive, setQuickCreateActive] = useState(false)
   const [editing, setEditing] = useState<Activity | null>(null)
@@ -1387,6 +1391,8 @@ function AdminDialog({ publicTurmaId, quickCreateDate, systemUpdates, onClose }:
     setForm({ ...emptyForm, date: quickCreateDate })
     setIsGlobalForm(false)
     setHasTime(false)
+    setRepeatWeekly(false)
+    setRepeatEndDate('')
     setSaveError('')
     setQuickCreateActive(true)
     setFormOpen(true)
@@ -1409,6 +1415,14 @@ function AdminDialog({ publicTurmaId, quickCreateDate, systemUpdates, onClose }:
     return onSnapshot(activitiesQuery, (snapshot) => {
       setManagedActivities(snapshot.docs.map((item) => ({ id: item.id, ...item.data() }) as Activity))
     })
+  }, [profile, managedTurma])
+
+  useEffect(() => {
+    if (!profile || !managedTurma) return
+    const recurrenceQuery = query(collection(db, 'recurringActivities'), where('turmaId', '==', managedTurma))
+    return onSnapshot(recurrenceQuery, (snapshot) => {
+      setRecurrences(snapshot.docs.map((item) => ({ id: item.id, ...item.data() }) as RecurringActivity))
+    }, () => setNotice('Não foi possível carregar as repetições. Confira as regras do Firestore.'))
   }, [profile, managedTurma])
 
   useEffect(() => {
@@ -1624,6 +1638,8 @@ function AdminDialog({ publicTurmaId, quickCreateDate, systemUpdates, onClose }:
     setForm({ ...emptyForm, date: dateKey(new Date()) })
     setIsGlobalForm(false)
     setHasTime(false)
+    setRepeatWeekly(false)
+    setRepeatEndDate('')
     setSaveError('')
     setQuickCreateActive(false)
     setFormOpen(true)
@@ -1634,6 +1650,8 @@ function AdminDialog({ publicTurmaId, quickCreateDate, systemUpdates, onClose }:
     setForm({ title: activity.title, description: activity.description, type: activity.type, subject: activity.subject ?? null, date: activity.date, time: activity.time })
     setIsGlobalForm(activity.turmaId === null)
     setHasTime(Boolean(activity.time))
+    setRepeatWeekly(false)
+    setRepeatEndDate('')
     setSaveError('')
     setQuickCreateActive(false)
     setFormOpen(true)
@@ -1641,11 +1659,32 @@ function AdminDialog({ publicTurmaId, quickCreateDate, systemUpdates, onClose }:
 
   async function saveActivity(event: FormEvent) {
     event.preventDefault()
+    if (repeatWeekly && repeatEndDate && repeatEndDate < form.date) {
+      setSaveError('A data final precisa ser igual ou posterior à primeira data.')
+      return
+    }
     setBusy(true)
     setSaveError('')
     try {
       const payload = { ...form, subject: form.subject ?? null, time: hasTime ? form.time : null, turmaId: isGlobalForm ? null : managedTurma }
-      if (editing) {
+      if (repeatWeekly && !editing) {
+        await addDoc(collection(db, 'recurringActivities'), {
+          title: form.title.trim(),
+          description: form.description.trim(),
+          type: form.type,
+          subject: form.subject ?? null,
+          time: hasTime ? form.time : null,
+          turmaId: managedTurma,
+          startDate: form.date,
+          endDate: repeatEndDate || null,
+          active: true,
+          createdBy: user?.uid,
+          createdByEmail: user?.email ?? null,
+          createdAt: serverTimestamp(),
+        })
+        setAdminTab('recurrences')
+        setNotice('Repetição semanal salva. As ocorrências aparecem após a próxima execução da automação.')
+      } else if (editing) {
         await updateDoc(doc(db, 'activities', editing.id), { ...payload, updatedAt: serverTimestamp() })
         setNotice('Atividade atualizada.')
       } else {
@@ -1663,6 +1702,20 @@ function AdminDialog({ publicTurmaId, quickCreateDate, systemUpdates, onClose }:
       else window.setTimeout(() => setNotice(''), 2800)
     } catch (error) {
       setSaveError(error instanceof Error ? error.message : 'Não foi possível salvar a atividade.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function toggleRecurrence(item: RecurringActivity) {
+    setBusy(true)
+    try {
+      await updateDoc(doc(db, 'recurringActivities', item.id), { active: !item.active })
+      setNotice(item.active
+        ? 'Repetição pausada. As próximas ocorrências serão removidas pela automação.'
+        : 'Repetição reativada. As próximas ocorrências serão criadas pela automação.')
+    } catch {
+      setNotice('Não foi possível alterar a repetição. Tente novamente.')
     } finally {
       setBusy(false)
     }
@@ -1895,6 +1948,7 @@ function AdminDialog({ publicTurmaId, quickCreateDate, systemUpdates, onClose }:
               <div className="admin-main">
                 <div className="admin-tabs">
                   <button type="button" className={adminTab === 'activities' ? 'active' : ''} onClick={() => setAdminTab('activities')}>Atividades</button>
+                  <button type="button" className={adminTab === 'recurrences' ? 'active' : ''} onClick={() => setAdminTab('recurrences')}>Repetições</button>
                   <button type="button" className={adminTab === 'suggestions' ? 'active' : ''} onClick={() => setAdminTab('suggestions')}>
                     Sugestões
                     {pendingSuggestions.length > 0 && <span className="notif-count">{pendingSuggestions.length}</span>}
@@ -1921,11 +1975,11 @@ function AdminDialog({ publicTurmaId, quickCreateDate, systemUpdates, onClose }:
                         {filteredActivities.length === 0 ? <p className="admin-empty">Nenhuma atividade encontrada.</p> : filteredActivities.map((activity) => (
                           <article key={activity.id} className="admin-row compact">
                             <div className="avatar" style={{ color: ACTIVITY_TYPE_COLORS[activity.type] }}><UserRound /></div>
-                            <div className="admin-row-main"><strong>{activity.title}</strong><span>{ACTIVITY_TYPE_LABELS[activity.type]}{activity.subject ? ` · ${activity.subject}` : ''}</span></div>
+                            <div className="admin-row-main"><strong>{activity.title}</strong><span>{ACTIVITY_TYPE_LABELS[activity.type]}{activity.subject ? ` · ${activity.subject}` : ''}{activity.recurringId ? ' · Repete toda semana' : ''}</span></div>
                             <div className="admin-row-meta"><span>{parseDateLabel(activity.date)}</span><strong>{activity.time ?? '—'}</strong></div>
                             <div className="row-actions">
                               <button onClick={() => startEdit(activity)} aria-label={`Editar ${activity.title}`}><Edit3 /></button>
-                              <button className="danger" onClick={() => removeActivity(activity)} aria-label={`Excluir ${activity.title}`}><Trash2 /></button>
+                              {!activity.recurringId && <button className="danger" onClick={() => removeActivity(activity)} aria-label={`Excluir ${activity.title}`}><Trash2 /></button>}
                             </div>
                           </article>
                         ))}
@@ -1947,6 +2001,25 @@ function AdminDialog({ publicTurmaId, quickCreateDate, systemUpdates, onClose }:
                           </article>
                         ))}
                       </div>
+                    </>
+                  )}
+                  {adminTab === 'recurrences' && (
+                    <>
+                      <div className="admin-list-heading"><strong>Tarefas que se repetem</strong><span className="config-hint" style={{ margin: 0 }}>Toda semana, no mesmo dia</span></div>
+                      <div className="admin-list">
+                        {recurrences.length === 0 ? <p className="admin-empty">Nenhuma repetição cadastrada para esta turma.</p> : recurrences
+                          .slice()
+                          .sort((a, b) => a.startDate.localeCompare(b.startDate))
+                          .map((item) => (
+                            <article key={item.id} className="admin-row compact">
+                              <div className="avatar" style={{ color: ACTIVITY_TYPE_COLORS[item.type] }}><Calendar /></div>
+                              <div className="admin-row-main"><strong>{item.title}</strong><span>{ACTIVITY_TYPE_LABELS[item.type]}{item.subject ? ` · ${item.subject}` : ''} · {item.active ? 'Ativa' : 'Pausada'}</span></div>
+                              <div className="admin-row-meta"><span>Desde {parseDateLabel(item.startDate)}</span><strong>{item.endDate ? `Até ${parseDateLabel(item.endDate)}` : 'Sem data final'}</strong></div>
+                              <div className="row-actions"><button type="button" className="recurrence-action" disabled={busy} onClick={() => toggleRecurrence(item)} aria-label={`${item.active ? 'Pausar' : 'Reativar'} ${item.title}`}>{item.active ? 'Pausar' : 'Reativar'}</button></div>
+                            </article>
+                          ))}
+                      </div>
+                      <p className="config-hint">A automação prepara as próximas 8 semanas. Ao pausar, ela remove apenas ocorrências de hoje em diante; atividades anteriores permanecem no histórico. Para alterar só uma data, edite a ocorrência em Atividades.</p>
                     </>
                   )}
                   {adminTab === 'suggestions' && (
@@ -2078,7 +2151,7 @@ function AdminDialog({ publicTurmaId, quickCreateDate, systemUpdates, onClose }:
                   )}
                 </div>
 
-                {adminTab === 'activities' && (
+                {(adminTab === 'activities' || adminTab === 'recurrences') && (
                   <button className="primary-button compact" onClick={startCreate}><Plus size={18} /> Nova atividade</button>
                 )}
 
@@ -2097,10 +2170,15 @@ function AdminDialog({ publicTurmaId, quickCreateDate, systemUpdates, onClose }:
                 <label>Tipo<select value={form.type} onChange={(event) => setForm({ ...form, type: event.target.value as ActivityType })}>{ACTIVITY_TYPES.map((type) => <option value={type} key={type}>{ACTIVITY_TYPE_LABELS[type]}</option>)}</select></label>
                 <label className="wide">Matéria<select value={form.subject ?? ''} onChange={(event) => setForm({ ...form, subject: event.target.value || null })}><option value="">Sem matéria específica</option>{SUBJECTS.map((subject) => <option value={subject} key={subject}>{subject}</option>)}</select></label>
                 <label>Data<input required type="date" value={form.date} onChange={(event) => setForm({ ...form, date: event.target.value })} /></label>
-                <label className="toggle wide"><input type="checkbox" checked={isGlobalForm} onChange={(event) => setIsGlobalForm(event.target.checked)} /><span /> Evento geral (aparece em todas as turmas)</label>
-                {isGlobalForm ? (
+                {!editing && <label className="toggle wide"><input type="checkbox" checked={repeatWeekly} onChange={(event) => { setRepeatWeekly(event.target.checked); if (event.target.checked) setIsGlobalForm(false) }} /><span /> Repetir toda semana</label>}
+                {repeatWeekly && <>
+                  <p className="config-hint wide">A data acima será a primeira ocorrência. A tarefa aparecerá no mesmo dia da semana nas semanas seguintes.</p>
+                  <label>Repetir até (opcional)<input type="date" min={form.date} value={repeatEndDate} onChange={(event) => setRepeatEndDate(event.target.value)} /></label>
+                </>}
+                {!repeatWeekly && <label className="toggle wide"><input type="checkbox" checked={isGlobalForm} onChange={(event) => setIsGlobalForm(event.target.checked)} /><span /> Evento geral (aparece em todas as turmas)</label>}
+                {!repeatWeekly && isGlobalForm ? (
                   <p className="config-hint wide">Vai aparecer no calendário de todas as turmas, não só {isRepresentante ? 'da sua' : `de "${managedTurma}"`}.</p>
-                ) : editing && editing.turmaId === null && (
+                ) : !repeatWeekly && editing && editing.turmaId === null && (
                   <p className="config-hint wide">Vai deixar de ser geral e passar a valer só para {isRepresentante ? 'a sua turma' : `"${managedTurma}"`}.</p>
                 )}
                 <label className="toggle wide"><input type="checkbox" checked={hasTime} onChange={(event) => { setHasTime(event.target.checked); if (!event.target.checked) setForm({ ...form, time: null }) }} /><span /> Tem horário definido</label>
@@ -2108,7 +2186,7 @@ function AdminDialog({ publicTurmaId, quickCreateDate, systemUpdates, onClose }:
                 <label className="wide">Descrição<textarea rows={3} value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} placeholder="Detalhes, capítulos, critérios de entrega…" /></label>
               </div>
               {saveError && <p className="form-error">{saveError}</p>}
-              <div className="form-actions"><button type="button" className="secondary-button" onClick={() => setFormOpen(false)}>Cancelar</button><button className="primary-button compact" disabled={busy}>{busy ? <LoaderCircle className="spin" /> : 'Salvar atividade'}</button></div>
+              <div className="form-actions"><button type="button" className="secondary-button" onClick={() => setFormOpen(false)}>Cancelar</button><button className="primary-button compact" disabled={busy}>{busy ? <LoaderCircle className="spin" /> : repeatWeekly ? 'Salvar repetição' : 'Salvar atividade'}</button></div>
             </form>
           </div>
         )}

@@ -10,6 +10,12 @@ Passe o mouse sobre um dia com atividades (ou foque nele pelo teclado) para ler 
 - Firebase Authentication
 - Cloud Firestore
 
+## Tarefas que se repetem
+
+Na área do representante, marque **Repetir toda semana** ao cadastrar uma atividade. A data escolhida vira a primeira ocorrência; o campo **Repetir até** é opcional. A aba **Repetições** mostra os agendamentos da turma e permite pausá-los ou reativá-los. Cada ocorrência pode ser editada individualmente em **Atividades**, mas o modelo semanal permanece igual.
+
+A automação fica no repositório privado [`Tech-2D/agenda-recorrencias`](https://github.com/Tech-2D/agenda-recorrencias). Ela roda a cada seis horas, gera até oito semanas à frente e não duplica atividades. Quando um agendamento é pausado, a próxima execução remove suas ocorrências de hoje em diante, mantendo as anteriores. A automação depende do secret `FIREBASE_SERVICE_ACCOUNT` configurado nesse repositório e das regras atualizadas do Firestore.
+
 ## Configurar o Firebase
 
 Os sites **Agenda** e **Cadê o professor?** usam o mesmo projeto Firebase central, `d-tech-56a76`, mantendo coleções separadas no mesmo Firestore.
@@ -58,6 +64,11 @@ O arquivo `.env.local` (baseado em `.env.example`) é opcional e serve só para 
 - `turmaId`: string da turma, ou `null` para **evento geral** (aparece no calendário de todas as turmas). Pode ser alterado depois, editando a atividade e marcando/desmarcando "Evento geral" — assim dá pra converter entre turma específica e geral.
 - `createdByEmail`: e-mail de quem criou, guardado só na criação (não muda se outra pessoa editar depois). Mostrado publicamente no card da atividade. Atividades criadas antes dessa mudança não têm esse campo e simplesmente não mostram autor.
 - Qualquer representante (de qualquer turma) ou o super-admin pode criar um evento geral. Só quem criou ou o super-admin pode editar/excluir um evento geral depois — diferente das atividades de turma, que qualquer representante daquela turma específica pode gerenciar.
+- Ocorrências de tarefas semanais incluem `recurringId`; o cron cria cada uma com ID fixo (`{recurringId}_{YYYY-MM-DD}`). Para parar a repetição, pause o modelo na aba **Repetições**, não exclua uma ocorrência isolada.
+
+### `recurringActivities/{id}`
+
+Modelo de atividade semanal criado por um representante da turma ou pelo super-admin. Guarda os mesmos campos de título, tipo, matéria, descrição e horário de uma atividade, além de `turmaId`, `startDate`, `endDate` (opcional), `active`, `createdBy`, `createdByEmail` e `createdAt`. O navegador só pode mudar `active` depois da criação; a automação com Admin SDK gera e remove as ocorrências em `activities`.
 
 ### `admins/{uid}`
 

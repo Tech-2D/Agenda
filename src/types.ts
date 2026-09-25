@@ -28,11 +28,27 @@ export type Activity = {
   turmaId: string | null // null = evento geral, visível em todas as turmas
   createdBy?: string | null
   createdByEmail?: string | null
+  recurringId?: string
   createdAt?: { toDate: () => Date } | null
   updatedAt?: { toDate: () => Date } | null
 }
 
 export type ActivityInput = Omit<Activity, 'id'>
+
+export type RecurringActivity = {
+  id: string
+  title: string
+  description: string
+  type: ActivityType
+  subject: string | null
+  time: string | null
+  turmaId: string
+  startDate: string
+  endDate: string | null
+  active: boolean
+  createdBy: string
+  createdByEmail: string | null
+}
 
 export type AdminRole = 'representante' | 'superadmin'
 
