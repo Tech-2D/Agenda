@@ -16,6 +16,12 @@ Na área do representante, marque **Repetir toda semana** ao cadastrar uma ativi
 
 A automação fica no repositório privado [`Tech-2D/agenda-recorrencias`](https://github.com/Tech-2D/agenda-recorrencias). Ela roda a cada seis horas, gera até oito semanas à frente e não duplica atividades. Quando um agendamento é pausado, a próxima execução remove suas ocorrências de hoje em diante, mantendo as anteriores. A automação depende do secret `FIREBASE_SERVICE_ACCOUNT` configurado nesse repositório e das regras atualizadas do Firestore.
 
+## Expurgo de atividades antigas
+
+Na aba **Expurgo**, o representante define um prazo de 30 a 730 dias para a própria turma ou mantém a limpeza desligada. A regra abrange tarefas, lições, trabalhos, provas e eventos da turma; eventos gerais e outras turmas não são afetados. A tela mostra uma estimativa das atividades que já se enquadram no prazo e pede confirmação para ativar. Toda regra nova ou alterada espera 24 horas antes da primeira exclusão.
+
+O cron diário fica no repositório privado [`Tech-2D/agenda-expurgo`](https://github.com/Tech-2D/agenda-expurgo). Antes de remover cada atividade do calendário, ele salva uma cópia completa em `purgedActivities`. Os backups só podem ser lidos com o Admin SDK. O cron exige o secret `FIREBASE_SERVICE_ACCOUNT` nesse repositório e as regras atualizadas do Firestore. Veja o README da automação para os limites, a simulação e a recuperação manual.
+
 ## Configurar o Firebase
 
 Os sites **Agenda** e **Cadê o professor?** usam o mesmo projeto Firebase central, `d-tech-56a76`, mantendo coleções separadas no mesmo Firestore.

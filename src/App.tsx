@@ -49,6 +49,7 @@ import {
 import { auth, db } from './firebase'
 import { CLASS_NAMES } from './classNames'
 import { SUBJECTS } from './subjects'
+import { RetentionPanel } from './RetentionPanel'
 import {
   MONTH_LABELS,
   WEEKDAY_LABELS,
@@ -1324,7 +1325,7 @@ function AdminDialog({ publicTurmaId, quickCreateDate, systemUpdates, onClose }:
   const [updateTitle, setUpdateTitle] = useState('')
   const [updateBody, setUpdateBody] = useState('')
   const [adminSearch, setAdminSearch] = useState('')
-  const [adminTab, setAdminTab] = useState<'activities' | 'recurrences' | 'suggestions' | 'representatives' | 'site'>('activities')
+  const [adminTab, setAdminTab] = useState<'activities' | 'recurrences' | 'retention' | 'suggestions' | 'representatives' | 'site'>('activities')
   const [recurrences, setRecurrences] = useState<RecurringActivity[]>([])
   const [repeatWeekly, setRepeatWeekly] = useState(false)
   const [repeatEndDate, setRepeatEndDate] = useState('')
@@ -1949,6 +1950,7 @@ function AdminDialog({ publicTurmaId, quickCreateDate, systemUpdates, onClose }:
                 <div className="admin-tabs">
                   <button type="button" className={adminTab === 'activities' ? 'active' : ''} onClick={() => setAdminTab('activities')}>Atividades</button>
                   <button type="button" className={adminTab === 'recurrences' ? 'active' : ''} onClick={() => setAdminTab('recurrences')}>Repetições</button>
+                  <button type="button" className={adminTab === 'retention' ? 'active' : ''} onClick={() => setAdminTab('retention')}>Expurgo</button>
                   <button type="button" className={adminTab === 'suggestions' ? 'active' : ''} onClick={() => setAdminTab('suggestions')}>
                     Sugestões
                     {pendingSuggestions.length > 0 && <span className="notif-count">{pendingSuggestions.length}</span>}
@@ -2022,6 +2024,7 @@ function AdminDialog({ publicTurmaId, quickCreateDate, systemUpdates, onClose }:
                       <p className="config-hint">A automação prepara as próximas 8 semanas. Ao pausar, ela remove apenas ocorrências de hoje em diante; atividades anteriores permanecem no histórico. Para alterar só uma data, edite a ocorrência em Atividades.</p>
                     </>
                   )}
+                  {adminTab === 'retention' && <RetentionPanel key={managedTurma} turmaId={managedTurma} userId={user.uid} activityDates={managedActivities.map((activity) => activity.date)} />}
                   {adminTab === 'suggestions' && (
                     <>
                       <div className="admin-list-heading">
