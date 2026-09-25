@@ -80,6 +80,7 @@ import { markAnnouncementSeen, readAnnouncementSeenAt } from './announcementSeen
 import { isValidRepresentativeEmail, normalizeRepresentativeEmail, readRepresentativeRequestId, storeRepresentativeRequestId, type RepresentativeRequest } from './representativeAccess'
 import { canCreateForSelectedClass } from './quickCreate'
 import { PollsDialog } from './PollsDialog'
+import { readPreferredTurma, savePreferredTurma } from './classPreference'
 import { latestUnseenUpdate, markSystemUpdateSeen, readSeenSystemUpdateId, type SystemUpdate } from './systemUpdates'
 import {
   NEON_COLORS,
@@ -107,7 +108,6 @@ import {
   type FontScale,
 } from './accessibility'
 
-const TURMA_STORAGE_KEY = 'agenda:turma'
 const RECENT_WINDOW_MS = 14 * 24 * 60 * 60 * 1000
 
 function updatedAtMs(activity: Activity): number {
@@ -127,15 +127,6 @@ const emptyForm: Omit<ActivityInput, 'turmaId'> = {
   time: null,
 }
 
-function readStoredTurma(): string | null {
-  try {
-    const value = window.localStorage.getItem(TURMA_STORAGE_KEY)
-    return value && (CLASS_NAMES as readonly string[]).includes(value) ? value : null
-  } catch {
-    return null
-  }
-}
-
 async function loadOrClaimAdminProfile(account: User): Promise<AdminProfile | null> {
   const adminRecord = await getDoc(doc(db, 'admins', account.uid))
   const profile = adminRecord.data() as AdminProfile | undefined
@@ -152,7 +143,7 @@ async function loadOrClaimAdminProfile(account: User): Promise<AdminProfile | nu
 }
 
 function App() {
-  const [turmaId, setTurmaId] = useState<string | null>(readStoredTurma)
+  const [turmaId, setTurmaId] = useState<string | null>(readPreferredTurma)
   const [subjectFilter, setSubjectFilter] = useState('')
   const [turmaActivities, setTurmaActivities] = useState<Activity[]>([])
   const [globalActivities, setGlobalActivities] = useState<Activity[]>([])
@@ -263,11 +254,7 @@ function App() {
 
   function chooseTurma(value: string) {
     setTurmaId(value)
-    try {
-      window.localStorage.setItem(TURMA_STORAGE_KEY, value)
-    } catch {
-      // localStorage indisponível (modo privado etc.) — a escolha só vale para esta sessão.
-    }
+    savePreferredTurma(value)
   }
 
   useEffect(() => {
