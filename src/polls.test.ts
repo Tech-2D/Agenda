@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { countPollVotes, preparePollOptions } from './polls'
+import { canVoteInClass, countPollVotes, preparePollOptions, type PollVoterAccess } from './polls'
 
 describe('polls', () => {
   it('counts each valid choice and ignores malformed votes', () => {
@@ -14,5 +14,12 @@ describe('polls', () => {
 
   it('trims choices and removes empty ones', () => {
     expect(preparePollOptions([' Sim ', ' ', 'Não'])).toEqual(['Sim', 'Não'])
+  })
+
+  it('only accepts an approved voter for the matching class and email', () => {
+    const access: PollVoterAccess = { id: 'uid', email: 'aluno@exemplo.com', turmaId: '2° TECH D', status: 'approved' }
+    expect(canVoteInClass(access, '2° TECH D', 'aluno@exemplo.com')).toBe(true)
+    expect(canVoteInClass(access, '2° TECH E', 'aluno@exemplo.com')).toBe(false)
+    expect(canVoteInClass({ ...access, status: 'revoked' }, '2° TECH D', 'aluno@exemplo.com')).toBe(false)
   })
 })

@@ -1,10 +1,10 @@
 import { type FormEvent, useEffect, useState } from 'react'
-import { BarChart3, Check, LoaderCircle, LockKeyhole, Plus, Vote, X } from 'lucide-react'
+import { BarChart3, Check, LoaderCircle, LockKeyhole, Plus, UserCheck, Vote, X } from 'lucide-react'
 import { FirebaseError } from 'firebase/app'
 import { createUserWithEmailAndPassword, onAuthStateChanged, sendPasswordResetEmail, signInWithEmailAndPassword, signOut, type User } from 'firebase/auth'
 import { addDoc, collection, doc, onSnapshot, query, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore'
 import { auth, db } from './firebase'
-import { countPollVotes, preparePollOptions, type Poll, type PollVote } from './polls'
+import { canVoteInClass, countPollVotes, preparePollOptions, type Poll, type PollVote, type PollVoterAccess } from './polls'
 import type { AdminProfile } from './types'
 
 type Props = {
@@ -40,6 +40,13 @@ export function PollsDialog({ turmaId, loadAdminProfile, onClose }: Props) {
   const [options, setOptions] = useState(['', ''])
   const [saveBusy, setSaveBusy] = useState(false)
   const [saveError, setSaveError] = useState('')
+  const [voterAccess, setVoterAccess] = useState<PollVoterAccess | null>(null)
+  const [accessLoading, setAccessLoading] = useState(false)
+  const [accessError, setAccessError] = useState('')
+  const [accessBusy, setAccessBusy] = useState(false)
+  const [voterRequests, setVoterRequests] = useState<PollVoterAccess[]>([])
+  const [reviewBusyId, setReviewBusyId] = useState('')
+  const [reviewError, setReviewError] = useState('')
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => event.key === 'Escape' && onClose()
@@ -83,6 +90,67 @@ export function PollsDialog({ turmaId, loadAdminProfile, onClose }: Props) {
   }, [turmaId])
 
   const canManage = profile?.role === 'superadmin' || (profile?.role === 'representante' && profile.turmaId === turmaId)
+  const approvedToVote = !accessLoading && !accessError && canVoteInClass(voterAccess, turmaId, account?.email ?? null)
+
+  useEffect(() => {
+    if (!account) {
+      setVoterAccess(null)
+      setAccessLoading(false)
+      return
+    }
+    setAccessLoading(true)
+    return onSnapshot(doc(db, 'pollVoterAccess', account.uid), (snapshot) => {
+      setVoterAccess(snapshot.exists() ? ({ id: snapshot.id, ...snapshot.data() } as PollVoterAccess) : null)
+      setAccessLoading(false)
+      setAccessError('')
+    }, () => {
+      setAccessLoading(false)
+      setAccessError('Não foi possível verificar sua autorização para votar.')
+    })
+  }, [account])
+
+  useEffect(() => {
+    if (!canManage) { setVoterRequests([]); return }
+    return onSnapshot(query(collection(db, 'pollVoterAccess'), where('turmaId', '==', turmaId)), (snapshot) => {
+      setVoterRequests(snapshot.docs.map((item) => ({ id: item.id, ...item.data() }) as PollVoterAccess)
+        .sort((a, b) => (b.requestedAt?.toDate().getTime() ?? 0) - (a.requestedAt?.toDate().getTime() ?? 0)))
+      setReviewError('')
+    }, () => setReviewError('Não foi possível carregar as solicitações de voto.'))
+  }, [canManage, turmaId])
+
+  async function requestVoteAccess() {
+    if (!account?.email) return
+    setAccessBusy(true)
+    setAccessError('')
+    try {
+      if (voterAccess) {
+        await updateDoc(doc(db, 'pollVoterAccess', account.uid), { turmaId, status: 'pending', requestedAt: serverTimestamp() })
+      } else {
+        await setDoc(doc(db, 'pollVoterAccess', account.uid), {
+          email: account.email.toLowerCase(), turmaId, status: 'pending', requestedAt: serverTimestamp(),
+        })
+      }
+    } catch {
+      setAccessError('Não foi possível enviar a solicitação. Confira a conexão e tente novamente.')
+    } finally {
+      setAccessBusy(false)
+    }
+  }
+
+  async function reviewAccess(item: PollVoterAccess, status: 'approved' | 'rejected' | 'revoked') {
+    if (!account || !canManage) return
+    setReviewBusyId(item.id)
+    setReviewError('')
+    try {
+      await updateDoc(doc(db, 'pollVoterAccess', item.id), {
+        status, reviewedAt: serverTimestamp(), reviewedBy: account.uid,
+      })
+    } catch {
+      setReviewError(`Não foi possível atualizar o acesso de ${item.email}. Tente novamente.`)
+    } finally {
+      setReviewBusyId('')
+    }
+  }
 
   async function authenticate(event: FormEvent) {
     event.preventDefault()
@@ -153,7 +221,7 @@ export function PollsDialog({ turmaId, loadAdminProfile, onClose }: Props) {
         </div>
         <div className="polls-content">
           <div className="polls-intro">
-            <p>Veja as votações da sua turma. Para votar, entre com sua conta; cada pessoa pode votar uma vez por enquete.</p>
+            <p>Veja as votações da sua turma. Para votar, entre com sua conta e peça aprovação ao representante.</p>
             {canManage && <button type="button" className="secondary-button" onClick={() => { setCreating((value) => !value); setSaveError('') }}><Plus size={16} /> {creating ? 'Cancelar' : 'Criar enquete'}</button>}
           </div>
 
@@ -190,17 +258,46 @@ export function PollsDialog({ turmaId, loadAdminProfile, onClose }: Props) {
           )}
           {authChecked && account && <div className="poll-account"><Check size={15} /> Conectado como {account.email}<button type="button" onClick={() => signOut(auth)}>Sair</button></div>}
 
+          {account && !accessLoading && !accessError && !approvedToVote && (
+            <div className="poll-access-card">
+              <div><UserCheck size={19} /><strong>{voterAccess?.turmaId && voterAccess.turmaId !== turmaId ? 'Peça acesso para esta turma' : voterAccess?.status === 'pending' ? 'Aguardando aprovação' : voterAccess?.status === 'rejected' ? 'Solicitação recusada' : voterAccess?.status === 'revoked' ? 'Acesso revogado' : 'Peça acesso para votar'}</strong></div>
+              <p>{voterAccess?.turmaId && voterAccess.turmaId !== turmaId ? `O representante de ${turmaId} precisa aprovar sua conta.` : voterAccess?.status === 'pending' ? 'O representante da turma verá seu e-mail e decidirá se você pode votar.' : voterAccess?.status === 'rejected' || voterAccess?.status === 'revoked' ? 'Se você faz parte desta turma, pode solicitar uma nova análise.' : `O representante de ${turmaId} precisa aprovar sua conta antes do primeiro voto.`}</p>
+              {voterAccess?.turmaId && voterAccess.turmaId !== turmaId && <p>Sua solicitação atual pertence à turma {voterAccess.turmaId}. Você pode pedir acesso para esta turma; a autorização anterior será substituída.</p>}
+              {(!voterAccess || voterAccess.turmaId !== turmaId || ['rejected', 'revoked'].includes(voterAccess.status)) && <button type="button" className="secondary-button" onClick={requestVoteAccess} disabled={accessBusy}>{accessBusy ? <LoaderCircle className="spin" size={16} /> : null}{voterAccess ? 'Solicitar acesso para esta turma' : 'Pedir aprovação para votar'}</button>}
+            </div>
+          )}
+          {account && accessLoading && <p className="polls-note"><LoaderCircle className="spin" size={15} /> Conferindo autorização para votar…</p>}
+          {account && approvedToVote && <p className="polls-note poll-access-approved"><Check size={15} /> Sua conta foi aprovada para votar em {turmaId}.</p>}
+          {accessError && <p className="form-error" role="alert">{accessError}</p>}
+
+          {canManage && (
+            <section className="poll-voter-manager" aria-labelledby="poll-voters-title">
+              <div className="poll-voter-heading"><h3 id="poll-voters-title">Pessoas que podem votar</h3><span>{voterRequests.filter((item) => item.status === 'pending').length} aguardando</span></div>
+              {reviewError && <p className="form-error" role="alert">{reviewError}</p>}
+              {voterRequests.length === 0 ? <p className="polls-note">Ainda não há pedidos para esta turma.</p> : (
+                <div className="poll-voter-list">{voterRequests.map((item) => <div key={item.id} className="poll-voter-row">
+                  <div><strong>{item.email}</strong><span>{item.status === 'pending' ? 'Aguardando' : item.status === 'approved' ? 'Aprovado' : item.status === 'rejected' ? 'Recusado' : 'Revogado'}</span></div>
+                  <div className="poll-voter-actions">
+                    {item.status !== 'approved' && <button type="button" onClick={() => reviewAccess(item, 'approved')} disabled={Boolean(reviewBusyId)}>Aprovar</button>}
+                    {item.status === 'pending' && <button type="button" onClick={() => reviewAccess(item, 'rejected')} disabled={Boolean(reviewBusyId)}>Recusar</button>}
+                    {item.status === 'approved' && <button type="button" onClick={() => reviewAccess(item, 'revoked')} disabled={Boolean(reviewBusyId)}>Revogar</button>}
+                  </div>
+                </div>)}</div>
+              )}
+            </section>
+          )}
+
           {loading ? <p className="polls-note"><LoaderCircle className="spin" size={16} /> Carregando enquetes…</p>
             : loadError ? <p className="form-error" role="alert">{loadError}</p>
               : polls.length === 0 ? <div className="polls-empty"><Vote size={25} /><strong>Nenhuma enquete por enquanto</strong><span>Quando o representante publicar uma votação, ela aparecerá aqui.</span></div>
-                : <div className="polls-list">{polls.map((poll) => <PollCard key={poll.id} poll={poll} account={account} canManage={Boolean(canManage)} />)}</div>}
+                : <div className="polls-list">{polls.map((poll) => <PollCard key={poll.id} poll={poll} account={account} canManage={Boolean(canManage)} approvedToVote={approvedToVote} />)}</div>}
         </div>
       </section>
     </div>
   )
 }
 
-function PollCard({ poll, account, canManage }: { poll: Poll; account: User | null; canManage: boolean }) {
+function PollCard({ poll, account, canManage, approvedToVote }: { poll: Poll; account: User | null; canManage: boolean; approvedToVote: boolean }) {
   const [votes, setVotes] = useState<PollVote[]>([])
   const [votesError, setVotesError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -216,13 +313,13 @@ function PollCard({ poll, account, canManage }: { poll: Poll; account: User | nu
   const myVote = votes.find((vote) => vote.id === account?.uid)
 
   async function vote(optionIndex: number) {
-    if (!account || myVote || poll.status !== 'open') return
+    if (!account || !approvedToVote || myVote || poll.status !== 'open') return
     setBusy(true)
     setActionError('')
     try {
       await setDoc(doc(db, 'polls', poll.id, 'votes', account.uid), { optionIndex, createdAt: serverTimestamp() })
     } catch {
-      setActionError('Não foi possível registrar o voto. A enquete pode ter sido encerrada ou você já votou.')
+      setActionError('Não foi possível registrar o voto. Confira sua aprovação ou se a enquete foi encerrada.')
     } finally {
       setBusy(false)
     }
@@ -249,10 +346,10 @@ function PollCard({ poll, account, canManage }: { poll: Poll; account: User | nu
       return <div className={`poll-choice ${selected ? 'selected' : ''}`} key={index}>
         <div className="poll-choice-line"><span>{option}{selected && <small> · seu voto</small>}</span><strong>{total ? Math.round((counts[index] / total) * 100) : 0}%</strong></div>
         <div className="poll-meter" role="img" aria-label={`${counts[index]} voto${counts[index] === 1 ? '' : 's'} para ${option}`}><span style={{ width: `${total ? counts[index] / total * 100 : 0}%` }} /></div>
-        <div className="poll-choice-bottom"><small>{counts[index]} voto{counts[index] === 1 ? '' : 's'}</small>{account && !myVote && poll.status === 'open' && <button type="button" onClick={() => vote(index)} disabled={busy || Boolean(votesError)}>Votar nesta opção</button>}</div>
+        <div className="poll-choice-bottom"><small>{counts[index]} voto{counts[index] === 1 ? '' : 's'}</small>{approvedToVote && !myVote && poll.status === 'open' && <button type="button" onClick={() => vote(index)} disabled={busy || Boolean(votesError)}>Votar nesta opção</button>}</div>
       </div>
     })}</div>
-    {!account && poll.status === 'open' && <p className="poll-hint">Entre com sua conta acima para votar.</p>}
+    {!account && poll.status === 'open' && <p className="poll-hint">Entre com sua conta e peça aprovação para votar.</p>}
     {votesError && <p className="form-error" role="alert">{votesError}</p>}
     {actionError && <p className="form-error" role="alert">{actionError}</p>}
     {canManage && poll.status === 'open' && <button type="button" className="poll-close" onClick={closePoll} disabled={busy}>Encerrar votação</button>}

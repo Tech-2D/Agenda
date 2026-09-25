@@ -13,6 +13,18 @@ export type PollVote = {
   optionIndex: number
 }
 
+export type PollVoterAccess = {
+  id: string
+  email: string
+  turmaId: string
+  status: 'pending' | 'approved' | 'rejected' | 'revoked'
+  requestedAt?: { toDate: () => Date } | null
+}
+
+export function canVoteInClass(access: PollVoterAccess | null, turmaId: string, email: string | null): boolean {
+  return access?.status === 'approved' && access.turmaId === turmaId && access.email === email?.toLowerCase()
+}
+
 export function countPollVotes(optionCount: number, votes: PollVote[]): number[] {
   const counts = Array.from({ length: optionCount }, () => 0)
   for (const vote of votes) {
