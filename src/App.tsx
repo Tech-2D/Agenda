@@ -11,6 +11,7 @@ import {
   DoorOpen,
   Edit3,
   ExternalLink,
+  History,
   KeyRound,
   Lightbulb,
   ListChecks,
@@ -35,7 +36,9 @@ import {
   deleteDoc,
   doc,
   getDoc,
+  limit,
   onSnapshot,
+  orderBy,
   query,
   serverTimestamp,
   setDoc,
@@ -77,6 +80,7 @@ import { markAnnouncementSeen, readAnnouncementSeenAt } from './announcementSeen
 import { isValidRepresentativeEmail, normalizeRepresentativeEmail, readRepresentativeRequestId, storeRepresentativeRequestId, type RepresentativeRequest } from './representativeAccess'
 import { canCreateForSelectedClass } from './quickCreate'
 import { PollsDialog } from './PollsDialog'
+import { latestUnseenUpdate, markSystemUpdateSeen, readSeenSystemUpdateId, type SystemUpdate } from './systemUpdates'
 import {
   NEON_COLORS,
   NEON_COLOR_LABELS,
@@ -171,6 +175,11 @@ function App() {
   const [notificationsSeenAt, setNotificationsSeenAt] = useState(0)
   const [announcement, setAnnouncement] = useState<Announcement | null>(null)
   const [announcementSeenAt, setAnnouncementSeenAt] = useState(readAnnouncementSeenAt)
+  const [systemUpdates, setSystemUpdates] = useState<SystemUpdate[]>([])
+  const [updatesReady, setUpdatesReady] = useState(false)
+  const [updatesError, setUpdatesError] = useState('')
+  const [updatesOpen, setUpdatesOpen] = useState(false)
+  const [seenSystemUpdateId, setSeenSystemUpdateId] = useState(readSeenSystemUpdateId)
   const [theme, setThemeState] = useState<Theme>(readStoredTheme)
   const [neon, setNeonState] = useState<NeonColor>(readStoredNeon)
   const [fontScale, setFontScaleState] = useState<FontScale>(readStoredFontScale)
@@ -234,6 +243,20 @@ function App() {
       setAnnouncement(snapshot.exists() ? (snapshot.data() as Announcement) : null)
     }, () => setAnnouncement(null))
   }, [])
+
+  useEffect(() => onSnapshot(query(collection(db, 'agendaUpdates'), orderBy('publishedAt', 'desc'), limit(1)), (snapshot) => {
+    setSystemUpdates(snapshot.docs.map((item) => ({ id: item.id, ...item.data() }) as SystemUpdate))
+    setUpdatesReady(true)
+    setUpdatesError('')
+  }, () => {
+    setUpdatesReady(true)
+    setUpdatesError('Não foi possível carregar as atualizações. Tente novamente mais tarde.')
+  }), [])
+
+  const unseenSystemUpdate = updatesReady && !updatesError
+    ? latestUnseenUpdate(systemUpdates, seenSystemUpdateId)
+    : null
+  const showSystemUpdate = unseenSystemUpdate && !adminOpen && !updatesOpen
 
   const announcementUpdatedMs = announcement?.updatedAt?.toDate().getTime() ?? 0
   const showAnnouncement = Boolean(turmaId) && announcementUpdatedMs > 0 && announcementUpdatedMs > announcementSeenAt
@@ -512,11 +535,15 @@ function App() {
             if (turmaId) setNotificationsSeenAt(markNotificationsSeenNow(turmaId))
           }}
           onOpenDocs={() => { setDocsOpen(true); setMenuOpen(false) }}
+          onOpenUpdates={() => { setUpdatesOpen(true); setMenuOpen(false) }}
+          latestUpdateIsNew={Boolean(unseenSystemUpdate)}
           unseenNotifications={unseenNotifications}
         />
       )}
 
       {docsOpen && <DocsDialog onClose={() => setDocsOpen(false)} />}
+
+      {updatesOpen && <SystemUpdatesDialog onClose={() => setUpdatesOpen(false)} />}
 
       {suggestOpen && turmaId && <SuggestDialog turmaId={turmaId} onClose={() => setSuggestOpen(false)} />}
 
@@ -528,7 +555,7 @@ function App() {
 
       {notificationsOpen && <NotificationsDialog activities={recentActivities} onClose={() => setNotificationsOpen(false)} />}
 
-      {showAnnouncement && announcement && (
+      {showAnnouncement && announcement && updatesReady && !showSystemUpdate && (
         <AnnouncementModal
           message={announcement.message}
           onClose={() => {
@@ -554,7 +581,14 @@ function App() {
         />
       )}
 
-      {adminOpen && <AdminDialog publicTurmaId={turmaId} quickCreateDate={quickCreateDate} onClose={closeAdmin} />}
+      {adminOpen && <AdminDialog publicTurmaId={turmaId} quickCreateDate={quickCreateDate} systemUpdates={systemUpdates} onClose={closeAdmin} />}
+
+      {showSystemUpdate && unseenSystemUpdate && (
+        <SystemUpdateWelcome update={unseenSystemUpdate} onClose={() => {
+          markSystemUpdateSeen(unseenSystemUpdate.id)
+          setSeenSystemUpdateId(unseenSystemUpdate.id)
+        }} />
+      )}
 
       <VLibrasWidget />
     </div>
@@ -585,7 +619,7 @@ function VLibrasWidget() {
   )
 }
 
-function SideMenu({ onClose, onOpenConfig, onOpenAdmin, onOpenMySuggestions, onOpenPolls, onOpenFeedback, onOpenNotifications, onOpenDocs, unseenNotifications }: {
+function SideMenu({ onClose, onOpenConfig, onOpenAdmin, onOpenMySuggestions, onOpenPolls, onOpenFeedback, onOpenNotifications, onOpenDocs, onOpenUpdates, unseenNotifications, latestUpdateIsNew }: {
   onClose: () => void
   onOpenConfig: () => void
   onOpenAdmin: () => void
@@ -594,7 +628,9 @@ function SideMenu({ onClose, onOpenConfig, onOpenAdmin, onOpenMySuggestions, onO
   onOpenFeedback: () => void
   onOpenNotifications: () => void
   onOpenDocs: () => void
+  onOpenUpdates: () => void
   unseenNotifications: number
+  latestUpdateIsNew: boolean
 }) {
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => event.key === 'Escape' && onClose()
@@ -614,6 +650,7 @@ function SideMenu({ onClose, onOpenConfig, onOpenAdmin, onOpenMySuggestions, onO
             <Bell size={18} /> Notificações
             {unseenNotifications > 0 && <span className="notif-count">{unseenNotifications}</span>}
           </button>
+          <button type="button" onClick={onOpenUpdates}><History size={18} /> Atualizações{latestUpdateIsNew && <span className="notif-count">Novo</span>}</button>
           <button type="button" onClick={onOpenPolls}><Vote size={18} /> Enquetes da turma</button>
           <button type="button" onClick={onOpenConfig}><Settings size={18} /> Configurações</button>
           <button type="button" onClick={onOpenDocs}><BookOpen size={18} /> Como funciona</button>
@@ -1125,6 +1162,71 @@ function AnnouncementModal({ message, onClose }: { message: string; onClose: () 
   )
 }
 
+function SystemUpdateWelcome({ update, onClose }: { update: SystemUpdate; onClose: () => void }) {
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => event.key === 'Escape' && onClose()
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [onClose])
+
+  return (
+    <div className="modal-backdrop system-update-backdrop" role="presentation">
+      <section className="system-update-dialog" role="dialog" aria-modal="true" aria-labelledby="system-update-title">
+        <div className="system-update-accent"><History size={22} aria-hidden="true" /><span>Atualização da Agenda</span></div>
+        <div className="system-update-content">
+          <p className="eyebrow">O QUE MUDOU</p>
+          <h2 id="system-update-title">{update.title}</h2>
+          {update.publishedAt && <time>{update.publishedAt.toDate().toLocaleDateString('pt-BR')}</time>}
+          <p>{update.body}</p>
+          <button type="button" className="primary-button" onClick={onClose} autoFocus>Entendi, abrir agenda</button>
+          <span>Você pode reler esta novidade em Atualizações, no menu.</span>
+        </div>
+      </section>
+    </div>
+  )
+}
+
+function SystemUpdatesDialog({ onClose }: { onClose: () => void }) {
+  const [updates, setUpdates] = useState<SystemUpdate[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  useEffect(() => onSnapshot(query(collection(db, 'agendaUpdates'), orderBy('publishedAt', 'desc')), (snapshot) => {
+    setUpdates(snapshot.docs.map((item) => ({ id: item.id, ...item.data() }) as SystemUpdate))
+    setLoading(false)
+    setError('')
+  }, () => {
+    setLoading(false)
+    setError('Não foi possível carregar as atualizações. Tente novamente mais tarde.')
+  }), [])
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => event.key === 'Escape' && onClose()
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [onClose])
+
+  return (
+    <div className="modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
+      <section className="updates-history-dialog" role="dialog" aria-modal="true" aria-labelledby="updates-history-title">
+        <div className="dialog-header">
+          <div><p className="eyebrow">HISTÓRICO</p><h2 id="updates-history-title">Atualizações</h2></div>
+          <button type="button" className="icon-button" onClick={onClose} aria-label="Fechar"><X /></button>
+        </div>
+        <div className="updates-history-list">
+          {loading ? <p className="polls-note"><LoaderCircle className="spin" size={15} /> Carregando atualizações…</p>
+            : error ? <p className="form-error" role="alert">{error}</p>
+            : updates.length === 0 ? <p className="admin-empty">Ainda não há atualizações publicadas.</p>
+              : updates.map((item, index) => <article key={item.id} className="updates-history-item">
+                <div className="updates-history-meta"><span>{index === 0 ? 'Mais recente' : 'Atualização'}</span>{item.publishedAt && <time>{item.publishedAt.toDate().toLocaleDateString('pt-BR')}</time>}</div>
+                <h3>{item.title}</h3><p>{item.body}</p>
+              </article>)}
+        </div>
+      </section>
+    </div>
+  )
+}
+
 function NotificationsDialog({ activities, onClose }: { activities: Activity[]; onClose: () => void }) {
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => event.key === 'Escape' && onClose()
@@ -1201,10 +1303,11 @@ function DayDetail({ day, activities, onAddActivity, onClose }: { day: Date; act
 type AdminDialogProps = {
   publicTurmaId: string | null
   quickCreateDate: string | null
+  systemUpdates: SystemUpdate[]
   onClose: () => void
 }
 
-function AdminDialog({ publicTurmaId, quickCreateDate, onClose }: AdminDialogProps) {
+function AdminDialog({ publicTurmaId, quickCreateDate, systemUpdates, onClose }: AdminDialogProps) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [authError, setAuthError] = useState('')
@@ -1230,6 +1333,8 @@ function AdminDialog({ publicTurmaId, quickCreateDate, onClose }: AdminDialogPro
   const [feedbackList, setFeedbackList] = useState<Feedback[]>([])
   const [announcement, setAnnouncement] = useState<Announcement | null>(null)
   const [announcementDraft, setAnnouncementDraft] = useState('')
+  const [updateTitle, setUpdateTitle] = useState('')
+  const [updateBody, setUpdateBody] = useState('')
   const [adminSearch, setAdminSearch] = useState('')
   const [adminTab, setAdminTab] = useState<'activities' | 'suggestions' | 'representatives' | 'site'>('activities')
   const [formOpen, setFormOpen] = useState(false)
@@ -1687,6 +1792,30 @@ function AdminDialog({ publicTurmaId, quickCreateDate, onClose }: AdminDialogPro
     }
   }
 
+  async function publishSystemUpdate(event: FormEvent) {
+    event.preventDefault()
+    if (!user || !isSuperAdmin) return
+    const title = updateTitle.trim()
+    const body = updateBody.trim()
+    if (!title || !body || title.length > 120 || body.length > 2000) {
+      setNotice('Informe um título de até 120 caracteres e uma descrição de até 2.000 caracteres.')
+      return
+    }
+    setBusy(true)
+    try {
+      await addDoc(collection(db, 'agendaUpdates'), {
+        title, body, createdBy: user.uid, publishedAt: serverTimestamp(),
+      })
+      setUpdateTitle('')
+      setUpdateBody('')
+      setNotice('Atualização publicada. Ela aparecerá na próxima abertura do site e no histórico.')
+    } catch {
+      setNotice('Não foi possível publicar a atualização. Tente novamente.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
     <div className="modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
       <section className="admin-dialog" role="dialog" aria-modal="true" aria-labelledby="admin-title">
@@ -1892,6 +2021,15 @@ function AdminDialog({ publicTurmaId, quickCreateDate, onClose }: AdminDialogPro
                   )}
                   {adminTab === 'site' && (
                     <>
+                      <div className="admin-list-heading"><strong>Atualizações do sistema</strong></div>
+                      <form className="system-update-editor" onSubmit={publishSystemUpdate}>
+                        <p className="config-hint">Publique o que mudou na Agenda. A atualização ficará no histórico e aparecerá uma vez para cada visitante.</p>
+                        <label>Título<input required maxLength={120} value={updateTitle} onChange={(event) => setUpdateTitle(event.target.value)} placeholder="Ex.: Enquetes para as turmas" /></label>
+                        <label>O que mudou<textarea required rows={4} maxLength={2000} value={updateBody} onChange={(event) => setUpdateBody(event.target.value)} placeholder="Explique as novidades de forma simples para os alunos." /></label>
+                        <div className="system-update-editor-actions"><span>Publicações permanecem no histórico.</span><button type="submit" className="primary-button compact" disabled={busy || !updateTitle.trim() || !updateBody.trim()}><History size={16} /> Publicar atualização</button></div>
+                      </form>
+                      {systemUpdates.length > 0 && <div className="system-update-admin-recent"><strong>Última publicação</strong>{systemUpdates.map((item) => <div key={item.id}><span>{item.title}</span><time>{item.publishedAt ? item.publishedAt.toDate().toLocaleDateString('pt-BR') : 'Publicando…'}</time></div>)}</div>}
+
                       <div className="admin-list-heading"><strong>Aviso para todos</strong></div>
                       <div className="announcement-editor">
                         <textarea
