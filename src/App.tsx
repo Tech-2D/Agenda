@@ -74,6 +74,7 @@ import { addMySuggestionId, readMySuggestionIds, removeMySuggestionId } from './
 import { markNotificationsSeenNow, readLastSeen } from './notifications'
 import { markAnnouncementSeen, readAnnouncementSeenAt } from './announcementSeen'
 import { isValidRepresentativeEmail, normalizeRepresentativeEmail, readRepresentativeRequestId, storeRepresentativeRequestId, type RepresentativeRequest } from './representativeAccess'
+import { canCreateForSelectedClass } from './quickCreate'
 import {
   NEON_COLORS,
   NEON_COLOR_LABELS,
@@ -156,6 +157,7 @@ function App() {
   const [dayPreview, setDayPreview] = useState<{ key: string; day: Date; activities: Activity[]; left: number; top: number; width: number } | null>(null)
   const previewCloseTimer = useRef<number | null>(null)
   const [adminOpen, setAdminOpen] = useState(['#admin', '#representante'].includes(window.location.hash))
+  const [quickCreateDate, setQuickCreateDate] = useState<string | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
   const [configOpen, setConfigOpen] = useState(false)
   const [suggestOpen, setSuggestOpen] = useState(false)
@@ -329,9 +331,15 @@ function App() {
     setAdminOpen(true)
   }
 
+  const openAdminForDay = (day: Date) => {
+    setQuickCreateDate(dateKey(day))
+    openAdmin()
+  }
+
   const closeAdmin = () => {
     history.replaceState(null, '', `${window.location.pathname}${window.location.search}`)
     setAdminOpen(false)
+    setQuickCreateDate(null)
   }
 
   return (
@@ -422,13 +430,13 @@ function App() {
                         type="button"
                         key={key}
                         className={`calendar-day ${outside ? 'outside' : ''} ${isToday(day) ? 'today' : ''}`}
-                        onClick={() => { setDayPreview(null); if (dayActivities.length > 0) setSelectedDay(day) }}
+                        onClick={() => { setDayPreview(null); setSelectedDay(day) }}
                         onMouseEnter={(event) => showDayPreview(event.currentTarget, day, dayActivities)}
                         onMouseLeave={closeDayPreviewSoon}
                         onFocus={(event) => showDayPreview(event.currentTarget, day, dayActivities)}
                         onBlur={closeDayPreviewSoon}
                         aria-describedby={dayPreview?.key === key ? 'calendar-day-preview' : undefined}
-                        disabled={dayActivities.length === 0}
+                        aria-label={`Abrir ${day.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}${dayActivities.length ? `, ${dayActivities.length} atividade${dayActivities.length === 1 ? '' : 's'}` : ', sem atividades'}`}
                       >
                         <span className="day-number">{day.getDate()}</span>
                         <span className="day-chips">
@@ -477,7 +485,7 @@ function App() {
       )}
 
       {selectedDay && (
-        <DayDetail day={selectedDay} activities={activitiesByDay.get(dateKey(selectedDay)) ?? []} onClose={() => setSelectedDay(null)} />
+        <DayDetail day={selectedDay} activities={activitiesByDay.get(dateKey(selectedDay)) ?? []} onAddActivity={() => openAdminForDay(selectedDay)} onClose={() => setSelectedDay(null)} />
       )}
 
       {!turmaId && <TurmaPickerModal onChoose={chooseTurma} />}
@@ -535,7 +543,7 @@ function App() {
         />
       )}
 
-      {adminOpen && <AdminDialog publicTurmaId={turmaId} onClose={closeAdmin} />}
+      {adminOpen && <AdminDialog publicTurmaId={turmaId} quickCreateDate={quickCreateDate} onClose={closeAdmin} />}
 
       <VLibrasWidget />
     </div>
@@ -1144,7 +1152,7 @@ function NotificationsDialog({ activities, onClose }: { activities: Activity[]; 
   )
 }
 
-function DayDetail({ day, activities, onClose }: { day: Date; activities: Activity[]; onClose: () => void }) {
+function DayDetail({ day, activities, onAddActivity, onClose }: { day: Date; activities: Activity[]; onAddActivity: () => void; onClose: () => void }) {
   return (
     <div className="modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
       <section className="day-dialog" role="dialog" aria-modal="true" aria-labelledby="day-title">
@@ -1152,7 +1160,12 @@ function DayDetail({ day, activities, onClose }: { day: Date; activities: Activi
           <h2 id="day-title">{day.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}</h2>
           <button className="icon-button" onClick={onClose} aria-label="Fechar"><X /></button>
         </div>
+        <div className="day-create-bar">
+          <span>Cadastro para representantes</span>
+          <button type="button" className="secondary-button" onClick={onAddActivity}><Plus size={17} /> Cadastrar atividade</button>
+        </div>
         <div className="day-dialog-list">
+          {activities.length === 0 && <p className="day-empty">Ainda não há atividades para esta data.</p>}
           {activities.map((activity) => (
             <article key={activity.id} className="activity-detail" style={{ borderLeftColor: ACTIVITY_TYPE_COLORS[activity.type] }}>
               <div className="activity-detail-heading">
@@ -1174,10 +1187,11 @@ function DayDetail({ day, activities, onClose }: { day: Date; activities: Activi
 
 type AdminDialogProps = {
   publicTurmaId: string | null
+  quickCreateDate: string | null
   onClose: () => void
 }
 
-function AdminDialog({ publicTurmaId, onClose }: AdminDialogProps) {
+function AdminDialog({ publicTurmaId, quickCreateDate, onClose }: AdminDialogProps) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [authError, setAuthError] = useState('')
@@ -1206,6 +1220,7 @@ function AdminDialog({ publicTurmaId, onClose }: AdminDialogProps) {
   const [adminSearch, setAdminSearch] = useState('')
   const [adminTab, setAdminTab] = useState<'activities' | 'suggestions' | 'representatives' | 'site'>('activities')
   const [formOpen, setFormOpen] = useState(false)
+  const [quickCreateActive, setQuickCreateActive] = useState(false)
   const [editing, setEditing] = useState<Activity | null>(null)
   const [form, setForm] = useState(emptyForm)
   const [isGlobalForm, setIsGlobalForm] = useState(false)
@@ -1257,6 +1272,20 @@ function AdminDialog({ publicTurmaId, onClose }: AdminDialogProps) {
       unsubscribe()
     }
   }, [])
+
+  useEffect(() => {
+    if (!quickCreateDate || !profile) return
+    if (!canCreateForSelectedClass(profile, publicTurmaId)) return
+    if (profile.role === 'superadmin' && publicTurmaId) setManagedTurma(publicTurmaId)
+    setAdminTab('activities')
+    setEditing(null)
+    setForm({ ...emptyForm, date: quickCreateDate })
+    setIsGlobalForm(false)
+    setHasTime(false)
+    setSaveError('')
+    setQuickCreateActive(true)
+    setFormOpen(true)
+  }, [quickCreateDate, profile, publicTurmaId])
 
   useEffect(() => {
     if (!requestId) {
@@ -1320,6 +1349,7 @@ function AdminDialog({ publicTurmaId, onClose }: AdminDialogProps) {
   }, [isSuperAdmin])
 
   const isRepresentante = profile?.role === 'representante'
+  const quickCreateMismatch = Boolean(quickCreateDate && profile && !canCreateForSelectedClass(profile, publicTurmaId))
   const turmaMismatch = isRepresentante && !!profile?.turmaId && !(CLASS_NAMES as readonly string[]).includes(profile.turmaId)
   const filteredActivities = managedActivities
     .filter((activity) => matchesSearch(activity, adminSearch))
@@ -1490,6 +1520,7 @@ function AdminDialog({ publicTurmaId, onClose }: AdminDialogProps) {
     setIsGlobalForm(false)
     setHasTime(false)
     setSaveError('')
+    setQuickCreateActive(false)
     setFormOpen(true)
   }
 
@@ -1499,6 +1530,7 @@ function AdminDialog({ publicTurmaId, onClose }: AdminDialogProps) {
     setIsGlobalForm(activity.turmaId === null)
     setHasTime(Boolean(activity.time))
     setSaveError('')
+    setQuickCreateActive(false)
     setFormOpen(true)
   }
 
@@ -1522,7 +1554,8 @@ function AdminDialog({ publicTurmaId, onClose }: AdminDialogProps) {
         setNotice(isGlobalForm ? 'Evento geral adicionado.' : 'Atividade adicionada.')
       }
       setFormOpen(false)
-      window.setTimeout(() => setNotice(''), 2800)
+      if (quickCreateActive && !editing) onClose()
+      else window.setTimeout(() => setNotice(''), 2800)
     } catch (error) {
       setSaveError(error instanceof Error ? error.message : 'Não foi possível salvar a atividade.')
     } finally {
@@ -1728,6 +1761,7 @@ function AdminDialog({ publicTurmaId, onClose }: AdminDialogProps) {
           </div>
         ) : (
           <div className="admin-content">
+            {quickCreateMismatch && <div className="quick-create-warning" role="alert">Esta conta representa {profile?.turmaId}. Para cadastrar diretamente por um dia, volte ao calendário e selecione essa turma.</div>}
             <div className="admin-body">
               <div className="admin-main">
                 <div className="admin-tabs">

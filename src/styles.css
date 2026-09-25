@@ -156,7 +156,12 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .icon-button { width: 41px; height: 41px; display: grid; place-items: center; border: 1px solid var(--line); background: var(--paper); color: var(--text); cursor: pointer; border-radius: 6px; }
 
 .day-dialog { position: relative; width: min(560px, 100%); max-height: min(720px, calc(100vh - 40px)); overflow: auto; background: var(--paper); box-shadow: var(--shadow); border-radius: 10px; }
+.day-create-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 30px; border-bottom: 1px solid var(--line); }
+.day-create-bar > span { color: var(--ink-soft); font-size: 11px; font-weight: 700; }
+.day-create-bar .secondary-button { min-height: 40px; flex: none; padding: 0 14px; }
 .day-dialog-list { display: grid; gap: 12px; padding: 20px 30px 30px; }
+.day-empty { margin: 0; color: var(--ink-soft); font-size: 12px; line-height: 1.5; }
+.quick-create-warning { margin: 16px 24px 0; padding: 12px 14px; border-left: 3px solid var(--accent); background: var(--surface-alt); color: var(--text); font-size: 12px; line-height: 1.5; }
 .activity-detail { padding: 14px 16px; border-left: 4px solid; border-radius: 6px; background: var(--surface-alt); }
 .activity-detail-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .type-badge { padding: 3px 8px; border-radius: 4px; color: white; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; }
@@ -402,6 +407,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .admin-dialog .dialog-header h2 { font-size: 20px; }
   .admin-dialog .dialog-header .icon-button { flex-shrink: 0; }
   .dialog-header, .config-content { padding-left: 18px; padding-right: 18px; }
+  .day-create-bar { align-items: stretch; flex-direction: column; gap: 9px; padding: 14px 18px; }
+  .day-create-bar .secondary-button { width: 100%; }
+  .day-dialog-list { padding-left: 18px; padding-right: 18px; }
+  .quick-create-warning { margin: 14px 18px 0; }
   .admin-main, .admin-sidebar { padding-left: 18px; padding-right: 18px; }
   .admin-main { flex: 0 0 auto; min-height: auto; padding-top: 16px; padding-bottom: 24px; }
   .admin-panel { flex: 0 0 auto; min-height: auto; }
