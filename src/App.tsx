@@ -24,6 +24,7 @@ import {
   Settings,
   Trash2,
   UserRound,
+  Vote,
   X,
 } from 'lucide-react'
 import { createUserWithEmailAndPassword, onAuthStateChanged, sendPasswordResetEmail, signInWithEmailAndPassword, signOut, type User } from 'firebase/auth'
@@ -75,6 +76,7 @@ import { markNotificationsSeenNow, readLastSeen } from './notifications'
 import { markAnnouncementSeen, readAnnouncementSeenAt } from './announcementSeen'
 import { isValidRepresentativeEmail, normalizeRepresentativeEmail, readRepresentativeRequestId, storeRepresentativeRequestId, type RepresentativeRequest } from './representativeAccess'
 import { canCreateForSelectedClass } from './quickCreate'
+import { PollsDialog } from './PollsDialog'
 import {
   NEON_COLORS,
   NEON_COLOR_LABELS,
@@ -163,6 +165,7 @@ function App() {
   const [suggestOpen, setSuggestOpen] = useState(false)
   const [mySuggestionsOpen, setMySuggestionsOpen] = useState(false)
   const [feedbackOpen, setFeedbackOpen] = useState(false)
+  const [pollsOpen, setPollsOpen] = useState(false)
   const [docsOpen, setDocsOpen] = useState(false)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [notificationsSeenAt, setNotificationsSeenAt] = useState(0)
@@ -391,6 +394,11 @@ function App() {
               </label>
             )}
             {turmaId && (
+              <button type="button" className="secondary-button" onClick={() => setPollsOpen(true)}>
+                <Vote size={16} /> Enquetes da turma
+              </button>
+            )}
+            {turmaId && (
               <button type="button" className="secondary-button" onClick={() => setSuggestOpen(true)}>
                 <Lightbulb size={16} /> Sugerir atividade
               </button>
@@ -496,6 +504,7 @@ function App() {
           onOpenConfig={() => { setConfigOpen(true); setMenuOpen(false) }}
           onOpenAdmin={() => { openAdmin(); setMenuOpen(false) }}
           onOpenMySuggestions={() => { setMySuggestionsOpen(true); setMenuOpen(false) }}
+          onOpenPolls={() => { setPollsOpen(true); setMenuOpen(false) }}
           onOpenFeedback={() => { setFeedbackOpen(true); setMenuOpen(false) }}
           onOpenNotifications={() => {
             setNotificationsOpen(true)
@@ -514,6 +523,8 @@ function App() {
       {mySuggestionsOpen && <MySuggestionsDialog onClose={() => setMySuggestionsOpen(false)} />}
 
       {feedbackOpen && <FeedbackDialog turmaId={turmaId} onClose={() => setFeedbackOpen(false)} />}
+
+      {pollsOpen && turmaId && <PollsDialog turmaId={turmaId} loadAdminProfile={loadOrClaimAdminProfile} onClose={() => setPollsOpen(false)} />}
 
       {notificationsOpen && <NotificationsDialog activities={recentActivities} onClose={() => setNotificationsOpen(false)} />}
 
@@ -574,11 +585,12 @@ function VLibrasWidget() {
   )
 }
 
-function SideMenu({ onClose, onOpenConfig, onOpenAdmin, onOpenMySuggestions, onOpenFeedback, onOpenNotifications, onOpenDocs, unseenNotifications }: {
+function SideMenu({ onClose, onOpenConfig, onOpenAdmin, onOpenMySuggestions, onOpenPolls, onOpenFeedback, onOpenNotifications, onOpenDocs, unseenNotifications }: {
   onClose: () => void
   onOpenConfig: () => void
   onOpenAdmin: () => void
   onOpenMySuggestions: () => void
+  onOpenPolls: () => void
   onOpenFeedback: () => void
   onOpenNotifications: () => void
   onOpenDocs: () => void
@@ -602,6 +614,7 @@ function SideMenu({ onClose, onOpenConfig, onOpenAdmin, onOpenMySuggestions, onO
             <Bell size={18} /> Notificações
             {unseenNotifications > 0 && <span className="notif-count">{unseenNotifications}</span>}
           </button>
+          <button type="button" onClick={onOpenPolls}><Vote size={18} /> Enquetes da turma</button>
           <button type="button" onClick={onOpenConfig}><Settings size={18} /> Configurações</button>
           <button type="button" onClick={onOpenDocs}><BookOpen size={18} /> Como funciona</button>
           <button type="button" onClick={onOpenAdmin}><KeyRound size={18} /> Sou representante</button>
