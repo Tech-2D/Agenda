@@ -51,6 +51,7 @@ import { CLASS_NAMES } from './classNames'
 import { SUBJECTS } from './subjects'
 import { RetentionPanel } from './RetentionPanel'
 import { RepresentativesChat } from './RepresentativesChat'
+import { canEditCalendarActivity } from './calendarPermissions'
 import {
   MONTH_LABELS,
   WEEKDAY_LABELS,
@@ -158,6 +159,8 @@ function App() {
   const previewCloseTimer = useRef<number | null>(null)
   const [adminOpen, setAdminOpen] = useState(['#admin', '#representante'].includes(window.location.hash))
   const [quickCreateDate, setQuickCreateDate] = useState<string | null>(null)
+  const [quickEditActivity, setQuickEditActivity] = useState<Activity | null>(null)
+  const [calendarProfile, setCalendarProfile] = useState<AdminProfile | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
   const [configOpen, setConfigOpen] = useState(false)
   const [suggestOpen, setSuggestOpen] = useState(false)
@@ -184,6 +187,20 @@ function App() {
     setThemeState(value)
     storeTheme(value)
   }
+
+  useEffect(() => {
+    let stopProfile = () => {}
+    const stopAuth = onAuthStateChanged(auth, (account) => {
+      stopProfile()
+      setCalendarProfile(null)
+      if (!account) return
+      stopProfile = onSnapshot(doc(db, 'admins', account.uid), (snapshot) => {
+        const value = snapshot.data() as AdminProfile | undefined
+        setCalendarProfile(value && ['representante', 'superadmin'].includes(value.role) ? value : null)
+      }, () => setCalendarProfile(null))
+    })
+    return () => { stopAuth(); stopProfile() }
+  }, [])
 
   function setNeon(value: NeonColor) {
     setNeonState(value)
@@ -348,7 +365,16 @@ function App() {
   }
 
   const openAdminForDay = (day: Date) => {
+    setQuickEditActivity(null)
     setQuickCreateDate(dateKey(day))
+    openAdmin()
+  }
+
+  const openCalendarEdit = (activity: Activity) => {
+    if (!canEditCalendarActivity(calendarProfile, activity)) return
+    setQuickCreateDate(null)
+    setQuickEditActivity(activity)
+    setSelectedDay(null)
     openAdmin()
   }
 
@@ -356,6 +382,7 @@ function App() {
     history.replaceState(null, '', `${window.location.pathname}${window.location.search}`)
     setAdminOpen(false)
     setQuickCreateDate(null)
+    setQuickEditActivity(null)
   }
 
   return (
@@ -496,7 +523,7 @@ function App() {
       )}
 
       {selectedDay && (
-        <DayDetail day={selectedDay} activities={activitiesByDay.get(dateKey(selectedDay)) ?? []} onAddActivity={() => openAdminForDay(selectedDay)} onClose={() => setSelectedDay(null)} />
+        <DayDetail day={selectedDay} activities={activitiesByDay.get(dateKey(selectedDay)) ?? []} profile={calendarProfile} onEditActivity={openCalendarEdit} onAddActivity={() => openAdminForDay(selectedDay)} onClose={() => setSelectedDay(null)} />
       )}
 
       {!turmaId && <TurmaPickerModal onChoose={chooseTurma} />}
@@ -561,7 +588,7 @@ function App() {
         />
       )}
 
-      {adminOpen && <AdminDialog publicTurmaId={turmaId} quickCreateDate={quickCreateDate} systemUpdates={systemUpdates} onClose={closeAdmin} />}
+      {adminOpen && <AdminDialog publicTurmaId={turmaId} quickCreateDate={quickCreateDate} quickEditActivity={quickEditActivity} systemUpdates={systemUpdates} onClose={closeAdmin} />}
 
       {showSystemUpdate && unseenSystemUpdate && (
         <SystemUpdateWelcome update={unseenSystemUpdate} onClose={() => {
@@ -1247,7 +1274,7 @@ function NotificationsDialog({ activities, onClose }: { activities: Activity[]; 
   )
 }
 
-function DayDetail({ day, activities, onAddActivity, onClose }: { day: Date; activities: Activity[]; onAddActivity: () => void; onClose: () => void }) {
+function DayDetail({ day, activities, profile, onEditActivity, onAddActivity, onClose }: { day: Date; activities: Activity[]; profile: AdminProfile | null; onEditActivity: (activity: Activity) => void; onAddActivity: () => void; onClose: () => void }) {
   return (
     <div className="modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
       <section className="day-dialog" role="dialog" aria-modal="true" aria-labelledby="day-title">
@@ -1272,6 +1299,7 @@ function DayDetail({ day, activities, onAddActivity, onClose }: { day: Date; act
               {activity.subject && <p className="activity-subject">{activity.subject}</p>}
               {activity.description && <p>{activity.description}</p>}
               {activity.createdByEmail && <p className="activity-author">Publicado por {activity.createdByEmail}</p>}
+              {canEditCalendarActivity(profile, activity) && <button type="button" className="secondary-button" onClick={() => onEditActivity(activity)} aria-label={`Editar ${activity.title}`}><Edit3 size={16} /> Editar atividade</button>}
             </article>
           ))}
         </div>
@@ -1283,11 +1311,12 @@ function DayDetail({ day, activities, onAddActivity, onClose }: { day: Date; act
 type AdminDialogProps = {
   publicTurmaId: string | null
   quickCreateDate: string | null
+  quickEditActivity: Activity | null
   systemUpdates: SystemUpdate[]
   onClose: () => void
 }
 
-function AdminDialog({ publicTurmaId, quickCreateDate, systemUpdates, onClose }: AdminDialogProps) {
+function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, systemUpdates, onClose }: AdminDialogProps) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [authError, setAuthError] = useState('')
@@ -1389,6 +1418,22 @@ function AdminDialog({ publicTurmaId, quickCreateDate, systemUpdates, onClose }:
     setQuickCreateActive(true)
     setFormOpen(true)
   }, [quickCreateDate, profile, publicTurmaId])
+
+  useEffect(() => {
+    if (!quickEditActivity || !canEditCalendarActivity(profile, quickEditActivity)) return
+    const activity = quickEditActivity
+    if (activity.turmaId) setManagedTurma(activity.turmaId)
+    setAdminTab('activities')
+    setEditing(activity)
+    setForm({ title: activity.title, description: activity.description, type: activity.type, subject: activity.subject ?? null, date: activity.date, time: activity.time })
+    setIsGlobalForm(activity.turmaId === null)
+    setHasTime(Boolean(activity.time))
+    setRepeatWeekly(false)
+    setRepeatEndDate('')
+    setSaveError('')
+    setQuickCreateActive(false)
+    setFormOpen(true)
+  }, [quickEditActivity, profile])
 
   useEffect(() => {
     if (!requestId) {
@@ -1638,6 +1683,7 @@ function AdminDialog({ publicTurmaId, quickCreateDate, systemUpdates, onClose }:
   }
 
   function startEdit(activity: Activity) {
+    if (!canEditCalendarActivity(profile, activity)) return
     setEditing(activity)
     setForm({ title: activity.title, description: activity.description, type: activity.type, subject: activity.subject ?? null, date: activity.date, time: activity.time })
     setIsGlobalForm(activity.turmaId === null)
@@ -1690,7 +1736,7 @@ function AdminDialog({ publicTurmaId, quickCreateDate, systemUpdates, onClose }:
         setNotice(isGlobalForm ? 'Evento geral adicionado.' : 'Atividade adicionada.')
       }
       setFormOpen(false)
-      if (quickCreateActive && !editing) onClose()
+      if ((quickCreateActive && !editing) || quickEditActivity) onClose()
       else window.setTimeout(() => setNotice(''), 2800)
     } catch (error) {
       setSaveError(error instanceof Error ? error.message : 'Não foi possível salvar a atividade.')
@@ -1988,7 +2034,7 @@ function AdminDialog({ publicTurmaId, quickCreateDate, systemUpdates, onClose }:
                             <div className="admin-row-meta"><span>{parseDateLabel(activity.date)}</span><strong>{activity.time ?? '—'}</strong></div>
                             {canManageGlobalActivity(activity) && (
                               <div className="row-actions">
-                                <button onClick={() => startEdit(activity)} aria-label={`Editar ${activity.title}`}><Edit3 /></button>
+                                {canEditCalendarActivity(profile, activity) && <button onClick={() => startEdit(activity)} aria-label={`Editar ${activity.title}`}><Edit3 /></button>}
                                 <button className="danger" onClick={() => removeActivity(activity)} aria-label={`Excluir ${activity.title}`}><Trash2 /></button>
                               </div>
                             )}
@@ -2160,7 +2206,7 @@ function AdminDialog({ publicTurmaId, quickCreateDate, systemUpdates, onClose }:
         {formOpen && (
           <div className="form-overlay">
             <form className="activity-form" onSubmit={saveActivity}>
-              <div className="form-title"><div><p className="eyebrow dark">ATIVIDADE</p><h3>{editing ? 'Editar atividade' : 'Adicionar atividade'}</h3></div><button type="button" className="icon-button" onClick={() => setFormOpen(false)}><X /></button></div>
+              <div className="form-title"><div><p className="eyebrow dark">ATIVIDADE</p><h3>{editing ? 'Editar atividade' : 'Adicionar atividade'}</h3></div><button type="button" className="icon-button" aria-label="Fechar formulário" onClick={() => quickEditActivity ? onClose() : setFormOpen(false)}><X /></button></div>
               <div className="form-grid">
                 <label className="wide">Título<input required value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} /></label>
                 <label>Tipo<select value={form.type} onChange={(event) => setForm({ ...form, type: event.target.value as ActivityType })}>{ACTIVITY_TYPES.map((type) => <option value={type} key={type}>{ACTIVITY_TYPE_LABELS[type]}</option>)}</select></label>
@@ -2171,7 +2217,7 @@ function AdminDialog({ publicTurmaId, quickCreateDate, systemUpdates, onClose }:
                   <p className="config-hint wide">A data acima será a primeira ocorrência. A tarefa aparecerá no mesmo dia da semana nas semanas seguintes.</p>
                   <label>Repetir até (opcional)<input type="date" min={form.date} value={repeatEndDate} onChange={(event) => setRepeatEndDate(event.target.value)} /></label>
                 </>}
-                {!repeatWeekly && <label className="toggle wide"><input type="checkbox" checked={isGlobalForm} onChange={(event) => setIsGlobalForm(event.target.checked)} /><span /> Evento geral (aparece em todas as turmas)</label>}
+                {!repeatWeekly && (!editing || isSuperAdmin) && <label className="toggle wide"><input type="checkbox" checked={isGlobalForm} onChange={(event) => setIsGlobalForm(event.target.checked)} /><span /> Evento geral (aparece em todas as turmas)</label>}
                 {!repeatWeekly && isGlobalForm ? (
                   <p className="config-hint wide">Vai aparecer no calendário de todas as turmas, não só {isRepresentante ? 'da sua' : `de "${managedTurma}"`}.</p>
                 ) : !repeatWeekly && editing && editing.turmaId === null && (
@@ -2182,7 +2228,7 @@ function AdminDialog({ publicTurmaId, quickCreateDate, systemUpdates, onClose }:
                 <label className="wide">Descrição<textarea rows={3} value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} placeholder="Detalhes, capítulos, critérios de entrega…" /></label>
               </div>
               {saveError && <p className="form-error">{saveError}</p>}
-              <div className="form-actions"><button type="button" className="secondary-button" onClick={() => setFormOpen(false)}>Cancelar</button><button className="primary-button compact" disabled={busy}>{busy ? <LoaderCircle className="spin" /> : repeatWeekly ? 'Salvar repetição' : 'Salvar atividade'}</button></div>
+              <div className="form-actions"><button type="button" className="secondary-button" onClick={() => quickEditActivity ? onClose() : setFormOpen(false)}>Cancelar</button><button className="primary-button compact" disabled={busy}>{busy ? <LoaderCircle className="spin" /> : repeatWeekly ? 'Salvar repetição' : 'Salvar atividade'}</button></div>
             </form>
           </div>
         )}

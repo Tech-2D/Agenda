@@ -4,6 +4,8 @@ Calendário mensal com tarefas, lições, trabalhos e eventos por turma. A leitu
 
 Passe o mouse sobre um dia com atividades (ou foque nele pelo teclado) para ler o conteúdo completo sem sair do calendário. No celular, toque no dia para abrir os detalhes.
 
+Depois de entrar como representante ou super-admin, abra um dia no calendário e clique em **Editar atividade**. O representante pode alterar atividades da própria turma, inclusive as publicadas por outro representante da mesma turma. Somente o super-admin pode editar outras turmas e eventos gerais. Ao salvar, a tela volta ao calendário. Editar uma ocorrência semanal não modifica o modelo das próximas semanas.
+
 ## Tecnologias
 
 - React + TypeScript + Vite
@@ -75,7 +77,7 @@ O arquivo `.env.local` (baseado em `.env.example`) é opcional e serve só para 
 - `time`: horário opcional no formato `HH:MM`, ou `null`
 - `turmaId`: string da turma, ou `null` para **evento geral** (aparece no calendário de todas as turmas). Pode ser alterado depois, editando a atividade e marcando/desmarcando "Evento geral" — assim dá pra converter entre turma específica e geral.
 - `createdByEmail`: e-mail de quem criou, guardado só na criação (não muda se outra pessoa editar depois). Mostrado publicamente no card da atividade. Atividades criadas antes dessa mudança não têm esse campo e simplesmente não mostram autor.
-- Qualquer representante (de qualquer turma) ou o super-admin pode criar um evento geral. Só quem criou ou o super-admin pode editar/excluir um evento geral depois — diferente das atividades de turma, que qualquer representante daquela turma específica pode gerenciar.
+- Qualquer representante (de qualquer turma) ou o super-admin pode criar um evento geral. Somente o super-admin pode editá-lo; a exclusão continua disponível para o autor ou super-admin. Atividades de turma podem ser editadas pelos representantes daquela turma ou pelo super-admin.
 - Ocorrências de tarefas semanais incluem `recurringId`; o cron cria cada uma com ID fixo (`{recurringId}_{YYYY-MM-DD}`). Para parar a repetição, pause o modelo na aba **Repetições**, não exclua uma ocorrência isolada.
 
 ### `recurringActivities/{id}`

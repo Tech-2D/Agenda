@@ -53,7 +53,7 @@ service cloud.firestore {
       return isSignedIn() && adminData().role in ['representante', 'superadmin'];
     }
 
-    // Evento geral (turmaId nulo): quem criou ou o super-admin podem editar/excluir.
+    // Exclusão de evento geral: autor ou super-admin. Edição é restrita abaixo.
     // Atividade de turma: continua exigindo canManage() daquela turma.
     function canManageActivity(data) {
       return data.turmaId == null
@@ -64,6 +64,10 @@ service cloud.firestore {
     function canCreateActivity(data) {
       return data.createdBy == request.auth.uid
         && (data.turmaId == null ? isAnyAdmin() : canManage(data.turmaId));
+    }
+
+    function canEditCalendarActivity(data) {
+      return data.turmaId == null ? isSuperAdmin() : canManage(data.turmaId);
     }
 
     function hasActivityShape(data) {
@@ -163,8 +167,8 @@ service cloud.firestore {
       // Precisa poder gerenciar a turma/escopo ATUAL (antes da edição) e também
       // ter permissão sobre o turmaId NOVO — assim dá pra converter turma <-> geral,
       // mas sem burlar quem pode criar/gerenciar cada tipo.
-      allow update: if canManageActivity(resource.data)
-        && (request.resource.data.turmaId == null ? isAnyAdmin() : canManage(request.resource.data.turmaId))
+      allow update: if canEditCalendarActivity(resource.data)
+        && canEditCalendarActivity(request.resource.data)
         && isValidActivity(request.resource.data);
 
       allow delete: if canManageActivity(resource.data);
