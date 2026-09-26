@@ -457,7 +457,17 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .notif-dot { position: absolute; top: 9px; right: 9px; width: 9px; height: 9px; border-radius: 50%; background: #e5484d; box-shadow: 0 0 0 2px var(--accent); }
 .notif-count { margin-left: auto; padding: 2px 7px; border-radius: 10px; background: #e5484d; color: white; font-size: 10px; font-weight: 800; }
 
-.admin-tabs { display: flex; flex-wrap: wrap; gap: 3px; padding: 4px; margin-bottom: 20px; background: var(--surface-alt); border-radius: 8px; }
+.admin-nav { display: grid; gap: 12px; margin-bottom: 20px; }
+.admin-groups { display: flex; gap: 3px; padding: 4px; background: var(--surface-alt); border-radius: 10px; }
+.admin-groups button { flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 42px; padding: 0 12px; border: 0; border-radius: 7px; background: transparent; color: var(--ink-soft); font-size: 13px; font-weight: 800; cursor: pointer; transition: background .15s, color .15s; }
+.admin-groups button:hover:not(.active) { color: var(--ink); }
+.admin-groups button.active { background: var(--paper); color: var(--ink); box-shadow: var(--shadow); }
+.admin-subtabs { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
+.admin-subtabs::-webkit-scrollbar { display: none; }
+.admin-subtabs button { flex: none; display: flex; align-items: center; gap: 7px; min-height: 36px; padding: 0 14px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); color: var(--ink-soft); font-size: 12px; font-weight: 800; cursor: pointer; transition: background .15s, color .15s, border-color .15s; }
+.admin-subtabs button:hover:not(.active) { border-color: var(--accent); color: var(--ink); }
+.admin-subtabs button.active { background: var(--accent); border-color: var(--accent); color: var(--accent-contrast); }
+.admin-groups .notif-count, .admin-subtabs .notif-count { margin-left: 0; }
 .representatives-chat { display: grid; gap: 14px; min-width: 0; }
 .chat-heading h3 { margin: 0 0 7px; color: var(--ink); font-size: 18px; }
 .chat-heading p { margin: 0; color: var(--ink-soft); font-size: 12px; line-height: 1.6; }
@@ -475,9 +485,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .chat-compose textarea { width: 100%; min-width: 0; padding: 12px; resize: vertical; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); color: var(--text); font: inherit; font-size: 16px; }
 .chat-compose-actions { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
 .chat-compose-actions small { color: var(--ink-soft); font-size: 10px; }
-.admin-tabs button { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 38px; padding: 0 14px; border: 0; border-radius: 6px; background: transparent; color: var(--ink-soft); font-size: 12px; font-weight: 800; cursor: pointer; }
-.admin-tabs button.active { background: var(--paper); color: var(--ink); box-shadow: var(--shadow); }
-.admin-tabs .notif-count { margin-left: 0; }
 
 .side-menu { position: relative; width: min(320px, 85vw); height: 100%; overflow: auto; background: var(--paper); box-shadow: -10px 0 40px rgba(0,0,0,.25); animation: slide-in-right .2s ease; }
 @keyframes slide-in-right { from { transform: translateX(100%); } to { transform: translateX(0); } }
@@ -558,8 +565,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .admin-sidebar .sidebar-block:first-child > strong { grid-column: 1; }
   .admin-sidebar .sidebar-block:first-child > button { grid-column: 2; grid-row: 1 / span 2; margin: 0; }
   .admin-sidebar .primary-button { width: 100%; }
-  .admin-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-bottom: 16px; }
-  .admin-tabs button { min-width: 0; padding: 0 5px; font-size: 11px; }
+  .admin-nav { margin-bottom: 16px; }
+  .admin-groups button { min-width: 0; flex-direction: column; gap: 3px; min-height: 52px; padding: 0 4px; font-size: 11px; }
   .admin-row.compact { grid-template-columns: 30px minmax(0, 1fr); gap: 6px 10px; }
   .access-steps span { flex: 1 1 100%; min-width: 0; text-align: left; }
   .request-lookup > div { flex-direction: column; }

@@ -1,16 +1,18 @@
-import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react'
+import { type FormEvent, type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
   ArrowRight,
   Bell,
   BookOpen,
   Calendar,
+  CalendarDays,
   Check,
   ChevronLeft,
   ChevronRight,
   DoorOpen,
   Edit3,
   ExternalLink,
+  Globe,
   History,
   KeyRound,
   Lightbulb,
@@ -21,10 +23,14 @@ import {
   Megaphone,
   Menu,
   MessageSquarePlus,
+  MessagesSquare,
   Plus,
+  Repeat,
   Settings,
+  ShieldCheck,
   Trash2,
   UserRound,
+  Users,
   Vote,
   X,
 } from 'lucide-react'
@@ -1984,28 +1990,65 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
             {quickCreateMismatch && <div className="quick-create-warning" role="alert">Esta conta representa {profile?.turmaId}. Para cadastrar diretamente por um dia, volte ao calendário e selecione essa turma.</div>}
             <div className="admin-body">
               <div className="admin-main">
-                <div className="admin-tabs">
-                  <button type="button" className={adminTab === 'activities' ? 'active' : ''} onClick={() => setAdminTab('activities')}>Atividades</button>
-                  <button type="button" className={adminTab === 'recurrences' ? 'active' : ''} onClick={() => setAdminTab('recurrences')}>Repetições</button>
-                  <button type="button" className={adminTab === 'retention' ? 'active' : ''} onClick={() => setAdminTab('retention')}>Expurgo</button>
-                  <button type="button" className={adminTab === 'chat' ? 'active' : ''} onClick={() => setAdminTab('chat')}>Chat</button>
-                  <button type="button" className={adminTab === 'suggestions' ? 'active' : ''} onClick={() => setAdminTab('suggestions')}>
-                    Sugestões
-                    {pendingSuggestions.length > 0 && <span className="notif-count">{pendingSuggestions.length}</span>}
-                  </button>
-                  {isSuperAdmin && (
-                    <button type="button" className={adminTab === 'representatives' ? 'active' : ''} onClick={() => setAdminTab('representatives')}>
-                      Representantes
-                      {representativeRequests.length > 0 && <span className="notif-count">{representativeRequests.length}</span>}
-                    </button>
-                  )}
-                  {isSuperAdmin && (
-                    <button type="button" className={adminTab === 'site' ? 'active' : ''} onClick={() => setAdminTab('site')}>
-                      Site
-                      {feedbackList.length > 0 && <span className="notif-count">{feedbackList.length}</span>}
-                    </button>
-                  )}
-                </div>
+                {(() => {
+                  type AdminTabId = typeof adminTab
+                  const groups: { id: string; label: string; icon: ReactNode; tabs: { id: AdminTabId; label: string; icon: ReactNode; count?: number }[] }[] = [
+                    {
+                      id: 'agenda',
+                      label: 'Agenda',
+                      icon: <CalendarDays size={16} />,
+                      tabs: [
+                        { id: 'activities', label: 'Atividades', icon: <ListChecks size={15} /> },
+                        { id: 'recurrences', label: 'Repetições', icon: <Repeat size={15} /> },
+                        { id: 'retention', label: 'Expurgo', icon: <Trash2 size={15} /> },
+                      ],
+                    },
+                    {
+                      id: 'community',
+                      label: 'Comunidade',
+                      icon: <MessagesSquare size={16} />,
+                      tabs: [
+                        { id: 'chat', label: 'Chat', icon: <MessagesSquare size={15} /> },
+                        { id: 'suggestions', label: 'Sugestões', icon: <Lightbulb size={15} />, count: pendingSuggestions.length },
+                      ],
+                    },
+                    ...(isSuperAdmin ? [{
+                      id: 'admin',
+                      label: 'Administração',
+                      icon: <ShieldCheck size={16} />,
+                      tabs: [
+                        { id: 'representatives' as const, label: 'Representantes', icon: <Users size={15} />, count: representativeRequests.length },
+                        { id: 'site' as const, label: 'Site', icon: <Globe size={15} />, count: feedbackList.length },
+                      ],
+                    }] : []),
+                  ]
+                  const activeGroup = groups.find((group) => group.tabs.some((tab) => tab.id === adminTab)) ?? groups[0]
+                  return (
+                    <nav className="admin-nav" aria-label="Seções do painel">
+                      <div className="admin-groups" role="tablist" aria-label="Categorias">
+                        {groups.map((group) => {
+                          const groupCount = group.tabs.reduce((sum, tab) => sum + (tab.count ?? 0), 0)
+                          return (
+                            <button key={group.id} type="button" role="tab" aria-selected={group === activeGroup} className={group === activeGroup ? 'active' : ''} onClick={() => setAdminTab(group.tabs[0].id)}>
+                              {group.icon}
+                              <span>{group.label}</span>
+                              {groupCount > 0 && group !== activeGroup && <span className="notif-count">{groupCount}</span>}
+                            </button>
+                          )
+                        })}
+                      </div>
+                      <div className="admin-subtabs" role="tablist" aria-label={activeGroup.label}>
+                        {activeGroup.tabs.map((tab) => (
+                          <button key={tab.id} type="button" role="tab" aria-selected={tab.id === adminTab} className={tab.id === adminTab ? 'active' : ''} onClick={() => setAdminTab(tab.id)}>
+                            {tab.icon}
+                            <span>{tab.label}</span>
+                            {!!tab.count && <span className="notif-count">{tab.count}</span>}
+                          </button>
+                        ))}
+                      </div>
+                    </nav>
+                  )
+                })()}
 
                 <div className="admin-panel">
                   {adminTab === 'activities' && (
