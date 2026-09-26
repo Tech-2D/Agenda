@@ -361,16 +361,6 @@ function App() {
   return (
     <div className="app-shell">
       <header className="topbar">
-        <button
-          type="button"
-          className="admin-trigger"
-          aria-label="Abrir área administrativa"
-          aria-haspopup="dialog"
-          title="Área administrativa"
-          onClick={openAdmin}
-        >
-          <KeyRound size={20} strokeWidth={2.3} aria-hidden="true" />
-        </button>
         <a className="brand" href="#inicio" aria-label="Agenda da turma — início">
           <span className="brand-mark"><Calendar size={21} strokeWidth={2.3} /></span>
           <span>Agenda da turma</span>

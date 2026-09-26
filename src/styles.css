@@ -90,12 +90,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .topbar { position: relative; flex-shrink: 0; height: 64px; display: flex; align-items: center; justify-content: center; padding: 0 max(28px, calc((100vw - 1200px) / 2)); color: white; background: var(--accent); }
 .brand { display: inline-flex; align-items: center; gap: 10px; font-weight: 800; font-size: 20px; letter-spacing: -.025em; text-decoration: none; color: white; }
 .brand-mark { width: 39px; height: 39px; display: grid; place-items: center; color: var(--accent); background: white; border-radius: 8px; }
-.admin-trigger, .menu-trigger { position: absolute; top: 0; width: 44px; height: 44px; display: grid; place-items: center; padding: 0; border: 0; background: transparent; color: white; cursor: pointer; transition: background-color .2s ease; }
-.admin-trigger { left: 0; border-radius: 0 0 8px 0; }
+.menu-trigger { position: absolute; top: 0; width: 44px; height: 44px; display: grid; place-items: center; padding: 0; border: 0; background: transparent; color: white; cursor: pointer; transition: background-color .2s ease; }
 .menu-trigger { right: 0; border-radius: 0 0 0 8px; }
-.admin-trigger svg { opacity: 1; transition: opacity .2s ease, transform .3s ease; }
-.admin-trigger:hover, .admin-trigger:focus-visible, .menu-trigger:hover, .menu-trigger:focus-visible { background: rgba(255,255,255,.14); }
-.admin-trigger:hover svg, .admin-trigger:focus-visible svg { transform: rotate(-10deg) scale(1.05); }
+.menu-trigger:hover, .menu-trigger:focus-visible { background: rgba(255,255,255,.14); }
 .menu-trigger:hover svg, .menu-trigger:focus-visible svg { transform: scale(1.05); }
 
 .main-content { width: min(1100px, calc(100% - 48px)); margin: 0 auto; padding: 20px 0 24px; flex: 1; min-height: 0; display: flex; flex-direction: column; }
@@ -518,7 +515,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .topbar { height: 68px; padding: 0 52px; }
   .brand { font-size: 16px; }
   .brand-mark { width: 32px; height: 32px; }
-  .admin-trigger, .menu-trigger { width: 42px; height: 42px; }
+  .menu-trigger { width: 42px; height: 42px; }
   .main-content { width: calc(100% - 24px); padding: 12px 0 16px; }
   .agenda-toolbar { flex-direction: column; align-items: stretch; gap: 10px; margin-bottom: 10px; }
   .agenda-heading { justify-content: space-between; }
@@ -599,8 +596,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 [data-theme="cyberpunk"] .topbar { background: var(--paper); border-bottom: 1px solid var(--neon); box-shadow: 0 0 20px rgba(0,0,0,.6); }
 [data-theme="cyberpunk"] .brand { color: var(--neon); text-shadow: 0 0 8px var(--neon); }
 [data-theme="cyberpunk"] .brand-mark { background: var(--neon); color: var(--accent-contrast); box-shadow: 0 0 12px var(--neon); }
-[data-theme="cyberpunk"] .admin-trigger, [data-theme="cyberpunk"] .menu-trigger { color: var(--neon); }
-[data-theme="cyberpunk"] .admin-trigger:hover, [data-theme="cyberpunk"] .menu-trigger:hover { background: rgba(255,255,255,.06); }
+[data-theme="cyberpunk"] .menu-trigger { color: var(--neon); }
+[data-theme="cyberpunk"] .menu-trigger:hover { background: rgba(255,255,255,.06); }
 [data-theme="cyberpunk"] .primary-button { box-shadow: 0 0 10px var(--neon); }
 [data-theme="cyberpunk"] .primary-button:hover { filter: brightness(1.15); }
 [data-theme="cyberpunk"] .calendar-day.today .day-number { box-shadow: 0 0 8px var(--neon); }
