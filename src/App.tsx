@@ -28,6 +28,7 @@ import {
   Repeat,
   Settings,
   ShieldCheck,
+  StickyNote,
   Trash2,
   UserRound,
   Users,
@@ -90,6 +91,9 @@ import { markAnnouncementSeen, readAnnouncementSeenAt } from './announcementSeen
 import { isValidRepresentativeEmail, normalizeRepresentativeEmail, readRepresentativeRequestId, storeRepresentativeRequestId, type RepresentativeRequest } from './representativeAccess'
 import { canCreateForSelectedClass } from './quickCreate'
 import { PollsDialog } from './PollsDialog'
+import { NoticeBoardDialog, NoticeStrip, NoticesAdminPanel } from './NoticeBoard'
+import { activeNotices, canManageNotices } from './notices'
+import { useNow, useTurmaNotices } from './useNotices'
 import { readPreferredTurma, savePreferredTurma } from './classPreference'
 import { latestUnseenUpdate, markSystemUpdateSeen, readSeenSystemUpdateId, type SystemUpdate } from './systemUpdates'
 import {
@@ -173,6 +177,8 @@ function App() {
   const [mySuggestionsOpen, setMySuggestionsOpen] = useState(false)
   const [feedbackOpen, setFeedbackOpen] = useState(false)
   const [pollsOpen, setPollsOpen] = useState(false)
+  const [noticesOpen, setNoticesOpen] = useState(false)
+  const [calendarUser, setCalendarUser] = useState<User | null>(null)
   const [docsOpen, setDocsOpen] = useState(false)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [notificationsSeenAt, setNotificationsSeenAt] = useState(0)
@@ -199,6 +205,7 @@ function App() {
     const stopAuth = onAuthStateChanged(auth, (account) => {
       stopProfile()
       setCalendarProfile(null)
+      setCalendarUser(account)
       if (!account) return
       stopProfile = onSnapshot(doc(db, 'admins', account.uid), (snapshot) => {
         const value = snapshot.data() as AdminProfile | undefined
@@ -338,6 +345,9 @@ function App() {
   }, [activities])
 
   const weeks = useMemo(() => getMonthMatrix(monthCursor.getFullYear(), monthCursor.getMonth()), [monthCursor])
+  const boardNotices = useTurmaNotices(turmaId)
+  const noticesNow = useNow()
+  const visibleNotices = useMemo(() => activeNotices(boardNotices.notices, noticesNow), [boardNotices.notices, noticesNow])
 
   useEffect(() => () => {
     if (previewCloseTimer.current !== null) window.clearTimeout(previewCloseTimer.current)
@@ -429,18 +439,9 @@ function App() {
                 </select>
               </label>
             )}
-            {turmaId && (
-              <button type="button" className="secondary-button" onClick={() => setPollsOpen(true)}>
-                <Vote size={16} /> Enquetes da turma
-              </button>
-            )}
-            {turmaId && (
-              <button type="button" className="secondary-button" onClick={() => setSuggestOpen(true)}>
-                <Lightbulb size={16} /> Sugerir atividade
-              </button>
-            )}
           </div>
 
+          <div className="agenda-controls">
           <div className="month-nav">
             <button type="button" onClick={() => setMonthCursor((current) => addMonths(current, -1))} aria-label="Mês anterior"><ChevronLeft /></button>
             <div className="month-nav-title">
@@ -449,7 +450,25 @@ function App() {
             </div>
             <button type="button" onClick={() => setMonthCursor((current) => addMonths(current, 1))} aria-label="Próximo mês"><ChevronRight /></button>
           </div>
+
+          {turmaId && (
+            <div className="agenda-actions">
+              <button type="button" className="action-button" aria-label={`Quadro de avisos${visibleNotices.length ? `, ${visibleNotices.length} ativos` : ''}`} title="Quadro de avisos" onClick={() => setNoticesOpen(true)}>
+                <StickyNote size={16} aria-hidden="true" /><span>Quadro de avisos</span>
+                {visibleNotices.length > 0 && <span className="action-badge">{visibleNotices.length}</span>}
+              </button>
+              <button type="button" className="action-button" aria-label="Enquetes da turma" title="Enquetes da turma" onClick={() => setPollsOpen(true)}>
+                <Vote size={16} aria-hidden="true" /><span>Enquetes da turma</span>
+              </button>
+              <button type="button" className="action-button" aria-label="Sugerir atividade" title="Sugerir atividade" onClick={() => setSuggestOpen(true)}>
+                <Lightbulb size={16} aria-hidden="true" /><span>Sugerir atividade</span>
+              </button>
+            </div>
+          )}
+          </div>
         </div>
+
+        {turmaId && <NoticeStrip notices={visibleNotices} onOpenBoard={() => setNoticesOpen(true)} />}
 
         <section className="calendar-section" aria-label="Calendário mensal">
           {!turmaId ? (
@@ -565,6 +584,18 @@ function App() {
       {feedbackOpen && <FeedbackDialog turmaId={turmaId} onClose={() => setFeedbackOpen(false)} />}
 
       {pollsOpen && turmaId && <PollsDialog turmaId={turmaId} loadAdminProfile={loadOrClaimAdminProfile} onClose={() => setPollsOpen(false)} />}
+
+      {noticesOpen && turmaId && (
+        <NoticeBoardDialog
+          turmaId={turmaId}
+          notices={visibleNotices}
+          loading={boardNotices.loading}
+          error={boardNotices.error}
+          user={calendarUser}
+          canManage={canManageNotices(calendarProfile, turmaId)}
+          onClose={() => setNoticesOpen(false)}
+        />
+      )}
 
       {notificationsOpen && <NotificationsDialog activities={recentActivities} onClose={() => setNotificationsOpen(false)} />}
 
@@ -1351,7 +1382,7 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
   const [updateTitle, setUpdateTitle] = useState('')
   const [updateBody, setUpdateBody] = useState('')
   const [adminSearch, setAdminSearch] = useState('')
-  const [adminTab, setAdminTab] = useState<'activities' | 'recurrences' | 'retention' | 'chat' | 'suggestions' | 'representatives' | 'site'>('activities')
+  const [adminTab, setAdminTab] = useState<'activities' | 'recurrences' | 'retention' | 'notices' | 'chat' | 'suggestions' | 'representatives' | 'site'>('activities')
   const [recurrences, setRecurrences] = useState<RecurringActivity[]>([])
   const [repeatWeekly, setRepeatWeekly] = useState(false)
   const [repeatEndDate, setRepeatEndDate] = useState('')
@@ -2000,6 +2031,7 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
                       tabs: [
                         { id: 'activities', label: 'Atividades', icon: <ListChecks size={15} /> },
                         { id: 'recurrences', label: 'Repetições', icon: <Repeat size={15} /> },
+                        { id: 'notices', label: 'Avisos', icon: <StickyNote size={15} /> },
                         { id: 'retention', label: 'Expurgo', icon: <Trash2 size={15} /> },
                       ],
                     },
@@ -2106,6 +2138,7 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
                     </>
                   )}
                   {adminTab === 'retention' && <RetentionPanel key={managedTurma} turmaId={managedTurma} userId={user.uid} activityDates={managedActivities.map((activity) => activity.date)} />}
+                  {adminTab === 'notices' && <NoticesAdminPanel key={managedTurma} turmaId={managedTurma} user={user} />}
                   {adminTab === 'chat' && <RepresentativesChat userId={user.uid} email={user.email ?? ''} profile={profile} />}
                   {adminTab === 'suggestions' && (
                     <>

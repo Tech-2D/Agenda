@@ -398,6 +398,46 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // Quadro de avisos por turma: leitura pública (sem login). Somente os
+    // representantes da própria turma ou o super-admin criam, editam e apagam.
+    // authorEmail é público de propósito (decisão do produto). O TTL do Firestore
+    // deve ser configurado no Console sobre o campo purgeAt.
+    function isValidBoardNotice(data) {
+      return data.keys().hasOnly(['turmaId', 'title', 'body', 'type', 'expiresAt', 'purgeAt', 'createdBy', 'authorEmail', 'createdAt', 'updatedAt'])
+        && data.keys().hasAll(['turmaId', 'title', 'body', 'type', 'expiresAt', 'purgeAt', 'createdBy', 'authorEmail', 'createdAt', 'updatedAt'])
+        && isKnownAgendaTurma(data.turmaId)
+        && data.title is string && data.title.size() > 0 && data.title.size() <= 60
+        && data.body is string && data.body.size() > 0 && data.body.size() <= 500
+        && data.type in ['urgente', 'aviso', 'lembrete']
+        && data.expiresAt is timestamp
+        && data.expiresAt <= request.time + duration.value(365, 'd')
+        && data.purgeAt == data.expiresAt + duration.value(30, 'd')
+        && data.updatedAt == request.time;
+    }
+
+    match /boardNotices/{noticeId} {
+      allow get, list: if true;
+
+      allow create: if isSignedIn()
+        && canManage(request.resource.data.turmaId)
+        && isValidBoardNotice(request.resource.data)
+        && request.resource.data.expiresAt > request.time
+        && request.resource.data.createdBy == request.auth.uid
+        && request.auth.token.email is string
+        && request.resource.data.authorEmail == request.auth.token.email
+        && request.resource.data.createdAt == request.time;
+
+      // turmaId, autoria e createdAt nunca mudam. A validade pode ficar como está
+      // (para corrigir texto de um aviso já expirado) ou ser movida para o futuro.
+      allow update: if canManage(resource.data.turmaId)
+        && isValidBoardNotice(request.resource.data)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['title', 'body', 'type', 'expiresAt', 'purgeAt', 'updatedAt'])
+        && (request.resource.data.expiresAt == resource.data.expiresAt
+          || request.resource.data.expiresAt > request.time);
+
+      allow delete: if canManage(resource.data.turmaId);
+    }
+
     // Caderno Infinito: leitura pública; publicação autenticada e edição apenas pelo autor.
     function isValidNotebookNote(data) {
       return data.keys().hasOnly(['title', 'content', 'subject', 'className', 'authorUid', 'authorEmail', 'createdAt', 'updatedAt'])

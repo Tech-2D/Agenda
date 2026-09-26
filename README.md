@@ -153,6 +153,31 @@ Documento único (ID fixo `latest`) com o aviso atual mostrado para todo mundo �
 }
 ```
 
+### `boardNotices/{noticeId}`
+
+Post-its do quadro de avisos de uma turma. Leitura pública (sem login); só os representantes da própria turma e o super-admin criam, editam e apagam. Representantes de outras turmas não podem alterar o quadro.
+
+```json
+{
+  "turmaId": "2° TECH D",
+  "title": "Prova de Estatística",
+  "body": "Trazer calculadora científica.",
+  "type": "urgente",
+  "expiresAt": "2026-10-26T12:00:00Z",
+  "purgeAt": "2026-11-25T12:00:00Z",
+  "createdBy": "uid-do-autor",
+  "authorEmail": "representante@exemplo.com",
+  "createdAt": "2026-09-26T12:00:00Z",
+  "updatedAt": "2026-09-26T12:00:00Z"
+}
+```
+
+- `type`: `urgente`, `aviso` ou `lembrete`. `title` até 60 caracteres e `body` até 500.
+- `expiresAt` é obrigatório (padrão de 30 dias, máximo de 365). Depois dele o aviso some da home e do quadro público, mas continua na aba do painel como "expirado".
+- `purgeAt` é sempre `expiresAt` + 30 dias (as regras conferem). **Configure uma política de TTL do Firestore** na coleção `boardNotices` sobre o campo `purgeAt` (Console > Firestore > TTL). Sem ela, os avisos não são apagados. Este expurgo não passa pelo repositório `agenda-expurgo`.
+- `authorEmail` é gravado e lido publicamente, por decisão do produto. `turmaId`, `createdBy`, `authorEmail` e `createdAt` não mudam depois da criação.
+- Republique as regras do Firestore antes de usar o quadro.
+
 ## Publicar no GitHub Pages
 
 1. Em **Settings > Pages**, selecione **GitHub Actions** como fonte de publicação.
