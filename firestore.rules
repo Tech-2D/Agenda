@@ -217,6 +217,24 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // Grupo privado: somente representantes aprovados e super-admin.
+    match /representativeChat/{messageId} {
+      allow get: if isAnyAdmin();
+      allow list: if isAnyAdmin() && request.query.limit != null && request.query.limit <= 100;
+      allow create: if isAnyAdmin()
+        && request.resource.data.keys().hasOnly(['text', 'senderId', 'senderEmail', 'senderRole', 'senderTurma', 'createdAt'])
+        && request.resource.data.keys().hasAll(['text', 'senderId', 'senderEmail', 'senderRole', 'senderTurma', 'createdAt'])
+        && request.resource.data.text is string
+        && request.resource.data.text.size() > 0 && request.resource.data.text.size() <= 2000
+        && request.resource.data.senderId == request.auth.uid
+        && request.resource.data.senderEmail == request.auth.token.email
+        && request.resource.data.senderRole == adminData().role
+        && (isSuperAdmin() ? request.resource.data.senderTurma == null : request.resource.data.senderTurma == adminData().turmaId)
+        && request.resource.data.createdAt == request.time;
+      allow update: if false;
+      allow delete: if isAnyAdmin() && (isSuperAdmin() || resource.data.senderId == request.auth.uid);
+    }
+
     // Enquetes por turma: somente representantes da própria turma ou super-admin
     // publicam/encerram. Resultados são públicos; cada UID pode criar um voto imutável.
     function isValidPollOption(option) {

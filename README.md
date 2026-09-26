@@ -16,6 +16,12 @@ Na área do representante, marque **Repetir toda semana** ao cadastrar uma ativi
 
 A automação fica no repositório privado [`Tech-2D/agenda-recorrencias`](https://github.com/Tech-2D/agenda-recorrencias). Ela roda a cada seis horas, gera até oito semanas à frente e não duplica atividades. Quando um agendamento é pausado, a próxima execução remove suas ocorrências de hoje em diante, mantendo as anteriores. A automação depende do secret `FIREBASE_SERVICE_ACCOUNT` configurado nesse repositório e das regras atualizadas do Firestore.
 
+## Chat dos representantes
+
+A aba **Chat** no painel é um grupo privado para representantes aprovados e super-admin. As mensagens aparecem em tempo real com e-mail e turma do autor. Alunos e visitantes não podem ler ou enviar mensagens. O histórico exibe as últimas 100 mensagens; o autor ou o super-admin podem remover uma mensagem, mas não editar nem alterar a identidade do remetente. Não há chatbot ou respostas automáticas.
+
+As mensagens ficam em `representativeChat`. Publique as regras atualizadas do Firestore antes de usar o chat. Este histórico não entra no expurgo de atividades.
+
 ## Expurgo de atividades antigas
 
 Na aba **Expurgo**, o representante define um prazo de 30 a 730 dias para a própria turma ou mantém a limpeza desligada. A regra abrange tarefas, lições, trabalhos, provas e eventos da turma; eventos gerais e outras turmas não são afetados. A tela mostra uma estimativa das atividades que já se enquadram no prazo e pede confirmação para ativar. Toda regra nova ou alterada espera 24 horas antes da primeira exclusão.
