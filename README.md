@@ -32,7 +32,7 @@ O cron diário fica no repositório privado [`Tech-2D/agenda-expurgo`](https://g
 
 ## Configurar o Firebase
 
-Os sites **Agenda** e **Cadê o professor?** usam o mesmo projeto Firebase central, `d-tech-56a76`, mantendo coleções separadas no mesmo Firestore.
+Os sites **Agenda** e **Cadê o professor?** usam o mesmo projeto Firebase central, `d-tech-8555e`, mantendo coleções separadas no mesmo Firestore.
 
 1. No Console do Firebase, abra **Authentication > Sign-in method** e habilite **E-mail/senha**.
 2. Crie a conta do super-admin em **Authentication > Users**. No Firestore, crie `admins/{uid}` com `{ "role": "superadmin" }` (o UID é o ID da conta). Representantes não precisam mais ser cadastrados manualmente.
