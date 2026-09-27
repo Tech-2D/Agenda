@@ -58,6 +58,7 @@ import { CLASS_NAMES } from './classNames'
 import { SUBJECTS } from './subjects'
 import { RetentionPanel } from './RetentionPanel'
 import { RepresentativesChat } from './RepresentativesChat'
+import { creditForUpdate, isCreditEligible } from './publicCredit'
 import { FeedbackConversation, MyFeedbackConversations } from './FeedbackConversation'
 import { canEditCalendarActivity } from './calendarPermissions'
 import {
@@ -1014,6 +1015,8 @@ function MySuggestionsDialog({ onClose }: { onClose: () => void }) {
 
 function FeedbackDialog({ turmaId, onClose }: { turmaId: string | null; onClose: () => void }) {
   const [message, setMessage] = useState('')
+  const [publicCreditName, setPublicCreditName] = useState('')
+  const [publicCreditAllowed, setPublicCreditAllowed] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [sent, setSent] = useState(false)
@@ -1086,12 +1089,17 @@ function FeedbackDialog({ turmaId, onClose }: { turmaId: string | null; onClose:
       setError('Entre com sua conta para enviar o comentário.')
       return
     }
+    if (publicCreditAllowed && (!publicCreditName.trim() || publicCreditName.includes('@'))) {
+      setError('Escolha um nome público sem e-mail para autorizar o crédito.')
+      return
+    }
     setBusy(true)
     setError('')
     try {
       await addDoc(collection(db, 'feedback'), {
         message: message.trim(), turmaId: turmaId ?? null,
         createdBy: currentUser.uid, createdByEmail: currentUser.email,
+        publicCreditName: publicCreditAllowed ? publicCreditName.trim() : '', publicCreditAllowed,
         createdAt: serverTimestamp(),
       })
       setSent(true)
@@ -1146,6 +1154,11 @@ function FeedbackDialog({ turmaId, onClose }: { turmaId: string | null; onClose:
                   autoFocus
                 />
               </label>
+              <div className="feedback-public-credit wide">
+                <label><input type="checkbox" checked={publicCreditAllowed} onChange={(event) => setPublicCreditAllowed(event.target.checked)} /> Autorizo mostrar meu nome e esta sugestão em um aviso público de atualização.</label>
+                {publicCreditAllowed && <label>Nome para o crédito público<input value={publicCreditName} onChange={(event) => setPublicCreditName(event.target.value)} maxLength={60} required placeholder="Como você quer aparecer?" /></label>}
+                <small>Seu e-mail não será publicado. Você também pode decidir isso depois, em suas conversas.</small>
+              </div>
             </div>
             {error && <p className="form-error">{error}</p>}
             <div className="form-actions"><button type="button" className="secondary-button" onClick={onClose}>Cancelar</button><button className="primary-button compact" disabled={busy}>{busy ? <LoaderCircle className="spin" /> : 'Enviar comentário'}</button></div>
@@ -1194,6 +1207,7 @@ function SystemUpdateWelcome({ update, onClose }: { update: SystemUpdate; onClos
           <h2 id="system-update-title">{update.title}</h2>
           {update.publishedAt && <time>{update.publishedAt.toDate().toLocaleDateString('pt-BR')}</time>}
           <p>{update.body}</p>
+          {update.sourceName && update.sourceMessage && <div className="update-request-credit"><strong>Pedido da comunidade · {update.sourceName}</strong><p>{update.sourceMessage}</p></div>}
           <button type="button" className="primary-button" onClick={onClose} autoFocus>Entendi, abrir agenda</button>
           <span>Você pode reler esta novidade em Atualizações, no menu.</span>
         </div>
@@ -1236,6 +1250,7 @@ function SystemUpdatesDialog({ onClose }: { onClose: () => void }) {
               : updates.map((item, index) => <article key={item.id} className="updates-history-item">
                 <div className="updates-history-meta"><span>{index === 0 ? 'Mais recente' : 'Atualização'}</span>{item.publishedAt && <time>{item.publishedAt.toDate().toLocaleDateString('pt-BR')}</time>}</div>
                 <h3>{item.title}</h3><p>{item.body}</p>
+                {item.sourceName && item.sourceMessage && <div className="update-request-credit"><strong>Pedido da comunidade · {item.sourceName}</strong><p>{item.sourceMessage}</p></div>}
               </article>)}
         </div>
       </section>
@@ -1354,6 +1369,7 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
   const [announcementDraft, setAnnouncementDraft] = useState('')
   const [updateTitle, setUpdateTitle] = useState('')
   const [updateBody, setUpdateBody] = useState('')
+  const [updateFeedbackId, setUpdateFeedbackId] = useState('')
   const [adminSearch, setAdminSearch] = useState('')
   const [adminTab, setAdminTab] = useState<'activities' | 'recurrences' | 'retention' | 'chat' | 'suggestions' | 'representatives' | 'site'>('activities')
   const [recurrences, setRecurrences] = useState<RecurringActivity[]>([])
@@ -1885,6 +1901,11 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
     if (!user || !isSuperAdmin) return
     const title = updateTitle.trim()
     const body = updateBody.trim()
+    const source = updateFeedbackId ? feedbackList.find(item => item.id === updateFeedbackId && isCreditEligible(item)) : undefined
+    if (updateFeedbackId && !source) {
+      setNotice('A sugestão não está mais autorizada para crédito público. Escolha outra.')
+      return
+    }
     if (!title || !body || title.length > 120 || body.length > 2000) {
       setNotice('Informe um título de até 120 caracteres e uma descrição de até 2.000 caracteres.')
       return
@@ -1893,9 +1914,11 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
     try {
       await addDoc(collection(db, 'agendaUpdates'), {
         title, body, createdBy: user.uid, publishedAt: serverTimestamp(),
+        ...(source ? creditForUpdate(source) : {}),
       })
       setUpdateTitle('')
       setUpdateBody('')
+      setUpdateFeedbackId('')
       setNotice('Atualização publicada. Ela aparecerá na próxima abertura do site e no histórico.')
     } catch {
       setNotice('Não foi possível publicar a atualização. Tente novamente.')
@@ -2175,6 +2198,14 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
                         <p className="config-hint">Publique o que mudou na Agenda. A atualização ficará no histórico e aparecerá uma vez para cada visitante.</p>
                         <label>Título<input required maxLength={120} value={updateTitle} onChange={(event) => setUpdateTitle(event.target.value)} placeholder="Ex.: Enquetes para as turmas" /></label>
                         <label>O que mudou<textarea required rows={4} maxLength={2000} value={updateBody} onChange={(event) => setUpdateBody(event.target.value)} placeholder="Explique as novidades de forma simples para os alunos." /></label>
+                        <label>Sugestão que inspirou a atualização (opcional)
+                          <select value={updateFeedbackId} onChange={(event) => setUpdateFeedbackId(event.target.value)}>
+                            <option value="">Sem sugestão vinculada</option>
+                            {feedbackList.filter(isCreditEligible).map(item => <option key={item.id} value={item.id}>{item.publicCreditName} · {item.message.slice(0, 90)}</option>)}
+                          </select>
+                        </label>
+                        {updateFeedbackId && <p className="config-hint">O nome escolhido e o texto original da sugestão aparecerão no aviso e no histórico. O e-mail continuará privado.</p>}
+                        {!feedbackList.some(isCreditEligible) && <p className="config-hint">Sugestões aparecerão aqui quando a pessoa autorizar o crédito público em “Comentar melhoria”.</p>}
                         <div className="system-update-editor-actions"><span>Publicações permanecem no histórico.</span><button type="submit" className="primary-button compact" disabled={busy || !updateTitle.trim() || !updateBody.trim()}><History size={16} /> Publicar atualização</button></div>
                       </form>
                       {systemUpdates.length > 0 && <div className="system-update-admin-recent"><strong>Última publicação</strong>{systemUpdates.map((item) => <div key={item.id}><span>{item.title}</span><time>{item.publishedAt ? item.publishedAt.toDate().toLocaleDateString('pt-BR') : 'Publicando…'}</time></div>)}</div>}

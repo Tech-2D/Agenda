@@ -91,6 +91,8 @@ export type Feedback = {
   createdAt: { toDate: () => Date } | null
   createdBy?: string
   createdByEmail?: string
+  publicCreditAllowed?: boolean
+  publicCreditName?: string
 }
 
 export type Announcement = {

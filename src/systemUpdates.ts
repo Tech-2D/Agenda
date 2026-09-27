@@ -3,6 +3,9 @@ export type SystemUpdate = {
   title: string
   body: string
   createdBy: string
+  sourceFeedbackId?: string
+  sourceName?: string
+  sourceMessage?: string
   publishedAt?: { toDate: () => Date } | null
 }
 
