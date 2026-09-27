@@ -58,6 +58,7 @@ import { CLASS_NAMES } from './classNames'
 import { SUBJECTS } from './subjects'
 import { RetentionPanel } from './RetentionPanel'
 import { RepresentativesChat } from './RepresentativesChat'
+import { FeedbackConversation, MyFeedbackConversations } from './FeedbackConversation'
 import { canEditCalendarActivity } from './calendarPermissions'
 import {
   MONTH_LABELS,
@@ -1105,9 +1106,10 @@ function FeedbackDialog({ turmaId, onClose }: { turmaId: string | null; onClose:
     <div className="modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
       <section className="day-dialog" role="dialog" aria-modal="true" aria-labelledby="feedback-title">
         <div className="dialog-header">
-          <h2 id="feedback-title">Comentar melhoria</h2>
+          <h2 id="feedback-title">Melhorias e conversas</h2>
           <button className="icon-button" onClick={onClose} aria-label="Fechar"><X /></button>
         </div>
+        {account && <MyFeedbackConversations userId={account.uid} />}
         {!authChecked ? (
           <div className="feedback-auth-loading"><LoaderCircle className="spin" /><p>Verificando sua conta…</p></div>
         ) : sent ? (
@@ -1347,6 +1349,7 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
   const [managedSuggestions, setManagedSuggestions] = useState<Suggestion[]>([])
   const [representativeRequests, setRepresentativeRequests] = useState<RepresentativeRequest[]>([])
   const [feedbackList, setFeedbackList] = useState<Feedback[]>([])
+  const [conversation, setConversation] = useState<Feedback | null>(null)
   const [announcement, setAnnouncement] = useState<Announcement | null>(null)
   const [announcementDraft, setAnnouncementDraft] = useState('')
   const [updateTitle, setUpdateTitle] = useState('')
@@ -2202,6 +2205,7 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
                         <strong>Feedback do site</strong>
                         {feedbackList.length > 0 && <span className="soon-badge pending">{feedbackList.length}</span>}
                       </div>
+                      {conversation && <><button className="secondary-button" type="button" onClick={() => setConversation(null)}>Fechar conversa</button><FeedbackConversation key={conversation.id} feedback={conversation} /></>}
                       <div className="admin-list">
                         {feedbackList.length === 0 ? <p className="admin-empty">Nenhum comentário recebido.</p> : feedbackList.map((item) => (
                           <article key={item.id} className="admin-row compact">
@@ -2209,7 +2213,7 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
                             <div className="admin-row-main"><strong>{item.createdByEmail ?? 'Enviado antes da identificação obrigatória'}</strong><span className="feedback-message">{item.message}</span></div>
                             <div className="admin-row-meta"><span>{item.turmaId ?? 'Geral'}</span><strong>{item.createdAt ? item.createdAt.toDate().toLocaleDateString('pt-BR') : '—'}</strong></div>
                             <div className="row-actions">
-                              <button className="danger" onClick={() => discardFeedback(item)} aria-label="Remover comentário"><Trash2 /></button>
+                              {item.createdBy ? <button onClick={() => setConversation(item)} aria-label={`Conversar sobre a sugestão de ${item.createdByEmail}`}><MessagesSquare /></button> : <button className="danger" onClick={() => discardFeedback(item)} aria-label="Remover comentário"><Trash2 /></button>}
                             </div>
                           </article>
                         ))}
