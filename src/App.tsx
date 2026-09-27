@@ -1376,6 +1376,11 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
   const [repeatWeekly, setRepeatWeekly] = useState(false)
   const [repeatEndDate, setRepeatEndDate] = useState('')
   const [formOpen, setFormOpen] = useState(false)
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = previousOverflow }
+  }, [])
   const [quickCreateActive, setQuickCreateActive] = useState(false)
   const [editing, setEditing] = useState<Activity | null>(null)
   const [form, setForm] = useState(emptyForm)
@@ -2013,7 +2018,7 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
             <button className="secondary-button" onClick={() => signOut(auth)}>Sair</button>
           </div>
         ) : (
-          <div className="admin-content">
+          <div className="admin-content" inert={formOpen || Boolean(closingSuggestion)}>
             {quickCreateMismatch && <div className="quick-create-warning" role="alert">Esta conta representa {profile?.turmaId}. Para cadastrar diretamente por um dia, volte ao calendário e selecione essa turma.</div>}
             <div className="admin-body">
               <div className="admin-main">
@@ -2283,9 +2288,10 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
         )}
 
         {formOpen && (
-          <div className="form-overlay">
-            <form className="activity-form" onSubmit={saveActivity}>
+          <div className="form-overlay activity-editor-overlay">
+            <form className="activity-form activity-editor" onSubmit={saveActivity} aria-label={editing ? 'Editar atividade' : 'Adicionar atividade'}>
               <div className="form-title"><div><p className="eyebrow dark">ATIVIDADE</p><h3>{editing ? 'Editar atividade' : 'Adicionar atividade'}</h3></div><button type="button" className="icon-button" aria-label="Fechar formulário" onClick={() => quickEditActivity ? onClose() : setFormOpen(false)}><X /></button></div>
+              <div className="activity-editor-scroll" tabIndex={0} role="region" aria-label="Campos da atividade">
               <div className="form-grid">
                 <label className="wide">Título<input required value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} /></label>
                 <label>Tipo<select value={form.type} onChange={(event) => setForm({ ...form, type: event.target.value as ActivityType })}>{ACTIVITY_TYPES.map((type) => <option value={type} key={type}>{ACTIVITY_TYPE_LABELS[type]}</option>)}</select></label>
@@ -2307,6 +2313,7 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
                 <label className="wide">Descrição<textarea rows={3} value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} placeholder="Detalhes, capítulos, critérios de entrega…" /></label>
               </div>
               {saveError && <p className="form-error">{saveError}</p>}
+              </div>
               <div className="form-actions"><button type="button" className="secondary-button" onClick={() => quickEditActivity ? onClose() : setFormOpen(false)}>Cancelar</button><button className="primary-button compact" disabled={busy}>{busy ? <LoaderCircle className="spin" /> : repeatWeekly ? 'Salvar repetição' : 'Salvar atividade'}</button></div>
             </form>
           </div>
