@@ -44,6 +44,8 @@ export type RecurringActivity = {
   time: string | null
   turmaId: string
   startDate: string
+  weekdays?: number[]
+  intervalWeeks?: number
   endDate: string | null
   active: boolean
   createdBy: string

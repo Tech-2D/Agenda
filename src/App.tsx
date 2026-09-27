@@ -56,6 +56,7 @@ import {
 import { auth, db } from './firebase'
 import { CLASS_NAMES } from './classNames'
 import { SUBJECTS } from './subjects'
+import { REPEAT_DAYS, recurrenceLabel, validateCustomRepeat } from './recurrence'
 import { RetentionPanel } from './RetentionPanel'
 import { RepresentativesChat } from './RepresentativesChat'
 import { creditForUpdate, isCreditEligible } from './publicCredit'
@@ -1374,6 +1375,9 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
   const [adminTab, setAdminTab] = useState<'activities' | 'recurrences' | 'retention' | 'chat' | 'suggestions' | 'representatives' | 'site'>('activities')
   const [recurrences, setRecurrences] = useState<RecurringActivity[]>([])
   const [repeatWeekly, setRepeatWeekly] = useState(false)
+  const [repeatCustom, setRepeatCustom] = useState(false)
+  const [repeatDays, setRepeatDays] = useState<number[]>([])
+  const [repeatInterval, setRepeatInterval] = useState(1)
   const [repeatEndDate, setRepeatEndDate] = useState('')
   const [formOpen, setFormOpen] = useState(false)
   useEffect(() => {
@@ -1728,6 +1732,10 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
 
   async function saveActivity(event: FormEvent) {
     event.preventDefault()
+    if (repeatWeekly && repeatCustom && !editing) {
+      const validation = validateCustomRepeat(form.date, repeatEndDate, repeatDays, repeatInterval)
+      if (validation) { setSaveError(validation); return }
+    }
     if (repeatWeekly && repeatEndDate && repeatEndDate < form.date) {
       setSaveError('A data final precisa ser igual ou posterior à primeira data.')
       return
@@ -1746,13 +1754,14 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
           turmaId: managedTurma,
           startDate: form.date,
           endDate: repeatEndDate || null,
+          ...(repeatCustom ? { weekdays: [...repeatDays].sort((a, b) => a - b), intervalWeeks: repeatInterval } : {}),
           active: true,
           createdBy: user?.uid,
           createdByEmail: user?.email ?? null,
           createdAt: serverTimestamp(),
         })
         setAdminTab('recurrences')
-        setNotice('Repetição semanal salva. As ocorrências aparecem após a próxima execução da automação.')
+        setNotice('Repetição salva. As ocorrências aparecem após a próxima execução da automação.')
       } else if (editing) {
         await updateDoc(doc(db, 'activities', editing.id), { ...payload, updatedAt: serverTimestamp() })
         setNotice('Atividade atualizada.')
@@ -2090,7 +2099,7 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
                         {filteredActivities.length === 0 ? <p className="admin-empty">Nenhuma atividade encontrada.</p> : filteredActivities.map((activity) => (
                           <article key={activity.id} className="admin-row compact">
                             <div className="avatar" style={{ color: ACTIVITY_TYPE_COLORS[activity.type] }}><UserRound /></div>
-                            <div className="admin-row-main"><strong>{activity.title}</strong><span>{ACTIVITY_TYPE_LABELS[activity.type]}{activity.subject ? ` · ${activity.subject}` : ''}{activity.recurringId ? ' · Repete toda semana' : ''}</span></div>
+                            <div className="admin-row-main"><strong>{activity.title}</strong><span>{ACTIVITY_TYPE_LABELS[activity.type]}{activity.subject ? ` · ${activity.subject}` : ''}{activity.recurringId ? ' · Atividade recorrente' : ''}</span></div>
                             <div className="admin-row-meta"><span>{parseDateLabel(activity.date)}</span><strong>{activity.time ?? '—'}</strong></div>
                             <div className="row-actions">
                               <button onClick={() => startEdit(activity)} aria-label={`Editar ${activity.title}`}><Edit3 /></button>
@@ -2120,7 +2129,7 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
                   )}
                   {adminTab === 'recurrences' && (
                     <>
-                      <div className="admin-list-heading"><strong>Tarefas que se repetem</strong><span className="config-hint" style={{ margin: 0 }}>Toda semana, no mesmo dia</span></div>
+                      <div className="admin-list-heading"><strong>Tarefas que se repetem</strong><span className="config-hint" style={{ margin: 0 }}>Semanais ou personalizadas</span></div>
                       <div className="admin-list">
                         {recurrences.length === 0 ? <p className="admin-empty">Nenhuma repetição cadastrada para esta turma.</p> : recurrences
                           .slice()
@@ -2129,7 +2138,7 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
                             <article key={item.id} className="admin-row compact">
                               <div className="avatar" style={{ color: ACTIVITY_TYPE_COLORS[item.type] }}><Calendar /></div>
                               <div className="admin-row-main"><strong>{item.title}</strong><span>{ACTIVITY_TYPE_LABELS[item.type]}{item.subject ? ` · ${item.subject}` : ''} · {item.active ? 'Ativa' : 'Pausada'}</span></div>
-                              <div className="admin-row-meta"><span>Desde {parseDateLabel(item.startDate)}</span><strong>{item.endDate ? `Até ${parseDateLabel(item.endDate)}` : 'Sem data final'}</strong></div>
+                              <div className="admin-row-meta"><span>{recurrenceLabel(item)}</span><span>Desde {parseDateLabel(item.startDate)}</span><strong>{item.endDate ? `Até ${parseDateLabel(item.endDate)}` : 'Sem data final'}</strong></div>
                               <div className="row-actions"><button type="button" className="recurrence-action" disabled={busy} onClick={() => toggleRecurrence(item)} aria-label={`${item.active ? 'Pausar' : 'Reativar'} ${item.title}`}>{item.active ? 'Pausar' : 'Reativar'}</button></div>
                             </article>
                           ))}
@@ -2297,10 +2306,14 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
                 <label>Tipo<select value={form.type} onChange={(event) => setForm({ ...form, type: event.target.value as ActivityType })}>{ACTIVITY_TYPES.map((type) => <option value={type} key={type}>{ACTIVITY_TYPE_LABELS[type]}</option>)}</select></label>
                 <label className="wide">Matéria<select value={form.subject ?? ''} onChange={(event) => setForm({ ...form, subject: event.target.value || null })}><option value="">Sem matéria específica</option>{SUBJECTS.map((subject) => <option value={subject} key={subject}>{subject}</option>)}</select></label>
                 <label>Data<input required type="date" value={form.date} onChange={(event) => setForm({ ...form, date: event.target.value })} /></label>
-                {!editing && <label className="toggle wide"><input type="checkbox" checked={repeatWeekly} onChange={(event) => { setRepeatWeekly(event.target.checked); if (event.target.checked) setIsGlobalForm(false) }} /><span /> Repetir toda semana</label>}
+                {!editing && <label className="wide">Repetição<select value={!repeatWeekly ? 'none' : repeatCustom ? 'custom' : 'weekly'} onChange={event => { setRepeatWeekly(event.target.value !== 'none'); setRepeatCustom(event.target.value === 'custom'); setRepeatDays([new Date(`${form.date}T12:00:00`).getDay()]); setRepeatInterval(1); if (event.target.value !== 'none') setIsGlobalForm(false) }}><option value="none">Não se repete</option><option value="weekly">Toda semana, no mesmo dia</option><option value="custom">Personalizada…</option></select></label>}
                 {repeatWeekly && <>
-                  <p className="config-hint wide">A data acima será a primeira ocorrência. A tarefa aparecerá no mesmo dia da semana nas semanas seguintes.</p>
-                  <label>Repetir até (opcional)<input type="date" min={form.date} value={repeatEndDate} onChange={(event) => setRepeatEndDate(event.target.value)} /></label>
+                  <p className="config-hint wide">{repeatCustom ? 'A data acima inicia o período. A atividade aparecerá somente nos dias escolhidos, até a data final inclusive. As semanas são contadas de segunda a domingo.' : 'A data acima será a primeira ocorrência. A tarefa aparecerá no mesmo dia da semana nas semanas seguintes.'}</p>
+                  {repeatCustom && <>
+                    <fieldset className="repeat-days wide"><legend>Repetir nos dias</legend>{REPEAT_DAYS.map((day, index) => <label key={day}><input type="checkbox" checked={repeatDays.includes(index)} onChange={event => setRepeatDays(event.target.checked ? [...repeatDays, index] : repeatDays.filter(value => value !== index))} /><span>{day}</span></label>)}</fieldset>
+                    <label>A cada quantas semanas?<input type="number" min={1} max={12} required value={repeatInterval} onChange={event => setRepeatInterval(Number(event.target.value))} /></label>
+                  </>}
+                  <label>{repeatCustom ? 'Data final' : 'Repetir até (opcional)'}<input required={repeatCustom} type="date" min={form.date} value={repeatEndDate} onChange={(event) => setRepeatEndDate(event.target.value)} /></label>
                 </>}
                 {!repeatWeekly && (!editing || isSuperAdmin) && <label className="toggle wide"><input type="checkbox" checked={isGlobalForm} onChange={(event) => setIsGlobalForm(event.target.checked)} /><span /> Evento geral (aparece em todas as turmas)</label>}
                 {!repeatWeekly && isGlobalForm ? (
