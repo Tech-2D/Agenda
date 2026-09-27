@@ -4,6 +4,7 @@ export const SUBJECTS = [
   'Matemática 9-Banco de Dados',
   'Estatística',
   'Língua Inglesa',
+  'Educação Física',
   'Engenharia e Qualidade de Software',
   'Língua Portuguesa e suas Literaturas',
   'Biologia 2-ESG-Environment, Social and Governance',
