@@ -1,7 +1,8 @@
 import { type FormEvent, useEffect, useState } from 'react'
 import { BarChart3, Check, LoaderCircle, LockKeyhole, Plus, UserCheck, Vote, X } from 'lucide-react'
 import { FirebaseError } from 'firebase/app'
-import { createUserWithEmailAndPassword, onAuthStateChanged, sendPasswordResetEmail, signInWithEmailAndPassword, signOut, type User } from 'firebase/auth'
+import { createUserWithEmailAndPassword, onAuthStateChanged, signInWithEmailAndPassword, signOut, type User } from 'firebase/auth'
+import { requestPasswordReset } from './passwordReset'
 import { addDoc, collection, doc, onSnapshot, query, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore'
 import { auth, db } from './firebase'
 import { canVoteInClass, countPollVotes, preparePollOptions, type Poll, type PollVote, type PollVoterAccess } from './polls'
@@ -173,7 +174,7 @@ export function PollsDialog({ turmaId, loadAdminProfile, onClose }: Props) {
     setAuthBusy(true)
     setAuthError('')
     try {
-      await sendPasswordResetEmail(auth, email.trim())
+      await requestPasswordReset(email.trim())
       setAuthNotice('Se o e-mail tiver uma conta, você receberá um link para redefinir a senha.')
     } catch {
       setAuthError('Não foi possível enviar o link agora. Tente novamente.')

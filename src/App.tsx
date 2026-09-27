@@ -34,7 +34,8 @@ import {
   Vote,
   X,
 } from 'lucide-react'
-import { createUserWithEmailAndPassword, onAuthStateChanged, sendPasswordResetEmail, signInWithEmailAndPassword, signOut, type User } from 'firebase/auth'
+import { createUserWithEmailAndPassword, onAuthStateChanged, signInWithEmailAndPassword, signOut, type User } from 'firebase/auth'
+import { requestPasswordReset } from './passwordReset'
 import { FirebaseError } from 'firebase/app'
 import {
   addDoc,
@@ -1068,7 +1069,7 @@ function FeedbackDialog({ turmaId, onClose }: { turmaId: string | null; onClose:
     setBusy(true)
     setError('')
     try {
-      await sendPasswordResetEmail(auth, email.trim())
+      await requestPasswordReset(email.trim())
       setAuthNotice('Se o e-mail tiver uma conta, você receberá um link para redefinir a senha.')
     } catch {
       setError('Não foi possível enviar o link agora. Tente novamente.')
@@ -1558,7 +1559,7 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
     setAuthError('')
     setAuthNotice('')
     try {
-      await sendPasswordResetEmail(auth, normalizedEmail)
+      await requestPasswordReset(normalizedEmail)
       setAuthNotice('Se houver uma conta com esse e-mail, você receberá um link para redefinir a senha.')
     } catch {
       setAuthError('Não foi possível enviar o link agora. Tente novamente mais tarde.')
