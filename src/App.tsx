@@ -1070,7 +1070,7 @@ function FeedbackDialog({ turmaId, onClose }: { turmaId: string | null; onClose:
     setError('')
     try {
       await requestPasswordReset(email.trim())
-      setAuthNotice('Se o e-mail tiver uma conta, você receberá um link para redefinir a senha.')
+      setAuthNotice('Se o e-mail tiver uma conta, você receberá um link para redefinir a senha. Confira também a pasta de spam ou lixo eletrônico.')
     } catch {
       setError('Não foi possível enviar o link agora. Tente novamente.')
     } finally {
@@ -1560,7 +1560,7 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
     setAuthNotice('')
     try {
       await requestPasswordReset(normalizedEmail)
-      setAuthNotice('Se houver uma conta com esse e-mail, você receberá um link para redefinir a senha.')
+      setAuthNotice('Se houver uma conta com esse e-mail, você receberá um link para redefinir a senha. Confira também a pasta de spam ou lixo eletrônico.')
     } catch {
       setAuthError('Não foi possível enviar o link agora. Tente novamente mais tarde.')
     } finally {

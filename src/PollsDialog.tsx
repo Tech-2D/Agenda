@@ -175,7 +175,7 @@ export function PollsDialog({ turmaId, loadAdminProfile, onClose }: Props) {
     setAuthError('')
     try {
       await requestPasswordReset(email.trim())
-      setAuthNotice('Se o e-mail tiver uma conta, você receberá um link para redefinir a senha.')
+      setAuthNotice('Se o e-mail tiver uma conta, você receberá um link para redefinir a senha. Confira também a pasta de spam ou lixo eletrônico.')
     } catch {
       setAuthError('Não foi possível enviar o link agora. Tente novamente.')
     } finally {
