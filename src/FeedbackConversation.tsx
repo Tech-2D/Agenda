@@ -3,6 +3,7 @@ import { addDoc, collection, doc, limit, onSnapshot, orderBy, query, serverTimes
 import { Send } from 'lucide-react'
 import { auth, db } from './firebase'
 import type { Feedback } from './types'
+import { isFeedbackCompleted } from './feedbackStatus'
 
 type Message = { id: string; text: string; senderId: string; createdAt: Timestamp | null }
 
@@ -31,7 +32,7 @@ export function FeedbackConversation({ feedback }: { feedback: Feedback }) {
     finally { setBusy(false) }
   }
   return <section className="representatives-chat" aria-label="Conversa privada sobre a melhoria">
-    <header className="chat-heading"><h3>Conversa sobre a melhoria</h3><p>{feedback.message}</p><small>Somente o autor e os administradores podem ler e responder. Não envie senhas.</small></header>
+    <header className="chat-heading"><h3>Conversa sobre a melhoria</h3><span className={`feedback-state${isFeedbackCompleted(feedback) ? ' completed' : ''}`}>{isFeedbackCompleted(feedback) ? 'Concluída' : 'Pendente'}</span><p>{feedback.message}</p><small>Somente o autor e os administradores podem ler e responder. Não envie senhas.</small></header>
     <div className="chat-messages" role="log" aria-live="polite" aria-label="Mensagens da conversa" tabIndex={0}>
       {!ready && !error ? <p>Carregando…</p> : !messages.length ? <p>Ainda não há mensagens. Envie uma pergunta ou mais detalhes sobre a ideia.</p> : messages.map(item => <article key={item.id} className={`chat-message${item.senderId === auth.currentUser?.uid ? ' chat-message-own' : ''}`}>
         <strong>{item.senderId === feedback.createdBy ? 'Autor da sugestão' : 'Administração'}</strong><p>{item.text}</p><time>{item.createdAt?.toDate().toLocaleString('pt-BR') ?? 'Enviando…'}</time>

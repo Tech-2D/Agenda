@@ -88,6 +88,9 @@ export type SuggestionInput = Omit<Suggestion, 'id' | 'status' | 'resolution' | 
 
 export type Feedback = {
   id: string
+  status?: 'pending' | 'completed'
+  completedAt?: { toDate: () => Date } | null
+  completedBy?: string | null
   message: string
   turmaId: string | null
   createdAt: { toDate: () => Date } | null

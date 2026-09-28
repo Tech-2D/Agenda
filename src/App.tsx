@@ -57,6 +57,7 @@ import { auth, db } from './firebase'
 import { CLASS_NAMES } from './classNames'
 import { SUBJECTS } from './subjects'
 import { REPEAT_DAYS, recurrenceLabel, validateCustomRepeat } from './recurrence'
+import { filterFeedback, isFeedbackCompleted, type FeedbackFilter } from './feedbackStatus'
 import { RetentionPanel } from './RetentionPanel'
 import { RepresentativesChat } from './RepresentativesChat'
 import { creditForUpdate, isCreditEligible } from './publicCredit'
@@ -1365,6 +1366,9 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
   const [managedSuggestions, setManagedSuggestions] = useState<Suggestion[]>([])
   const [representativeRequests, setRepresentativeRequests] = useState<RepresentativeRequest[]>([])
   const [feedbackList, setFeedbackList] = useState<Feedback[]>([])
+  const [feedbackFilter, setFeedbackFilter] = useState<FeedbackFilter>('pending')
+  const pendingFeedbackCount = filterFeedback(feedbackList, 'pending').length
+  const visibleFeedback = filterFeedback(feedbackList, feedbackFilter)
   const [conversation, setConversation] = useState<Feedback | null>(null)
   const [announcement, setAnnouncement] = useState<Announcement | null>(null)
   const [announcementDraft, setAnnouncementDraft] = useState('')
@@ -1874,6 +1878,22 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
     }
   }
 
+  async function toggleFeedbackCompleted(item: Feedback) {
+    if (!user || !isSuperAdmin || busy) return
+    const completed = !isFeedbackCompleted(item)
+    setBusy(true)
+    try {
+      await updateDoc(doc(db, 'feedback', item.id), {
+        status: completed ? 'completed' : 'pending',
+        completedAt: completed ? serverTimestamp() : null,
+        completedBy: completed ? user.uid : null,
+      })
+      setNotice(completed ? 'Sugestão marcada como concluída. Ela continua no filtro Concluídas.' : 'Sugestão reaberta e movida para Pendentes.')
+    } catch {
+      setNotice('Não foi possível atualizar a sugestão. Tente novamente.')
+    } finally { setBusy(false) }
+  }
+
   async function discardFeedback(item: Feedback) {
     if (!window.confirm('Remover este comentário da lista?')) return
     try {
@@ -2059,7 +2079,7 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
                       icon: <ShieldCheck size={16} />,
                       tabs: [
                         { id: 'representatives' as const, label: 'Representantes', icon: <Users size={15} />, count: representativeRequests.length },
-                        { id: 'site' as const, label: 'Site', icon: <Globe size={15} />, count: feedbackList.length },
+                        { id: 'site' as const, label: 'Site', icon: <Globe size={15} />, count: pendingFeedbackCount },
                       ],
                     }] : []),
                   ]
@@ -2248,16 +2268,18 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
 
                       <div className="admin-list-heading">
                         <strong>Feedback do site</strong>
-                        {feedbackList.length > 0 && <span className="soon-badge pending">{feedbackList.length}</span>}
+                        <span className="config-hint">{pendingFeedbackCount} pendentes · {feedbackList.length - pendingFeedbackCount} concluídas</span>
                       </div>
-                      {conversation && <><button className="secondary-button" type="button" onClick={() => setConversation(null)}>Fechar conversa</button><FeedbackConversation key={conversation.id} feedback={conversation} /></>}
+                      <label className="feedback-filter">Mostrar sugestões<select value={feedbackFilter} onChange={event => setFeedbackFilter(event.target.value as FeedbackFilter)}><option value="pending">Pendentes</option><option value="completed">Concluídas</option><option value="all">Todas</option></select></label>
+                      {conversation && <><button className="secondary-button" type="button" onClick={() => setConversation(null)}>Fechar conversa</button><FeedbackConversation key={conversation.id} feedback={feedbackList.find(item => item.id === conversation.id) ?? conversation} /></>}
                       <div className="admin-list">
-                        {feedbackList.length === 0 ? <p className="admin-empty">Nenhum comentário recebido.</p> : feedbackList.map((item) => (
+                        {visibleFeedback.length === 0 ? <p className="admin-empty">{feedbackFilter === 'completed' ? 'Nenhuma sugestão concluída.' : feedbackFilter === 'pending' ? 'Nenhuma sugestão pendente.' : 'Nenhum comentário recebido.'}</p> : visibleFeedback.map((item) => (
                           <article key={item.id} className="admin-row compact">
                             <div className="avatar"><MessageSquarePlus /></div>
                             <div className="admin-row-main"><strong>{item.createdByEmail ?? 'Enviado antes da identificação obrigatória'}</strong><span className="feedback-message">{item.message}</span></div>
-                            <div className="admin-row-meta"><span>{item.turmaId ?? 'Geral'}</span><strong>{item.createdAt ? item.createdAt.toDate().toLocaleDateString('pt-BR') : '—'}</strong></div>
+                            <div className="admin-row-meta"><span className={`feedback-state${isFeedbackCompleted(item) ? ' completed' : ''}`}>{isFeedbackCompleted(item) ? 'Concluída' : 'Pendente'}</span><span>{item.turmaId ?? 'Geral'}</span><strong>{item.createdAt ? item.createdAt.toDate().toLocaleDateString('pt-BR') : '—'}</strong>{isFeedbackCompleted(item) && item.completedAt && <span>Concluída em {item.completedAt.toDate().toLocaleDateString('pt-BR')}</span>}</div>
                             <div className="row-actions">
+                              <button type="button" className="feedback-complete-action" disabled={busy} onClick={() => toggleFeedbackCompleted(item)} aria-label={`${isFeedbackCompleted(item) ? 'Reabrir' : 'Marcar como concluída'} sugestão: ${item.message}`}>{isFeedbackCompleted(item) ? 'Reabrir' : <><Check size={16} /> Concluir</>}</button>
                               {item.createdBy ? <button onClick={() => setConversation(item)} aria-label={`Conversar sobre a sugestão de ${item.createdByEmail}`}><MessagesSquare /></button> : <button className="danger" onClick={() => discardFeedback(item)} aria-label="Remover comentário"><Trash2 /></button>}
                             </div>
                           </article>
