@@ -713,3 +713,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 [data-theme="cyberpunk"] .primary-button:hover { filter: brightness(1.15); }
 [data-theme="cyberpunk"] .calendar-day.today .day-number { box-shadow: 0 0 8px var(--neon); }
 [data-theme="cyberpunk"] .activity-chip { border: 1px solid var(--line); }
+.digest-settings form { display: grid; gap: 12px; min-width: 0; }
+.digest-settings label:not(.a11y-toggle) { display: grid; gap: 6px; font-size: 13px; font-weight: 600; }
+.digest-settings input:not([type="checkbox"]), .digest-settings select { width: 100%; min-width: 0; padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); color: var(--text); font: inherit; }
+.digest-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.digest-actions button { flex: 1 1 150px; }
+.digest-account { overflow-wrap: anywhere; }

@@ -37,6 +37,7 @@ import {
 } from 'lucide-react'
 import { createUserWithEmailAndPassword, onAuthStateChanged, signInWithEmailAndPassword, signOut, type User } from 'firebase/auth'
 import { requestPasswordReset } from './passwordReset'
+import { WeeklyDigestSettings } from './WeeklyDigestSettings'
 import { AttachmentLinks } from './AttachmentLinks'
 import { ATTACHMENTS_ENABLED, deleteActivityWithAttachments, formatAttachmentSize, MAX_ATTACHMENTS, removeAttachment, uploadAttachment, validateAttachment } from './attachments'
 import { FirebaseError } from 'firebase/app'
@@ -735,6 +736,7 @@ function ConfigDialog({
           <button className="icon-button" onClick={onClose} aria-label="Fechar"><X /></button>
         </div>
         <div className="config-content">
+          <WeeklyDigestSettings />
           <div className="config-section">
             <h3>Tema</h3>
             <div className="theme-options">
