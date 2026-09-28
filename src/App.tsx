@@ -68,10 +68,10 @@ import { FeedbackConversation, MyFeedbackConversations } from './FeedbackConvers
 import { canEditCalendarActivity } from './calendarPermissions'
 import { activitySaveError } from './activityErrors'
 import { observeCalendarSession } from './calendarSession'
+import { CALENDAR_VIEWS, movePeriod, periodTitle, type CalendarView } from './calendarViews'
+import { PeriodAgenda } from './PeriodAgenda'
 import {
-  MONTH_LABELS,
   WEEKDAY_LABELS,
-  addMonths,
   compareActivities,
   dateKey,
   getMonthMatrix,
@@ -170,7 +170,8 @@ function App() {
   const [globalActivities, setGlobalActivities] = useState<Activity[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
-  const [monthCursor, setMonthCursor] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1))
+  const [monthCursor, setMonthCursor] = useState(() => new Date())
+  const [calendarView, setCalendarView] = useState<CalendarView>('month')
   const [selectedDay, setSelectedDay] = useState<Date | null>(null)
   const [dayPreview, setDayPreview] = useState<{ key: string; day: Date; activities: Activity[]; left: number; top: number; width: number } | null>(null)
   const previewCloseTimer = useRef<number | null>(null)
@@ -448,23 +449,30 @@ function App() {
             )}
           </div>
 
+          <div className="calendar-view-tools">
+          <div className="calendar-view-switch" role="group" aria-label="Visualização da agenda">
+            {CALENDAR_VIEWS.map(view => <button key={view.id} type="button" aria-pressed={calendarView === view.id} onClick={() => { setCalendarView(view.id); setDayPreview(null) }}>{view.label}</button>)}
+          </div>
           <div className="month-nav">
-            <button type="button" onClick={() => setMonthCursor((current) => addMonths(current, -1))} aria-label="Mês anterior"><ChevronLeft /></button>
+            <button type="button" onClick={() => { setDayPreview(null); setMonthCursor((current) => movePeriod(current, calendarView, -1)) }} aria-label={calendarView === 'month' ? 'Mês anterior' : calendarView === 'week' ? 'Semana anterior' : 'Dia anterior'}><ChevronLeft /></button>
             <div className="month-nav-title">
-              <strong>{MONTH_LABELS[monthCursor.getMonth()]} {monthCursor.getFullYear()}</strong>
-              <button type="button" className="today-button" onClick={() => setMonthCursor(new Date(new Date().getFullYear(), new Date().getMonth(), 1))}>Hoje</button>
+              <strong aria-live="polite">{periodTitle(monthCursor, calendarView)}</strong>
+              <button type="button" className="today-button" onClick={() => { setDayPreview(null); setMonthCursor(new Date()) }}>Hoje</button>
             </div>
-            <button type="button" onClick={() => setMonthCursor((current) => addMonths(current, 1))} aria-label="Próximo mês"><ChevronRight /></button>
+            <button type="button" onClick={() => { setDayPreview(null); setMonthCursor((current) => movePeriod(current, calendarView, 1)) }} aria-label={calendarView === 'month' ? 'Próximo mês' : calendarView === 'week' ? 'Próxima semana' : 'Próximo dia'}><ChevronRight /></button>
+          </div>
           </div>
         </div>
 
-        <section className="calendar-section" aria-label="Calendário mensal">
+        <section className="calendar-section" aria-label={calendarView === 'month' ? 'Calendário mensal' : calendarView === 'week' ? 'Calendário semanal' : 'Calendário diário'}>
           {!turmaId ? (
             <div className="state-card"><Calendar /><p>Escolha sua turma para ver a agenda.</p></div>
           ) : loading ? (
             <div className="state-card"><LoaderCircle className="spin" /><p>Consultando a agenda…</p></div>
           ) : loadError ? (
             <div className="state-card error"><DoorOpen /><p>{loadError}</p></div>
+          ) : calendarView !== 'month' ? (
+            <PeriodAgenda cursor={monthCursor} view={calendarView} activitiesByDay={activitiesByDay} profile={calendarProfile} turmaId={turmaId} onAdd={openAdminForDay} onEdit={openCalendarEdit} onOpenDay={setSelectedDay} />
           ) : (
             <div className="calendar-grid">
               <div className="calendar-weekdays">{WEEKDAY_LABELS.map((label) => <span key={label}>{label}</span>)}</div>
