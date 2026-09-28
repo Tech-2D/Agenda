@@ -7,6 +7,7 @@ export const ATTACHMENTS_ENABLED = import.meta.env.VITE_ATTACHMENTS_ENABLED === 
 const API = import.meta.env.VITE_STORAGE_API_URL?.trim() || 'https://tech-2d-auth-email.vercel.app/api/storage'
 const MIME_BY_EXTENSION: Record<string, string> = {
   pdf: 'application/pdf',
+  zip: 'application/zip',
   docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
   jpg: 'image/jpeg',
@@ -18,8 +19,9 @@ const MIME_BY_EXTENSION: Record<string, string> = {
 export function validateAttachment(file: File): string {
   const extension = file.name.split('.').pop()?.toLowerCase() || ''
   const expected = MIME_BY_EXTENSION[extension]
-  if (!expected || !file.name || file.name.length > 180 || /[\\/]/.test(file.name) || Array.from(file.name).some(character => character.charCodeAt(0) < 32)) throw new Error('Escolha um PDF, DOCX, PPTX, JPG, PNG ou WebP.')
-  if (file.type && file.type !== expected) throw new Error('A extensão e o tipo do arquivo não correspondem.')
+  if (!expected || !file.name || file.name.length > 180 || /[\\/]/.test(file.name) || Array.from(file.name).some(character => character.charCodeAt(0) < 32)) throw new Error('Escolha um PDF, DOCX, PPTX, ZIP, JPG, PNG ou WebP.')
+  const zipAlias = extension === 'zip' && ['application/x-zip-compressed', 'application/octet-stream'].includes(file.type)
+  if (file.type && file.type !== expected && !zipAlias) throw new Error('A extensão e o tipo do arquivo não correspondem.')
   if (file.size < 1 || file.size > MAX_ATTACHMENT_BYTES) throw new Error('Cada arquivo deve ter até 10 MB e não pode estar vazio.')
   return expected
 }
