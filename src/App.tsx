@@ -2370,10 +2370,10 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
           </div>
         )}
 
-        {formOpen && (
-          <div className="form-overlay activity-editor-overlay">
+        {formOpen && createPortal(
+          <div className="form-overlay activity-editor-overlay" role="dialog" aria-modal="true" aria-labelledby="activity-editor-title">
             <form className="activity-form activity-editor" onSubmit={saveActivity} aria-label={editing ? 'Editar atividade' : 'Adicionar atividade'}>
-              <div className="form-title"><div><p className="eyebrow dark">ATIVIDADE</p><h3>{editing ? 'Editar atividade' : 'Adicionar atividade'}</h3></div><button type="button" className="icon-button" aria-label="Fechar formulário" onClick={() => quickEditActivity ? onClose() : setFormOpen(false)}><X /></button></div>
+              <div className="form-title"><div><p className="eyebrow dark">ATIVIDADE</p><h3 id="activity-editor-title">{editing ? 'Editar atividade' : 'Adicionar atividade'}</h3></div><button type="button" className="icon-button" aria-label="Fechar formulário" onClick={() => quickEditActivity ? onClose() : setFormOpen(false)}><X /></button></div>
               <div className="activity-editor-scroll" tabIndex={0} role="region" aria-label="Campos da atividade">
               <div className="form-grid">
                 <label className="wide">Título<input required value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} /></label>
@@ -2410,7 +2410,8 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
               </div>
               <div className="form-actions"><button type="button" className="secondary-button" onClick={() => quickEditActivity ? onClose() : setFormOpen(false)}>Cancelar</button><button className="primary-button compact" disabled={busy}>{busy ? <LoaderCircle className="spin" /> : repeatWeekly ? 'Salvar repetição' : 'Salvar atividade'}</button></div>
             </form>
-          </div>
+          </div>,
+          document.body,
         )}
 
         {closingSuggestion && (

@@ -438,9 +438,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .attachment-editor-item small { margin-left: 5px; color: var(--ink-soft); font-weight: 400; }
 .attachment-editor-item button { display: grid; place-items: center; flex: none; border: 0; background: transparent; color: var(--ink-soft); cursor: pointer; }
 .attachment-editor-item button:hover, .attachment-editor-item button:focus-visible { color: #c13737; }
-.attachment-pick { display: inline-flex !important; align-items: center; justify-self: start; gap: 6px !important; margin-top: 3px; padding: 9px 11px; border: 1px solid var(--accent); border-radius: 6px; color: var(--accent); background: var(--paper); cursor: pointer; }
+.attachment-pick { position: relative; display: inline-flex !important; align-items: center; justify-self: start; gap: 6px !important; margin-top: 3px; padding: 9px 11px; border: 1px solid var(--accent); border-radius: 6px; color: var(--accent); background: var(--paper); cursor: pointer; }
 .attachment-pick:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
-.activity-form .attachment-pick input { position: absolute; width: 1px; height: 1px; padding: 0; opacity: 0; }
+.activity-form .attachment-pick input { position: absolute; inset: 0; width: 100%; height: 100%; padding: 0; opacity: 0; cursor: pointer; }
 .wide { grid-column: 1 / -1; }
 .toggle { display: flex !important; grid-template-columns: auto 1fr; align-items: center; gap: 9px !important; cursor: pointer; }
 .toggle input { position: absolute; opacity: 0; width: 1px; }
@@ -451,13 +451,14 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .form-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 25px; padding-top: 20px; border-top: 1px solid var(--line); }
 .activity-form.standalone { width: 100%; min-height: auto; box-shadow: none; padding: 24px 30px 30px; }
 /* The editor has one scroll area; its heading and actions never scroll away. */
-.form-overlay.activity-editor-overlay { position: fixed; min-height: 0; height: 100dvh; overflow: hidden; overscroll-behavior: none; }
-.activity-editor-overlay .activity-editor { display: flex; flex-direction: column; height: 100%; min-height: 0; max-height: 100%; padding: 0; overflow: hidden; }
+.form-overlay.activity-editor-overlay { position: fixed; z-index: 25; min-height: 0; height: 100dvh; padding: 20px; align-items: center; justify-content: center; overflow: hidden; overscroll-behavior: none; background: rgba(9, 20, 48, .55); }
+.activity-editor-overlay .activity-editor { display: flex; flex-direction: column; width: min(720px, 100%); height: min(820px, 100%); min-width: 0; min-height: 0; max-height: 100%; padding: 0; overflow: hidden; border-radius: 10px; box-shadow: var(--shadow); }
 .activity-editor > .form-title { flex: none; margin: 0; padding: 20px 24px; border-bottom: 1px solid var(--line); }
 .activity-editor-scroll { flex: 1 1 0; min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior-y: contain; scrollbar-gutter: stable; padding: 24px; scroll-padding-block: 16px; }
 .activity-editor > .form-actions { position: static; flex: none; margin: 0; padding: 14px 24px max(14px, env(safe-area-inset-bottom)); background: var(--paper); }
 @media (max-width: 600px) {
-  .activity-editor-overlay .activity-editor { min-height: 0; padding: 0; }
+  .form-overlay.activity-editor-overlay { padding: 0; }
+  .activity-editor-overlay .activity-editor { width: 100%; height: 100%; min-height: 0; padding: 0; border-radius: 0; }
   .activity-editor > .form-title { padding: 16px 18px; margin-bottom: 0; }
   .activity-editor-scroll { padding: 20px 18px; }
   .activity-editor > .form-actions { margin: 0; padding: 14px 18px max(14px, env(safe-area-inset-bottom)); }
