@@ -35,7 +35,7 @@ async function request(action: string, payload: Record<string, unknown> = {}, au
     body: JSON.stringify({ action, ...payload }),
   })
   const data = await response.json().catch(() => ({}))
-  if (!response.ok) throw new Error(data.message || 'Não foi possível acessar o anexo. Tente novamente.')
+  if (!response.ok) throw Object.assign(new Error(data.message || 'Não foi possível acessar o anexo. Tente novamente.'), { status: response.status })
   return data
 }
 

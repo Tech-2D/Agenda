@@ -66,6 +66,7 @@ import { RepresentativesChat } from './RepresentativesChat'
 import { creditForUpdate, isCreditEligible } from './publicCredit'
 import { FeedbackConversation, MyFeedbackConversations } from './FeedbackConversation'
 import { canEditCalendarActivity } from './calendarPermissions'
+import { activitySaveError } from './activityErrors'
 import {
   MONTH_LABELS,
   WEEKDAY_LABELS,
@@ -1774,6 +1775,13 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
 
   async function saveActivity(event: FormEvent) {
     event.preventDefault()
+    if (!user || auth.currentUser?.uid !== user.uid) { setSaveError('Sessão não autorizada: entre novamente na sua conta antes de salvar.'); return }
+    if (!profile || (!isGlobalForm && !canCreateForSelectedClass(profile, managedTurma))) {
+      setSaveError('Falta de permissão: você não tem acesso para salvar atividades nesta turma. Peça ao administrador para conferir seu cadastro.'); return
+    }
+    if (!form.title.trim() || form.title.length > 120 || form.description.length > 2000) {
+      setSaveError('Confira os dados: o título é obrigatório e deve ter até 120 caracteres; a descrição pode ter até 2.000 caracteres.'); return
+    }
     if (repeatWeekly && selectedFiles.length) { setSaveError('Anexos são adicionados a atividades individuais, não a repetições.'); return }
     if (isGlobalForm && !isSuperAdmin && selectedFiles.length) { setSaveError('Apenas administradores podem anexar arquivos a eventos gerais.'); return }
     if (repeatWeekly && repeatCustom && !editing) {
@@ -1786,6 +1794,7 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
     }
     setBusy(true)
     setSaveError('')
+    let savingAttachments = false
     try {
       const payload = { ...form, subject: form.subject ?? null, time: hasTime ? form.time : null, turmaId: isGlobalForm ? null : managedTurma }
       let activityId = editing?.id
@@ -1823,6 +1832,7 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
         setNotice(isGlobalForm ? 'Evento geral adicionado.' : 'Atividade adicionada.')
       }
       if (activityId && selectedFiles.length) {
+        savingAttachments = true
         for (let index = 0; index < selectedFiles.length; index += 1) {
           const attachment = await uploadAttachment(activityId, selectedFiles[index])
           setEditorAttachments(current => [...current, attachment])
@@ -1834,7 +1844,7 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
       if ((quickCreateActive && !editing) || quickEditActivity) onClose()
       else window.setTimeout(() => setNotice(''), 2800)
     } catch (error) {
-      setSaveError(`${error instanceof Error ? error.message : 'Não foi possível salvar a atividade.'} Se a atividade já foi criada, tente enviar o anexo novamente aqui.`)
+      setSaveError(activitySaveError(error, savingAttachments))
     } finally {
       setBusy(false)
     }
@@ -2406,7 +2416,7 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
                 {editorAttachments.length + selectedFiles.length < MAX_ATTACHMENTS && (!isGlobalForm || isSuperAdmin) && <label className="attachment-pick"><Plus size={16} /> Escolher arquivos<input type="file" multiple accept=".pdf,.docx,.pptx,.zip,.jpg,.jpeg,.png,.webp" onChange={event => { selectAttachments(event.target.files); event.target.value = '' }} /></label>}
                 {isGlobalForm && !isSuperAdmin && <p>Arquivos em eventos gerais só podem ser incluídos por administradores.</p>}
               </section>}
-              {saveError && <p className="form-error">{saveError}</p>}
+              {saveError && <p className="form-error" role="alert">{saveError}</p>}
               </div>
               <div className="form-actions"><button type="button" className="secondary-button" onClick={() => quickEditActivity ? onClose() : setFormOpen(false)}>Cancelar</button><button className="primary-button compact" disabled={busy}>{busy ? <LoaderCircle className="spin" /> : repeatWeekly ? 'Salvar repetição' : 'Salvar atividade'}</button></div>
             </form>
