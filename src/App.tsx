@@ -68,10 +68,11 @@ import { creditForUpdate, isCreditEligible } from './publicCredit'
 import { FeedbackConversation, MyFeedbackConversations } from './FeedbackConversation'
 import { canEditCalendarActivity } from './calendarPermissions'
 import { activitySaveError } from './activityErrors'
+import { observeCalendarSession } from './calendarSession'
+import { CALENDAR_VIEWS, movePeriod, periodTitle, type CalendarView } from './calendarViews'
+import { PeriodAgenda } from './PeriodAgenda'
 import {
-  MONTH_LABELS,
   WEEKDAY_LABELS,
-  addMonths,
   compareActivities,
   dateKey,
   getMonthMatrix,
@@ -173,7 +174,8 @@ function App() {
   const [globalActivities, setGlobalActivities] = useState<Activity[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
-  const [monthCursor, setMonthCursor] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1))
+  const [monthCursor, setMonthCursor] = useState(() => new Date())
+  const [calendarView, setCalendarView] = useState<CalendarView>('month')
   const [selectedDay, setSelectedDay] = useState<Date | null>(null)
   const [dayPreview, setDayPreview] = useState<{ key: string; day: Date; activities: Activity[]; left: number; top: number; width: number } | null>(null)
   const previewCloseTimer = useRef<number | null>(null)
@@ -211,18 +213,12 @@ function App() {
   }
 
   useEffect(() => {
-    let stopProfile = () => {}
-    const stopAuth = onAuthStateChanged(auth, (account) => {
-      stopProfile()
-      setCalendarProfile(null)
-      setCalendarUser(account)
-      if (!account) return
-      stopProfile = onSnapshot(doc(db, 'admins', account.uid), (snapshot) => {
-        const value = snapshot.data() as AdminProfile | undefined
-        setCalendarProfile(value && ['representante', 'superadmin'].includes(value.role) ? value : null)
-      }, () => setCalendarProfile(null))
+    return observeCalendarSession({
+      subscribeAccount: change => onAuthStateChanged(auth, account => { setCalendarUser(account); change(account?.uid ?? null) }),
+      subscribeProfile: (uid, change, error) => onSnapshot(doc(db, 'admins', uid), snapshot => change(snapshot.data() as AdminProfile ?? null), error),
+      publish: setCalendarProfile,
+      reset: () => { setQuickCreateDate(null); setQuickEditActivity(null) },
     })
-    return () => { stopAuth(); stopProfile() }
   }, [])
 
   function setNeon(value: NeonColor) {
@@ -391,6 +387,7 @@ function App() {
   }
 
   const openAdminForDay = (day: Date) => {
+    if (!canCreateForSelectedClass(calendarProfile, turmaId)) return
     setQuickEditActivity(null)
     setQuickCreateDate(dateKey(day))
     openAdmin()
@@ -452,13 +449,18 @@ function App() {
           </div>
 
           <div className="agenda-controls">
+          <div className="calendar-view-tools">
+          <div className="calendar-view-switch" role="group" aria-label="Visualização da agenda">
+            {CALENDAR_VIEWS.map(view => <button key={view.id} type="button" aria-pressed={calendarView === view.id} onClick={() => { setCalendarView(view.id); setDayPreview(null) }}>{view.label}</button>)}
+          </div>
           <div className="month-nav">
-            <button type="button" onClick={() => setMonthCursor((current) => addMonths(current, -1))} aria-label="Mês anterior"><ChevronLeft /></button>
+            <button type="button" onClick={() => { setDayPreview(null); setMonthCursor((current) => movePeriod(current, calendarView, -1)) }} aria-label={calendarView === 'month' ? 'Mês anterior' : calendarView === 'week' ? 'Semana anterior' : 'Dia anterior'}><ChevronLeft /></button>
             <div className="month-nav-title">
-              <strong>{MONTH_LABELS[monthCursor.getMonth()]} {monthCursor.getFullYear()}</strong>
-              <button type="button" className="today-button" onClick={() => setMonthCursor(new Date(new Date().getFullYear(), new Date().getMonth(), 1))}>Hoje</button>
+              <strong aria-live="polite">{periodTitle(monthCursor, calendarView)}</strong>
+              <button type="button" className="today-button" onClick={() => { setDayPreview(null); setMonthCursor(new Date()) }}>Hoje</button>
             </div>
-            <button type="button" onClick={() => setMonthCursor((current) => addMonths(current, 1))} aria-label="Próximo mês"><ChevronRight /></button>
+            <button type="button" onClick={() => { setDayPreview(null); setMonthCursor((current) => movePeriod(current, calendarView, 1)) }} aria-label={calendarView === 'month' ? 'Próximo mês' : calendarView === 'week' ? 'Próxima semana' : 'Próximo dia'}><ChevronRight /></button>
+          </div>
           </div>
 
           {turmaId && (
@@ -480,13 +482,15 @@ function App() {
 
         {turmaId && <NoticeStrip notices={visibleNotices} onOpenBoard={() => setNoticesOpen(true)} />}
 
-        <section className="calendar-section" aria-label="Calendário mensal">
+        <section className="calendar-section" aria-label={calendarView === 'month' ? 'Calendário mensal' : calendarView === 'week' ? 'Calendário semanal' : 'Calendário diário'}>
           {!turmaId ? (
             <div className="state-card"><Calendar /><p>Escolha sua turma para ver a agenda.</p></div>
           ) : loading ? (
             <div className="state-card"><LoaderCircle className="spin" /><p>Consultando a agenda…</p></div>
           ) : loadError ? (
             <div className="state-card error"><DoorOpen /><p>{loadError}</p></div>
+          ) : calendarView !== 'month' ? (
+            <PeriodAgenda cursor={monthCursor} view={calendarView} activitiesByDay={activitiesByDay} profile={calendarProfile} turmaId={turmaId} onAdd={openAdminForDay} onEdit={openCalendarEdit} onOpenDay={setSelectedDay} />
           ) : (
             <div className="calendar-grid">
               <div className="calendar-weekdays">{WEEKDAY_LABELS.map((label) => <span key={label}>{label}</span>)}</div>
@@ -559,7 +563,7 @@ function App() {
       )}
 
       {selectedDay && (
-        <DayDetail day={selectedDay} activities={activitiesByDay.get(dateKey(selectedDay)) ?? []} profile={calendarProfile} onEditActivity={openCalendarEdit} onAddActivity={() => openAdminForDay(selectedDay)} onClose={() => setSelectedDay(null)} />
+        <DayDetail day={selectedDay} activities={activitiesByDay.get(dateKey(selectedDay)) ?? []} profile={calendarProfile} canAdd={canCreateForSelectedClass(calendarProfile, turmaId)} onEditActivity={openCalendarEdit} onAddActivity={() => openAdminForDay(selectedDay)} onClose={() => setSelectedDay(null)} />
       )}
 
       {!turmaId && <TurmaPickerModal onChoose={chooseTurma} />}
@@ -1337,7 +1341,7 @@ function NotificationsDialog({ activities, onClose }: { activities: Activity[]; 
   )
 }
 
-function DayDetail({ day, activities, profile, onEditActivity, onAddActivity, onClose }: { day: Date; activities: Activity[]; profile: AdminProfile | null; onEditActivity: (activity: Activity) => void; onAddActivity: () => void; onClose: () => void }) {
+function DayDetail({ day, activities, profile, canAdd, onEditActivity, onAddActivity, onClose }: { day: Date; activities: Activity[]; profile: AdminProfile | null; canAdd: boolean; onEditActivity: (activity: Activity) => void; onAddActivity: () => void; onClose: () => void }) {
   return (
     <div className="modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
       <section className="day-dialog" role="dialog" aria-modal="true" aria-labelledby="day-title">
@@ -1345,10 +1349,10 @@ function DayDetail({ day, activities, profile, onEditActivity, onAddActivity, on
           <h2 id="day-title">{day.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}</h2>
           <button className="icon-button" onClick={onClose} aria-label="Fechar"><X /></button>
         </div>
-        <div className="day-create-bar">
+        {canAdd && <div className="day-create-bar">
           <span>Cadastro para representantes</span>
           <button type="button" className="secondary-button" onClick={onAddActivity}><Plus size={17} /> Cadastrar atividade</button>
-        </div>
+        </div>}
         <div className="day-dialog-list">
           {activities.length === 0 && <p className="day-empty">Ainda não há atividades para esta data.</p>}
           {activities.map((activity) => (
@@ -1457,6 +1461,18 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
       const currentRequest = ++requestId
       setUser(currentUser)
       setProfile(null)
+      setFormOpen(false)
+      setEditing(null)
+      setSelectedFiles([])
+      setEditorAttachments([])
+      setClosingSuggestion(null)
+      setConversation(null)
+      setNotice('')
+      setSaveError('')
+      setManagedActivities([])
+      setGlobalActivities([])
+      setManagedSuggestions([])
+      setRecurrences([])
       setAccessError('')
       setAuthChecked(!currentUser)
       if (!currentUser) return
@@ -2413,7 +2429,7 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
           </div>
         )}
 
-        {formOpen && createPortal(
+      {formOpen && authChecked && profile && user?.uid === auth.currentUser?.uid && createPortal(
           <div className="form-overlay activity-editor-overlay" role="dialog" aria-modal="true" aria-labelledby="activity-editor-title">
             <form className="activity-form activity-editor" onSubmit={saveActivity} aria-label={editing ? 'Editar atividade' : 'Adicionar atividade'}>
               <div className="form-title"><div><p className="eyebrow dark">ATIVIDADE</p><h3 id="activity-editor-title">{editing ? 'Editar atividade' : 'Adicionar atividade'}</h3></div><button type="button" className="icon-button" aria-label="Fechar formulário" onClick={() => quickEditActivity ? onClose() : setFormOpen(false)}><X /></button></div>

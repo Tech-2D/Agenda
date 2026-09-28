@@ -116,6 +116,52 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .today-button { border: 1px solid var(--line); border-radius: 6px; background: var(--paper); padding: 5px 10px; font-size: 10px; font-weight: 800; cursor: pointer; color: var(--ink-soft); }
 .today-button:hover { background: var(--surface-alt); }
 
+.calendar-view-tools { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+.calendar-view-switch { display: flex; padding: 3px; gap: 3px; background: var(--surface-alt); border: 1px solid var(--line); border-radius: 8px; }
+.calendar-view-switch button { padding: 7px 12px; border: 0; border-radius: 5px; background: transparent; color: var(--ink-soft); font-size: 12px; font-weight: 700; cursor: pointer; }
+.calendar-view-switch button[aria-pressed="true"] { color: var(--accent-contrast); background: var(--accent); }
+.period-agenda { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); align-items: start; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); box-shadow: var(--shadow); overflow: hidden; }
+.period-agenda.day { grid-template-columns: minmax(0, 1fr); }
+.period-day { min-width: 0; min-height: 240px; border-right: 1px solid var(--line); }
+.period-day:last-child { border-right: 0; }
+.period-day-heading { display: flex; justify-content: space-between; align-items: center; gap: 4px; min-height: 68px; padding: 10px 8px; background: var(--surface-alt); border-bottom: 1px solid var(--line); }
+.period-day.today .period-day-heading { box-shadow: inset 0 3px var(--accent); }
+.period-day-heading .icon-button { width: 28px; height: 28px; flex-shrink: 0; }
+.period-day-date { display: flex; flex-wrap: wrap; align-items: baseline; gap: 5px; border: 0; background: transparent; color: var(--ink); cursor: pointer; padding: 0; text-align: left; }
+.period-day-date span { width: 100%; color: var(--ink-soft); text-transform: uppercase; font-size: 10px; font-weight: 700; }
+.period-day-date strong { font-size: 16px; }
+.period-day-date small { color: var(--accent); font-size: 10px; }
+.period-tasks { display: grid; gap: 10px; padding: 10px 7px; }
+.period-task { min-width: 0; border: 1px solid var(--line); border-left-width: 3px; border-radius: 6px; padding: 9px; background: var(--surface-alt); overflow-wrap: anywhere; }
+.period-task-meta { display: flex; flex-wrap: wrap; gap: 3px 8px; justify-content: space-between; color: var(--ink-soft); font-size: 10px; }
+.period-task h2 { color: var(--ink); font-size: 13px; margin: 8px 0 5px; line-height: 1.45; }
+.period-task .activity-subject { font-size: 11px; margin: 4px 0; }
+.period-task-description { font-size: 12px; line-height: 1.55; white-space: pre-wrap; margin: 6px 0; }
+.period-empty { font-size: 12px; color: var(--ink-soft); margin: 8px 0; }
+.period-edit { display: inline-flex; gap: 5px; align-items: center; padding: 6px 0 0; background: transparent; border: 0; color: var(--accent); font-size: 11px; font-weight: 700; cursor: pointer; }
+.period-agenda.day .period-day { min-height: 0; }
+.period-agenda.day .period-tasks { padding: 16px; gap: 14px; }
+.period-agenda.day .period-task { padding: 16px; }
+.period-agenda.day .period-task h2 { font-size: 17px; }
+.period-agenda.day .period-task-description { font-size: 14px; }
+.period-agenda.day .period-task-meta, .period-agenda.day .activity-subject { font-size: 12px; }
+@media (max-width: 800px) {
+  .period-agenda.week { grid-template-columns: minmax(0, 1fr); }
+  .period-agenda.week .period-day { min-height: 0; border-right: 0; border-bottom: 1px solid var(--line); }
+  .period-agenda.week .period-day:last-child { border-bottom: 0; }
+  .period-agenda.week .period-day-heading { min-height: 50px; padding: 10px 14px; }
+  .period-agenda.week .period-day-date span { width: auto; }
+  .period-agenda.week .period-tasks { padding: 12px; }
+  .calendar-view-tools { width: 100%; }
+  .calendar-view-tools .month-nav { flex: 1; }
+  .calendar-view-tools .month-nav-title { flex: 1; flex-wrap: wrap; justify-content: center; }
+  .calendar-view-tools .month-nav-title strong { min-width: 0; font-size: 12px; }
+}
+@media (max-width: 600px) {
+  .calendar-view-tools { gap: 10px; }
+  .calendar-view-tools .month-nav { flex: 0 0 100%; width: 100%; }
+}
+
 .state-card { min-height: 210px; display: flex; align-items: center; justify-content: center; gap: 12px; border-radius: 10px; background: var(--paper); border: 1px solid var(--line); box-shadow: var(--shadow); color: var(--ink-soft); }
 .state-card.error { color: #d16651; border-color: #efb8ab; }
 .spin { animation: spin 1s linear infinite; }
