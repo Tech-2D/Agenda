@@ -170,6 +170,7 @@ service cloud.firestore {
       allow read: if true;
 
       allow create: if isValidActivity(request.resource.data)
+        && !request.resource.data.keys().hasAny(['attachments'])
         && canCreateActivity(request.resource.data);
 
       // Precisa poder gerenciar a turma/escopo ATUAL (antes da edição) e também
@@ -177,9 +178,12 @@ service cloud.firestore {
       // mas sem burlar quem pode criar/gerenciar cada tipo.
       allow update: if canEditCalendarActivity(resource.data)
         && canEditCalendarActivity(request.resource.data)
-        && isValidActivity(request.resource.data);
+        && isValidActivity(request.resource.data)
+        && request.resource.data.get('attachments', []) == resource.data.get('attachments', []);
 
-      allow delete: if canManageActivity(resource.data);
+      // Atividades com anexos passam pela API, que remove os objetos do R2 primeiro.
+      allow delete: if canManageActivity(resource.data)
+        && resource.data.get('attachments', []).size() == 0;
     }
 
     // Modelos semanais; o cron com Admin SDK cria/remove ocorrências em activities.

@@ -25,6 +25,7 @@ import {
   MessageSquarePlus,
   MessagesSquare,
   Plus,
+  Paperclip,
   Repeat,
   Settings,
   ShieldCheck,
@@ -36,6 +37,8 @@ import {
 } from 'lucide-react'
 import { createUserWithEmailAndPassword, onAuthStateChanged, signInWithEmailAndPassword, signOut, type User } from 'firebase/auth'
 import { requestPasswordReset } from './passwordReset'
+import { AttachmentLinks } from './AttachmentLinks'
+import { ATTACHMENTS_ENABLED, deleteActivityWithAttachments, formatAttachmentSize, MAX_ATTACHMENTS, removeAttachment, uploadAttachment, validateAttachment } from './attachments'
 import { FirebaseError } from 'firebase/app'
 import {
   addDoc,
@@ -79,6 +82,7 @@ import {
   ACTIVITY_TYPE_LABELS,
   SUGGESTION_STATUS_LABELS,
   type Activity,
+  type ActivityAttachment,
   type ActivityInput,
   type ActivityType,
   type AdminProfile,
@@ -524,6 +528,7 @@ function App() {
                 <strong>{activity.title}</strong>
                 {activity.subject && <span className="preview-subject">{activity.subject}</span>}
                 {activity.description && <p>{activity.description}</p>}
+                {ATTACHMENTS_ENABLED && <AttachmentLinks activityId={activity.id} attachments={activity.attachments} />}
                 {activity.createdByEmail && <span className="preview-author">Publicado por {activity.createdByEmail}</span>}
               </div>
             ))}
@@ -1324,6 +1329,7 @@ function DayDetail({ day, activities, profile, onEditActivity, onAddActivity, on
               <h3>{activity.title}</h3>
               {activity.subject && <p className="activity-subject">{activity.subject}</p>}
               {activity.description && <p>{activity.description}</p>}
+              {ATTACHMENTS_ENABLED && <AttachmentLinks activityId={activity.id} attachments={activity.attachments} />}
               {activity.createdByEmail && <p className="activity-author">Publicado por {activity.createdByEmail}</p>}
               {canEditCalendarActivity(profile, activity) && <button type="button" className="secondary-button" onClick={() => onEditActivity(activity)} aria-label={`Editar ${activity.title}`}><Edit3 size={16} /> Editar atividade</button>}
             </article>
@@ -1392,6 +1398,8 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
   const [quickCreateActive, setQuickCreateActive] = useState(false)
   const [editing, setEditing] = useState<Activity | null>(null)
   const [form, setForm] = useState(emptyForm)
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([])
+  const [editorAttachments, setEditorAttachments] = useState<ActivityAttachment[]>([])
   const [isGlobalForm, setIsGlobalForm] = useState(false)
   const [hasTime, setHasTime] = useState(false)
   const [saveError, setSaveError] = useState('')
@@ -1449,6 +1457,8 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
     setAdminTab('activities')
     setEditing(null)
     setForm({ ...emptyForm, date: quickCreateDate })
+    setSelectedFiles([])
+    setEditorAttachments([])
     setIsGlobalForm(false)
     setHasTime(false)
     setRepeatWeekly(false)
@@ -1465,6 +1475,8 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
     setAdminTab('activities')
     setEditing(activity)
     setForm({ title: activity.title, description: activity.description, type: activity.type, subject: activity.subject ?? null, date: activity.date, time: activity.time })
+    setSelectedFiles([])
+    setEditorAttachments(activity.attachments ?? [])
     setIsGlobalForm(activity.turmaId === null)
     setHasTime(Boolean(activity.time))
     setRepeatWeekly(false)
@@ -1712,6 +1724,8 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
   function startCreate() {
     setEditing(null)
     setForm({ ...emptyForm, date: dateKey(new Date()) })
+    setSelectedFiles([])
+    setEditorAttachments([])
     setIsGlobalForm(false)
     setHasTime(false)
     setRepeatWeekly(false)
@@ -1725,6 +1739,8 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
     if (!canEditCalendarActivity(profile, activity)) return
     setEditing(activity)
     setForm({ title: activity.title, description: activity.description, type: activity.type, subject: activity.subject ?? null, date: activity.date, time: activity.time })
+    setSelectedFiles([])
+    setEditorAttachments(activity.attachments ?? [])
     setIsGlobalForm(activity.turmaId === null)
     setHasTime(Boolean(activity.time))
     setRepeatWeekly(false)
@@ -1734,8 +1750,32 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
     setFormOpen(true)
   }
 
+  function selectAttachments(files: FileList | null) {
+    if (!files?.length) return
+    try {
+      const added = Array.from(files)
+      added.forEach(validateAttachment)
+      if (editorAttachments.length + selectedFiles.length + added.length > MAX_ATTACHMENTS) throw new Error('Cada atividade pode ter até cinco anexos.')
+      setSelectedFiles(current => [...current, ...added])
+      setSaveError('')
+    } catch (error) { setSaveError(error instanceof Error ? error.message : 'Arquivo inválido.') }
+  }
+
+  async function removeExistingAttachment(attachmentId: string) {
+    if (!editing || !window.confirm('Remover este anexo da atividade?')) return
+    setBusy(true)
+    setSaveError('')
+    try {
+      await removeAttachment(editing.id, attachmentId)
+      setEditorAttachments(current => current.filter(item => item.id !== attachmentId))
+    } catch (error) { setSaveError(error instanceof Error ? error.message : 'Não foi possível remover o anexo.') }
+    finally { setBusy(false) }
+  }
+
   async function saveActivity(event: FormEvent) {
     event.preventDefault()
+    if (repeatWeekly && selectedFiles.length) { setSaveError('Anexos são adicionados a atividades individuais, não a repetições.'); return }
+    if (isGlobalForm && !isSuperAdmin && selectedFiles.length) { setSaveError('Apenas administradores podem anexar arquivos a eventos gerais.'); return }
     if (repeatWeekly && repeatCustom && !editing) {
       const validation = validateCustomRepeat(form.date, repeatEndDate, repeatDays, repeatInterval)
       if (validation) { setSaveError(validation); return }
@@ -1748,6 +1788,7 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
     setSaveError('')
     try {
       const payload = { ...form, subject: form.subject ?? null, time: hasTime ? form.time : null, turmaId: isGlobalForm ? null : managedTurma }
+      let activityId = editing?.id
       if (repeatWeekly && !editing) {
         await addDoc(collection(db, 'recurringActivities'), {
           title: form.title.trim(),
@@ -1770,20 +1811,30 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
         await updateDoc(doc(db, 'activities', editing.id), { ...payload, updatedAt: serverTimestamp() })
         setNotice('Atividade atualizada.')
       } else {
-        await addDoc(collection(db, 'activities'), {
+        const created = await addDoc(collection(db, 'activities'), {
           ...payload,
           createdBy: user?.uid,
           createdByEmail: user?.email ?? null,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
         })
+        activityId = created.id
+        setEditing({ id: created.id, ...payload, attachments: [] })
         setNotice(isGlobalForm ? 'Evento geral adicionado.' : 'Atividade adicionada.')
+      }
+      if (activityId && selectedFiles.length) {
+        for (let index = 0; index < selectedFiles.length; index += 1) {
+          const attachment = await uploadAttachment(activityId, selectedFiles[index])
+          setEditorAttachments(current => [...current, attachment])
+          setSelectedFiles(selectedFiles.slice(index + 1))
+        }
+        setNotice('Atividade e anexos salvos.')
       }
       setFormOpen(false)
       if ((quickCreateActive && !editing) || quickEditActivity) onClose()
       else window.setTimeout(() => setNotice(''), 2800)
     } catch (error) {
-      setSaveError(error instanceof Error ? error.message : 'Não foi possível salvar a atividade.')
+      setSaveError(`${error instanceof Error ? error.message : 'Não foi possível salvar a atividade.'} Se a atividade já foi criada, tente enviar o anexo novamente aqui.`)
     } finally {
       setBusy(false)
     }
@@ -1806,7 +1857,8 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
   async function removeActivity(activity: Activity) {
     if (!window.confirm(`Excluir "${activity.title}"?`)) return
     try {
-      await deleteDoc(doc(db, 'activities', activity.id))
+      if (activity.attachments?.length) await deleteActivityWithAttachments(activity.id)
+      else await deleteDoc(doc(db, 'activities', activity.id))
       setNotice('Atividade excluída.')
       window.setTimeout(() => setNotice(''), 2800)
     } catch {
@@ -2328,7 +2380,7 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
                 <label>Tipo<select value={form.type} onChange={(event) => setForm({ ...form, type: event.target.value as ActivityType })}>{ACTIVITY_TYPES.map((type) => <option value={type} key={type}>{ACTIVITY_TYPE_LABELS[type]}</option>)}</select></label>
                 <label className="wide">Matéria<select value={form.subject ?? ''} onChange={(event) => setForm({ ...form, subject: event.target.value || null })}><option value="">Sem matéria específica</option>{SUBJECTS.map((subject) => <option value={subject} key={subject}>{subject}</option>)}</select></label>
                 <label>Data<input required type="date" value={form.date} onChange={(event) => setForm({ ...form, date: event.target.value })} /></label>
-                {!editing && <label className="wide">Repetição<select value={!repeatWeekly ? 'none' : repeatCustom ? 'custom' : 'weekly'} onChange={event => { setRepeatWeekly(event.target.value !== 'none'); setRepeatCustom(event.target.value === 'custom'); setRepeatDays([new Date(`${form.date}T12:00:00`).getDay()]); setRepeatInterval(1); if (event.target.value !== 'none') setIsGlobalForm(false) }}><option value="none">Não se repete</option><option value="weekly">Toda semana, no mesmo dia</option><option value="custom">Personalizada…</option></select></label>}
+                {!editing && <label className="wide">Repetição<select value={!repeatWeekly ? 'none' : repeatCustom ? 'custom' : 'weekly'} onChange={event => { setRepeatWeekly(event.target.value !== 'none'); setRepeatCustom(event.target.value === 'custom'); setRepeatDays([new Date(`${form.date}T12:00:00`).getDay()]); setRepeatInterval(1); if (event.target.value !== 'none') { setIsGlobalForm(false); setSelectedFiles([]) } }}><option value="none">Não se repete</option><option value="weekly">Toda semana, no mesmo dia</option><option value="custom">Personalizada…</option></select></label>}
                 {repeatWeekly && <>
                   <p className="config-hint wide">{repeatCustom ? 'A data acima inicia o período. A atividade aparecerá somente nos dias escolhidos, até a data final inclusive. As semanas são contadas de segunda a domingo.' : 'A data acima será a primeira ocorrência. A tarefa aparecerá no mesmo dia da semana nas semanas seguintes.'}</p>
                   {repeatCustom && <>
@@ -2347,6 +2399,13 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
                 {hasTime && <label>Horário<input required type="time" value={form.time ?? ''} onChange={(event) => setForm({ ...form, time: event.target.value })} /></label>}
                 <label className="wide">Descrição<textarea rows={3} value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} placeholder="Detalhes, capítulos, critérios de entrega…" /></label>
               </div>
+              {ATTACHMENTS_ENABLED && !repeatWeekly && <section className="attachment-editor" aria-labelledby="attachment-editor-title">
+                <div className="attachment-editor-heading"><Paperclip size={17} /><div><strong id="attachment-editor-title">Anexos</strong><span>Até 5 arquivos · 10 MB cada · PDF, Word, PowerPoint ou imagem</span></div></div>
+                {editorAttachments.map(item => <div className="attachment-editor-item" key={item.id}><span>{item.name} <small>{formatAttachmentSize(item.size)}</small></span><button type="button" disabled={busy} onClick={() => removeExistingAttachment(item.id)} aria-label={`Remover ${item.name}`}><Trash2 size={16} /></button></div>)}
+                {selectedFiles.map((file, index) => <div className="attachment-editor-item pending" key={`${file.name}-${index}`}><span>{file.name} <small>{formatAttachmentSize(file.size)} · aguardando envio</small></span><button type="button" disabled={busy} onClick={() => setSelectedFiles(current => current.filter((_, position) => position !== index))} aria-label={`Remover ${file.name} da seleção`}><X size={16} /></button></div>)}
+                {editorAttachments.length + selectedFiles.length < MAX_ATTACHMENTS && (!isGlobalForm || isSuperAdmin) && <label className="attachment-pick"><Plus size={16} /> Escolher arquivos<input type="file" multiple accept=".pdf,.docx,.pptx,.jpg,.jpeg,.png,.webp" onChange={event => { selectAttachments(event.target.files); event.target.value = '' }} /></label>}
+                {isGlobalForm && !isSuperAdmin && <p>Arquivos em eventos gerais só podem ser incluídos por administradores.</p>}
+              </section>}
               {saveError && <p className="form-error">{saveError}</p>}
               </div>
               <div className="form-actions"><button type="button" className="secondary-button" onClick={() => quickEditActivity ? onClose() : setFormOpen(false)}>Cancelar</button><button className="primary-button compact" disabled={busy}>{busy ? <LoaderCircle className="spin" /> : repeatWeekly ? 'Salvar repetição' : 'Salvar atividade'}</button></div>

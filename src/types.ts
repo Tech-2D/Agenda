@@ -17,6 +17,15 @@ export const ACTIVITY_TYPE_COLORS: Record<ActivityType, string> = {
   evento: '#b23ec2',
 }
 
+export type ActivityAttachment = {
+  id: string
+  name: string
+  contentType: string
+  size: number
+  storagePath: string
+  uploadedAt: string
+}
+
 export type Activity = {
   id: string
   title: string
@@ -29,6 +38,7 @@ export type Activity = {
   createdBy?: string | null
   createdByEmail?: string | null
   recurringId?: string
+  attachments?: ActivityAttachment[]
   createdAt?: { toDate: () => Date } | null
   updatedAt?: { toDate: () => Date } | null
 }
