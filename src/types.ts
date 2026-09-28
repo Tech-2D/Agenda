@@ -17,6 +17,15 @@ export const ACTIVITY_TYPE_COLORS: Record<ActivityType, string> = {
   evento: '#b23ec2',
 }
 
+export type ActivityAttachment = {
+  id: string
+  name: string
+  contentType: string
+  size: number
+  storagePath: string
+  uploadedAt: string
+}
+
 export type Activity = {
   id: string
   title: string
@@ -29,6 +38,7 @@ export type Activity = {
   createdBy?: string | null
   createdByEmail?: string | null
   recurringId?: string
+  attachments?: ActivityAttachment[]
   createdAt?: { toDate: () => Date } | null
   updatedAt?: { toDate: () => Date } | null
 }
@@ -44,6 +54,8 @@ export type RecurringActivity = {
   time: string | null
   turmaId: string
   startDate: string
+  weekdays?: number[]
+  intervalWeeks?: number
   endDate: string | null
   active: boolean
   createdBy: string
@@ -86,11 +98,16 @@ export type SuggestionInput = Omit<Suggestion, 'id' | 'status' | 'resolution' | 
 
 export type Feedback = {
   id: string
+  status?: 'pending' | 'completed'
+  completedAt?: { toDate: () => Date } | null
+  completedBy?: string | null
   message: string
   turmaId: string | null
   createdAt: { toDate: () => Date } | null
   createdBy?: string
   createdByEmail?: string
+  publicCreditAllowed?: boolean
+  publicCreditName?: string
 }
 
 export type Announcement = {

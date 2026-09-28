@@ -25,6 +25,7 @@ import {
   MessageSquarePlus,
   MessagesSquare,
   Plus,
+  Paperclip,
   Repeat,
   Settings,
   ShieldCheck,
@@ -35,7 +36,10 @@ import {
   Vote,
   X,
 } from 'lucide-react'
-import { createUserWithEmailAndPassword, onAuthStateChanged, sendPasswordResetEmail, signInWithEmailAndPassword, signOut, type User } from 'firebase/auth'
+import { createUserWithEmailAndPassword, onAuthStateChanged, signInWithEmailAndPassword, signOut, type User } from 'firebase/auth'
+import { requestPasswordReset } from './passwordReset'
+import { AttachmentLinks } from './AttachmentLinks'
+import { ATTACHMENTS_ENABLED, deleteActivityWithAttachments, formatAttachmentSize, MAX_ATTACHMENTS, removeAttachment, uploadAttachment, validateAttachment } from './attachments'
 import { FirebaseError } from 'firebase/app'
 import {
   addDoc,
@@ -56,9 +60,14 @@ import {
 import { auth, db } from './firebase'
 import { CLASS_NAMES } from './classNames'
 import { SUBJECTS } from './subjects'
+import { REPEAT_DAYS, recurrenceLabel, validateCustomRepeat } from './recurrence'
+import { filterFeedback, isFeedbackCompleted, type FeedbackFilter } from './feedbackStatus'
 import { RetentionPanel } from './RetentionPanel'
 import { RepresentativesChat } from './RepresentativesChat'
+import { creditForUpdate, isCreditEligible } from './publicCredit'
+import { FeedbackConversation, MyFeedbackConversations } from './FeedbackConversation'
 import { canEditCalendarActivity } from './calendarPermissions'
+import { activitySaveError } from './activityErrors'
 import {
   MONTH_LABELS,
   WEEKDAY_LABELS,
@@ -75,6 +84,7 @@ import {
   ACTIVITY_TYPE_LABELS,
   SUGGESTION_STATUS_LABELS,
   type Activity,
+  type ActivityAttachment,
   type ActivityInput,
   type ActivityType,
   type AdminProfile,
@@ -538,6 +548,7 @@ function App() {
                 <strong>{activity.title}</strong>
                 {activity.subject && <span className="preview-subject">{activity.subject}</span>}
                 {activity.description && <p>{activity.description}</p>}
+                {ATTACHMENTS_ENABLED && <AttachmentLinks activityId={activity.id} attachments={activity.attachments} />}
                 {activity.createdByEmail && <span className="preview-author">Publicado por {activity.createdByEmail}</span>}
               </div>
             ))}
@@ -1043,6 +1054,8 @@ function MySuggestionsDialog({ onClose }: { onClose: () => void }) {
 
 function FeedbackDialog({ turmaId, onClose }: { turmaId: string | null; onClose: () => void }) {
   const [message, setMessage] = useState('')
+  const [publicCreditName, setPublicCreditName] = useState('')
+  const [publicCreditAllowed, setPublicCreditAllowed] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [sent, setSent] = useState(false)
@@ -1099,8 +1112,8 @@ function FeedbackDialog({ turmaId, onClose }: { turmaId: string | null; onClose:
     setBusy(true)
     setError('')
     try {
-      await sendPasswordResetEmail(auth, email.trim())
-      setAuthNotice('Se o e-mail tiver uma conta, você receberá um link para redefinir a senha.')
+      await requestPasswordReset(email.trim())
+      setAuthNotice('Se o e-mail tiver uma conta, você receberá um link para redefinir a senha. Confira também a pasta de spam ou lixo eletrônico.')
     } catch {
       setError('Não foi possível enviar o link agora. Tente novamente.')
     } finally {
@@ -1115,12 +1128,17 @@ function FeedbackDialog({ turmaId, onClose }: { turmaId: string | null; onClose:
       setError('Entre com sua conta para enviar o comentário.')
       return
     }
+    if (publicCreditAllowed && (!publicCreditName.trim() || publicCreditName.includes('@'))) {
+      setError('Escolha um nome público sem e-mail para autorizar o crédito.')
+      return
+    }
     setBusy(true)
     setError('')
     try {
       await addDoc(collection(db, 'feedback'), {
         message: message.trim(), turmaId: turmaId ?? null,
         createdBy: currentUser.uid, createdByEmail: currentUser.email,
+        publicCreditName: publicCreditAllowed ? publicCreditName.trim() : '', publicCreditAllowed,
         createdAt: serverTimestamp(),
       })
       setSent(true)
@@ -1135,9 +1153,10 @@ function FeedbackDialog({ turmaId, onClose }: { turmaId: string | null; onClose:
     <div className="modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
       <section className="day-dialog" role="dialog" aria-modal="true" aria-labelledby="feedback-title">
         <div className="dialog-header">
-          <h2 id="feedback-title">Comentar melhoria</h2>
+          <h2 id="feedback-title">Melhorias e conversas</h2>
           <button className="icon-button" onClick={onClose} aria-label="Fechar"><X /></button>
         </div>
+        {account && <MyFeedbackConversations userId={account.uid} />}
         {!authChecked ? (
           <div className="feedback-auth-loading"><LoaderCircle className="spin" /><p>Verificando sua conta…</p></div>
         ) : sent ? (
@@ -1174,6 +1193,11 @@ function FeedbackDialog({ turmaId, onClose }: { turmaId: string | null; onClose:
                   autoFocus
                 />
               </label>
+              <div className="feedback-public-credit wide">
+                <label><input type="checkbox" checked={publicCreditAllowed} onChange={(event) => setPublicCreditAllowed(event.target.checked)} /> Autorizo mostrar meu nome e esta sugestão em um aviso público de atualização.</label>
+                {publicCreditAllowed && <label>Nome para o crédito público<input value={publicCreditName} onChange={(event) => setPublicCreditName(event.target.value)} maxLength={60} required placeholder="Como você quer aparecer?" /></label>}
+                <small>Seu e-mail não será publicado. Você também pode decidir isso depois, em suas conversas.</small>
+              </div>
             </div>
             {error && <p className="form-error">{error}</p>}
             <div className="form-actions"><button type="button" className="secondary-button" onClick={onClose}>Cancelar</button><button className="primary-button compact" disabled={busy}>{busy ? <LoaderCircle className="spin" /> : 'Enviar comentário'}</button></div>
@@ -1222,6 +1246,7 @@ function SystemUpdateWelcome({ update, onClose }: { update: SystemUpdate; onClos
           <h2 id="system-update-title">{update.title}</h2>
           {update.publishedAt && <time>{update.publishedAt.toDate().toLocaleDateString('pt-BR')}</time>}
           <p>{update.body}</p>
+          {update.sourceName && update.sourceMessage && <div className="update-request-credit"><strong>Pedido da comunidade · {update.sourceName}</strong><p>{update.sourceMessage}</p></div>}
           <button type="button" className="primary-button" onClick={onClose} autoFocus>Entendi, abrir agenda</button>
           <span>Você pode reler esta novidade em Atualizações, no menu.</span>
         </div>
@@ -1264,6 +1289,7 @@ function SystemUpdatesDialog({ onClose }: { onClose: () => void }) {
               : updates.map((item, index) => <article key={item.id} className="updates-history-item">
                 <div className="updates-history-meta"><span>{index === 0 ? 'Mais recente' : 'Atualização'}</span>{item.publishedAt && <time>{item.publishedAt.toDate().toLocaleDateString('pt-BR')}</time>}</div>
                 <h3>{item.title}</h3><p>{item.body}</p>
+                {item.sourceName && item.sourceMessage && <div className="update-request-credit"><strong>Pedido da comunidade · {item.sourceName}</strong><p>{item.sourceMessage}</p></div>}
               </article>)}
         </div>
       </section>
@@ -1335,6 +1361,7 @@ function DayDetail({ day, activities, profile, onEditActivity, onAddActivity, on
               <h3>{activity.title}</h3>
               {activity.subject && <p className="activity-subject">{activity.subject}</p>}
               {activity.description && <p>{activity.description}</p>}
+              {ATTACHMENTS_ENABLED && <AttachmentLinks activityId={activity.id} attachments={activity.attachments} />}
               {activity.createdByEmail && <p className="activity-author">Publicado por {activity.createdByEmail}</p>}
               {canEditCalendarActivity(profile, activity) && <button type="button" className="secondary-button" onClick={() => onEditActivity(activity)} aria-label={`Editar ${activity.title}`}><Edit3 size={16} /> Editar atividade</button>}
             </article>
@@ -1377,19 +1404,34 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
   const [managedSuggestions, setManagedSuggestions] = useState<Suggestion[]>([])
   const [representativeRequests, setRepresentativeRequests] = useState<RepresentativeRequest[]>([])
   const [feedbackList, setFeedbackList] = useState<Feedback[]>([])
+  const [feedbackFilter, setFeedbackFilter] = useState<FeedbackFilter>('pending')
+  const pendingFeedbackCount = filterFeedback(feedbackList, 'pending').length
+  const visibleFeedback = filterFeedback(feedbackList, feedbackFilter)
+  const [conversation, setConversation] = useState<Feedback | null>(null)
   const [announcement, setAnnouncement] = useState<Announcement | null>(null)
   const [announcementDraft, setAnnouncementDraft] = useState('')
   const [updateTitle, setUpdateTitle] = useState('')
   const [updateBody, setUpdateBody] = useState('')
+  const [updateFeedbackId, setUpdateFeedbackId] = useState('')
   const [adminSearch, setAdminSearch] = useState('')
   const [adminTab, setAdminTab] = useState<'activities' | 'recurrences' | 'retention' | 'notices' | 'chat' | 'suggestions' | 'representatives' | 'site'>('activities')
   const [recurrences, setRecurrences] = useState<RecurringActivity[]>([])
   const [repeatWeekly, setRepeatWeekly] = useState(false)
+  const [repeatCustom, setRepeatCustom] = useState(false)
+  const [repeatDays, setRepeatDays] = useState<number[]>([])
+  const [repeatInterval, setRepeatInterval] = useState(1)
   const [repeatEndDate, setRepeatEndDate] = useState('')
   const [formOpen, setFormOpen] = useState(false)
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = previousOverflow }
+  }, [])
   const [quickCreateActive, setQuickCreateActive] = useState(false)
   const [editing, setEditing] = useState<Activity | null>(null)
   const [form, setForm] = useState(emptyForm)
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([])
+  const [editorAttachments, setEditorAttachments] = useState<ActivityAttachment[]>([])
   const [isGlobalForm, setIsGlobalForm] = useState(false)
   const [hasTime, setHasTime] = useState(false)
   const [saveError, setSaveError] = useState('')
@@ -1447,6 +1489,8 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
     setAdminTab('activities')
     setEditing(null)
     setForm({ ...emptyForm, date: quickCreateDate })
+    setSelectedFiles([])
+    setEditorAttachments([])
     setIsGlobalForm(false)
     setHasTime(false)
     setRepeatWeekly(false)
@@ -1463,6 +1507,8 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
     setAdminTab('activities')
     setEditing(activity)
     setForm({ title: activity.title, description: activity.description, type: activity.type, subject: activity.subject ?? null, date: activity.date, time: activity.time })
+    setSelectedFiles([])
+    setEditorAttachments(activity.attachments ?? [])
     setIsGlobalForm(activity.turmaId === null)
     setHasTime(Boolean(activity.time))
     setRepeatWeekly(false)
@@ -1589,8 +1635,8 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
     setAuthError('')
     setAuthNotice('')
     try {
-      await sendPasswordResetEmail(auth, normalizedEmail)
-      setAuthNotice('Se houver uma conta com esse e-mail, você receberá um link para redefinir a senha.')
+      await requestPasswordReset(normalizedEmail)
+      setAuthNotice('Se houver uma conta com esse e-mail, você receberá um link para redefinir a senha. Confira também a pasta de spam ou lixo eletrônico.')
     } catch {
       setAuthError('Não foi possível enviar o link agora. Tente novamente mais tarde.')
     } finally {
@@ -1710,6 +1756,8 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
   function startCreate() {
     setEditing(null)
     setForm({ ...emptyForm, date: dateKey(new Date()) })
+    setSelectedFiles([])
+    setEditorAttachments([])
     setIsGlobalForm(false)
     setHasTime(false)
     setRepeatWeekly(false)
@@ -1723,6 +1771,8 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
     if (!canEditCalendarActivity(profile, activity)) return
     setEditing(activity)
     setForm({ title: activity.title, description: activity.description, type: activity.type, subject: activity.subject ?? null, date: activity.date, time: activity.time })
+    setSelectedFiles([])
+    setEditorAttachments(activity.attachments ?? [])
     setIsGlobalForm(activity.turmaId === null)
     setHasTime(Boolean(activity.time))
     setRepeatWeekly(false)
@@ -1732,16 +1782,53 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
     setFormOpen(true)
   }
 
+  function selectAttachments(files: FileList | null) {
+    if (!files?.length) return
+    try {
+      const added = Array.from(files)
+      added.forEach(validateAttachment)
+      if (editorAttachments.length + selectedFiles.length + added.length > MAX_ATTACHMENTS) throw new Error('Cada atividade pode ter até cinco anexos.')
+      setSelectedFiles(current => [...current, ...added])
+      setSaveError('')
+    } catch (error) { setSaveError(error instanceof Error ? error.message : 'Arquivo inválido.') }
+  }
+
+  async function removeExistingAttachment(attachmentId: string) {
+    if (!editing || !window.confirm('Remover este anexo da atividade?')) return
+    setBusy(true)
+    setSaveError('')
+    try {
+      await removeAttachment(editing.id, attachmentId)
+      setEditorAttachments(current => current.filter(item => item.id !== attachmentId))
+    } catch (error) { setSaveError(error instanceof Error ? error.message : 'Não foi possível remover o anexo.') }
+    finally { setBusy(false) }
+  }
+
   async function saveActivity(event: FormEvent) {
     event.preventDefault()
+    if (!user || auth.currentUser?.uid !== user.uid) { setSaveError('Sessão não autorizada: entre novamente na sua conta antes de salvar.'); return }
+    if (!profile || (!isGlobalForm && !canCreateForSelectedClass(profile, managedTurma))) {
+      setSaveError('Falta de permissão: você não tem acesso para salvar atividades nesta turma. Peça ao administrador para conferir seu cadastro.'); return
+    }
+    if (!form.title.trim() || form.title.length > 120 || form.description.length > 2000) {
+      setSaveError('Confira os dados: o título é obrigatório e deve ter até 120 caracteres; a descrição pode ter até 2.000 caracteres.'); return
+    }
+    if (repeatWeekly && selectedFiles.length) { setSaveError('Anexos são adicionados a atividades individuais, não a repetições.'); return }
+    if (isGlobalForm && !isSuperAdmin && selectedFiles.length) { setSaveError('Apenas administradores podem anexar arquivos a eventos gerais.'); return }
+    if (repeatWeekly && repeatCustom && !editing) {
+      const validation = validateCustomRepeat(form.date, repeatEndDate, repeatDays, repeatInterval)
+      if (validation) { setSaveError(validation); return }
+    }
     if (repeatWeekly && repeatEndDate && repeatEndDate < form.date) {
       setSaveError('A data final precisa ser igual ou posterior à primeira data.')
       return
     }
     setBusy(true)
     setSaveError('')
+    let savingAttachments = false
     try {
       const payload = { ...form, subject: form.subject ?? null, time: hasTime ? form.time : null, turmaId: isGlobalForm ? null : managedTurma }
+      let activityId = editing?.id
       if (repeatWeekly && !editing) {
         await addDoc(collection(db, 'recurringActivities'), {
           title: form.title.trim(),
@@ -1752,31 +1839,43 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
           turmaId: managedTurma,
           startDate: form.date,
           endDate: repeatEndDate || null,
+          ...(repeatCustom ? { weekdays: [...repeatDays].sort((a, b) => a - b), intervalWeeks: repeatInterval } : {}),
           active: true,
           createdBy: user?.uid,
           createdByEmail: user?.email ?? null,
           createdAt: serverTimestamp(),
         })
         setAdminTab('recurrences')
-        setNotice('Repetição semanal salva. As ocorrências aparecem após a próxima execução da automação.')
+        setNotice('Repetição salva. As ocorrências aparecem após a próxima execução da automação.')
       } else if (editing) {
         await updateDoc(doc(db, 'activities', editing.id), { ...payload, updatedAt: serverTimestamp() })
         setNotice('Atividade atualizada.')
       } else {
-        await addDoc(collection(db, 'activities'), {
+        const created = await addDoc(collection(db, 'activities'), {
           ...payload,
           createdBy: user?.uid,
           createdByEmail: user?.email ?? null,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
         })
+        activityId = created.id
+        setEditing({ id: created.id, ...payload, attachments: [] })
         setNotice(isGlobalForm ? 'Evento geral adicionado.' : 'Atividade adicionada.')
+      }
+      if (activityId && selectedFiles.length) {
+        savingAttachments = true
+        for (let index = 0; index < selectedFiles.length; index += 1) {
+          const attachment = await uploadAttachment(activityId, selectedFiles[index])
+          setEditorAttachments(current => [...current, attachment])
+          setSelectedFiles(selectedFiles.slice(index + 1))
+        }
+        setNotice('Atividade e anexos salvos.')
       }
       setFormOpen(false)
       if ((quickCreateActive && !editing) || quickEditActivity) onClose()
       else window.setTimeout(() => setNotice(''), 2800)
     } catch (error) {
-      setSaveError(error instanceof Error ? error.message : 'Não foi possível salvar a atividade.')
+      setSaveError(activitySaveError(error, savingAttachments))
     } finally {
       setBusy(false)
     }
@@ -1799,7 +1898,8 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
   async function removeActivity(activity: Activity) {
     if (!window.confirm(`Excluir "${activity.title}"?`)) return
     try {
-      await deleteDoc(doc(db, 'activities', activity.id))
+      if (activity.attachments?.length) await deleteActivityWithAttachments(activity.id)
+      else await deleteDoc(doc(db, 'activities', activity.id))
       setNotice('Atividade excluída.')
       window.setTimeout(() => setNotice(''), 2800)
     } catch {
@@ -1871,6 +1971,22 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
     }
   }
 
+  async function toggleFeedbackCompleted(item: Feedback) {
+    if (!user || !isSuperAdmin || busy) return
+    const completed = !isFeedbackCompleted(item)
+    setBusy(true)
+    try {
+      await updateDoc(doc(db, 'feedback', item.id), {
+        status: completed ? 'completed' : 'pending',
+        completedAt: completed ? serverTimestamp() : null,
+        completedBy: completed ? user.uid : null,
+      })
+      setNotice(completed ? 'Sugestão marcada como concluída. Ela continua no filtro Concluídas.' : 'Sugestão reaberta e movida para Pendentes.')
+    } catch {
+      setNotice('Não foi possível atualizar a sugestão. Tente novamente.')
+    } finally { setBusy(false) }
+  }
+
   async function discardFeedback(item: Feedback) {
     if (!window.confirm('Remover este comentário da lista?')) return
     try {
@@ -1912,6 +2028,11 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
     if (!user || !isSuperAdmin) return
     const title = updateTitle.trim()
     const body = updateBody.trim()
+    const source = updateFeedbackId ? feedbackList.find(item => item.id === updateFeedbackId && isCreditEligible(item)) : undefined
+    if (updateFeedbackId && !source) {
+      setNotice('A sugestão não está mais autorizada para crédito público. Escolha outra.')
+      return
+    }
     if (!title || !body || title.length > 120 || body.length > 2000) {
       setNotice('Informe um título de até 120 caracteres e uma descrição de até 2.000 caracteres.')
       return
@@ -1920,9 +2041,11 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
     try {
       await addDoc(collection(db, 'agendaUpdates'), {
         title, body, createdBy: user.uid, publishedAt: serverTimestamp(),
+        ...(source ? creditForUpdate(source) : {}),
       })
       setUpdateTitle('')
       setUpdateBody('')
+      setUpdateFeedbackId('')
       setNotice('Atualização publicada. Ela aparecerá na próxima abertura do site e no histórico.')
     } catch {
       setNotice('Não foi possível publicar a atualização. Tente novamente.')
@@ -2017,7 +2140,7 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
             <button className="secondary-button" onClick={() => signOut(auth)}>Sair</button>
           </div>
         ) : (
-          <div className="admin-content">
+          <div className="admin-content" inert={formOpen || Boolean(closingSuggestion)}>
             {quickCreateMismatch && <div className="quick-create-warning" role="alert">Esta conta representa {profile?.turmaId}. Para cadastrar diretamente por um dia, volte ao calendário e selecione essa turma.</div>}
             <div className="admin-body">
               <div className="admin-main">
@@ -2050,7 +2173,7 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
                       icon: <ShieldCheck size={16} />,
                       tabs: [
                         { id: 'representatives' as const, label: 'Representantes', icon: <Users size={15} />, count: representativeRequests.length },
-                        { id: 'site' as const, label: 'Site', icon: <Globe size={15} />, count: feedbackList.length },
+                        { id: 'site' as const, label: 'Site', icon: <Globe size={15} />, count: pendingFeedbackCount },
                       ],
                     }] : []),
                   ]
@@ -2090,7 +2213,7 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
                         {filteredActivities.length === 0 ? <p className="admin-empty">Nenhuma atividade encontrada.</p> : filteredActivities.map((activity) => (
                           <article key={activity.id} className="admin-row compact">
                             <div className="avatar" style={{ color: ACTIVITY_TYPE_COLORS[activity.type] }}><UserRound /></div>
-                            <div className="admin-row-main"><strong>{activity.title}</strong><span>{ACTIVITY_TYPE_LABELS[activity.type]}{activity.subject ? ` · ${activity.subject}` : ''}{activity.recurringId ? ' · Repete toda semana' : ''}</span></div>
+                            <div className="admin-row-main"><strong>{activity.title}</strong><span>{ACTIVITY_TYPE_LABELS[activity.type]}{activity.subject ? ` · ${activity.subject}` : ''}{activity.recurringId ? ' · Atividade recorrente' : ''}</span></div>
                             <div className="admin-row-meta"><span>{parseDateLabel(activity.date)}</span><strong>{activity.time ?? '—'}</strong></div>
                             <div className="row-actions">
                               <button onClick={() => startEdit(activity)} aria-label={`Editar ${activity.title}`}><Edit3 /></button>
@@ -2120,7 +2243,7 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
                   )}
                   {adminTab === 'recurrences' && (
                     <>
-                      <div className="admin-list-heading"><strong>Tarefas que se repetem</strong><span className="config-hint" style={{ margin: 0 }}>Toda semana, no mesmo dia</span></div>
+                      <div className="admin-list-heading"><strong>Tarefas que se repetem</strong><span className="config-hint" style={{ margin: 0 }}>Semanais ou personalizadas</span></div>
                       <div className="admin-list">
                         {recurrences.length === 0 ? <p className="admin-empty">Nenhuma repetição cadastrada para esta turma.</p> : recurrences
                           .slice()
@@ -2129,7 +2252,7 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
                             <article key={item.id} className="admin-row compact">
                               <div className="avatar" style={{ color: ACTIVITY_TYPE_COLORS[item.type] }}><Calendar /></div>
                               <div className="admin-row-main"><strong>{item.title}</strong><span>{ACTIVITY_TYPE_LABELS[item.type]}{item.subject ? ` · ${item.subject}` : ''} · {item.active ? 'Ativa' : 'Pausada'}</span></div>
-                              <div className="admin-row-meta"><span>Desde {parseDateLabel(item.startDate)}</span><strong>{item.endDate ? `Até ${parseDateLabel(item.endDate)}` : 'Sem data final'}</strong></div>
+                              <div className="admin-row-meta"><span>{recurrenceLabel(item)}</span><span>Desde {parseDateLabel(item.startDate)}</span><strong>{item.endDate ? `Até ${parseDateLabel(item.endDate)}` : 'Sem data final'}</strong></div>
                               <div className="row-actions"><button type="button" className="recurrence-action" disabled={busy} onClick={() => toggleRecurrence(item)} aria-label={`${item.active ? 'Pausar' : 'Reativar'} ${item.title}`}>{item.active ? 'Pausar' : 'Reativar'}</button></div>
                             </article>
                           ))}
@@ -2204,6 +2327,14 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
                         <p className="config-hint">Publique o que mudou na Agenda. A atualização ficará no histórico e aparecerá uma vez para cada visitante.</p>
                         <label>Título<input required maxLength={120} value={updateTitle} onChange={(event) => setUpdateTitle(event.target.value)} placeholder="Ex.: Enquetes para as turmas" /></label>
                         <label>O que mudou<textarea required rows={4} maxLength={2000} value={updateBody} onChange={(event) => setUpdateBody(event.target.value)} placeholder="Explique as novidades de forma simples para os alunos." /></label>
+                        <label>Sugestão que inspirou a atualização (opcional)
+                          <select value={updateFeedbackId} onChange={(event) => setUpdateFeedbackId(event.target.value)}>
+                            <option value="">Sem sugestão vinculada</option>
+                            {feedbackList.filter(isCreditEligible).map(item => <option key={item.id} value={item.id}>{item.publicCreditName} · {item.message.slice(0, 90)}</option>)}
+                          </select>
+                        </label>
+                        {updateFeedbackId && <p className="config-hint">O nome escolhido e o texto original da sugestão aparecerão no aviso e no histórico. O e-mail continuará privado.</p>}
+                        {!feedbackList.some(isCreditEligible) && <p className="config-hint">Sugestões aparecerão aqui quando a pessoa autorizar o crédito público em “Comentar melhoria”.</p>}
                         <div className="system-update-editor-actions"><span>Publicações permanecem no histórico.</span><button type="submit" className="primary-button compact" disabled={busy || !updateTitle.trim() || !updateBody.trim()}><History size={16} /> Publicar atualização</button></div>
                       </form>
                       {systemUpdates.length > 0 && <div className="system-update-admin-recent"><strong>Última publicação</strong>{systemUpdates.map((item) => <div key={item.id}><span>{item.title}</span><time>{item.publishedAt ? item.publishedAt.toDate().toLocaleDateString('pt-BR') : 'Publicando…'}</time></div>)}</div>}
@@ -2232,16 +2363,19 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
 
                       <div className="admin-list-heading">
                         <strong>Feedback do site</strong>
-                        {feedbackList.length > 0 && <span className="soon-badge pending">{feedbackList.length}</span>}
+                        <span className="config-hint">{pendingFeedbackCount} pendentes · {feedbackList.length - pendingFeedbackCount} concluídas</span>
                       </div>
+                      <label className="feedback-filter">Mostrar sugestões<select value={feedbackFilter} onChange={event => setFeedbackFilter(event.target.value as FeedbackFilter)}><option value="pending">Pendentes</option><option value="completed">Concluídas</option><option value="all">Todas</option></select></label>
+                      {conversation && <><button className="secondary-button" type="button" onClick={() => setConversation(null)}>Fechar conversa</button><FeedbackConversation key={conversation.id} feedback={feedbackList.find(item => item.id === conversation.id) ?? conversation} /></>}
                       <div className="admin-list">
-                        {feedbackList.length === 0 ? <p className="admin-empty">Nenhum comentário recebido.</p> : feedbackList.map((item) => (
+                        {visibleFeedback.length === 0 ? <p className="admin-empty">{feedbackFilter === 'completed' ? 'Nenhuma sugestão concluída.' : feedbackFilter === 'pending' ? 'Nenhuma sugestão pendente.' : 'Nenhum comentário recebido.'}</p> : visibleFeedback.map((item) => (
                           <article key={item.id} className="admin-row compact">
                             <div className="avatar"><MessageSquarePlus /></div>
                             <div className="admin-row-main"><strong>{item.createdByEmail ?? 'Enviado antes da identificação obrigatória'}</strong><span className="feedback-message">{item.message}</span></div>
-                            <div className="admin-row-meta"><span>{item.turmaId ?? 'Geral'}</span><strong>{item.createdAt ? item.createdAt.toDate().toLocaleDateString('pt-BR') : '—'}</strong></div>
+                            <div className="admin-row-meta"><span className={`feedback-state${isFeedbackCompleted(item) ? ' completed' : ''}`}>{isFeedbackCompleted(item) ? 'Concluída' : 'Pendente'}</span><span>{item.turmaId ?? 'Geral'}</span><strong>{item.createdAt ? item.createdAt.toDate().toLocaleDateString('pt-BR') : '—'}</strong>{isFeedbackCompleted(item) && item.completedAt && <span>Concluída em {item.completedAt.toDate().toLocaleDateString('pt-BR')}</span>}</div>
                             <div className="row-actions">
-                              <button className="danger" onClick={() => discardFeedback(item)} aria-label="Remover comentário"><Trash2 /></button>
+                              <button type="button" className="feedback-complete-action" disabled={busy} onClick={() => toggleFeedbackCompleted(item)} aria-label={`${isFeedbackCompleted(item) ? 'Reabrir' : 'Marcar como concluída'} sugestão: ${item.message}`}>{isFeedbackCompleted(item) ? 'Reabrir' : <><Check size={16} /> Concluir</>}</button>
+                              {item.createdBy ? <button onClick={() => setConversation(item)} aria-label={`Conversar sobre a sugestão de ${item.createdByEmail}`}><MessagesSquare /></button> : <button className="danger" onClick={() => discardFeedback(item)} aria-label="Remover comentário"><Trash2 /></button>}
                             </div>
                           </article>
                         ))}
@@ -2279,19 +2413,24 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
           </div>
         )}
 
-        {formOpen && (
-          <div className="form-overlay">
-            <form className="activity-form" onSubmit={saveActivity}>
-              <div className="form-title"><div><p className="eyebrow dark">ATIVIDADE</p><h3>{editing ? 'Editar atividade' : 'Adicionar atividade'}</h3></div><button type="button" className="icon-button" aria-label="Fechar formulário" onClick={() => quickEditActivity ? onClose() : setFormOpen(false)}><X /></button></div>
+        {formOpen && createPortal(
+          <div className="form-overlay activity-editor-overlay" role="dialog" aria-modal="true" aria-labelledby="activity-editor-title">
+            <form className="activity-form activity-editor" onSubmit={saveActivity} aria-label={editing ? 'Editar atividade' : 'Adicionar atividade'}>
+              <div className="form-title"><div><p className="eyebrow dark">ATIVIDADE</p><h3 id="activity-editor-title">{editing ? 'Editar atividade' : 'Adicionar atividade'}</h3></div><button type="button" className="icon-button" aria-label="Fechar formulário" onClick={() => quickEditActivity ? onClose() : setFormOpen(false)}><X /></button></div>
+              <div className="activity-editor-scroll" tabIndex={0} role="region" aria-label="Campos da atividade">
               <div className="form-grid">
                 <label className="wide">Título<input required value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} /></label>
                 <label>Tipo<select value={form.type} onChange={(event) => setForm({ ...form, type: event.target.value as ActivityType })}>{ACTIVITY_TYPES.map((type) => <option value={type} key={type}>{ACTIVITY_TYPE_LABELS[type]}</option>)}</select></label>
                 <label className="wide">Matéria<select value={form.subject ?? ''} onChange={(event) => setForm({ ...form, subject: event.target.value || null })}><option value="">Sem matéria específica</option>{SUBJECTS.map((subject) => <option value={subject} key={subject}>{subject}</option>)}</select></label>
                 <label>Data<input required type="date" value={form.date} onChange={(event) => setForm({ ...form, date: event.target.value })} /></label>
-                {!editing && <label className="toggle wide"><input type="checkbox" checked={repeatWeekly} onChange={(event) => { setRepeatWeekly(event.target.checked); if (event.target.checked) setIsGlobalForm(false) }} /><span /> Repetir toda semana</label>}
+                {!editing && <label className="wide">Repetição<select value={!repeatWeekly ? 'none' : repeatCustom ? 'custom' : 'weekly'} onChange={event => { setRepeatWeekly(event.target.value !== 'none'); setRepeatCustom(event.target.value === 'custom'); setRepeatDays([new Date(`${form.date}T12:00:00`).getDay()]); setRepeatInterval(1); if (event.target.value !== 'none') { setIsGlobalForm(false); setSelectedFiles([]) } }}><option value="none">Não se repete</option><option value="weekly">Toda semana, no mesmo dia</option><option value="custom">Personalizada…</option></select></label>}
                 {repeatWeekly && <>
-                  <p className="config-hint wide">A data acima será a primeira ocorrência. A tarefa aparecerá no mesmo dia da semana nas semanas seguintes.</p>
-                  <label>Repetir até (opcional)<input type="date" min={form.date} value={repeatEndDate} onChange={(event) => setRepeatEndDate(event.target.value)} /></label>
+                  <p className="config-hint wide">{repeatCustom ? 'A data acima inicia o período. A atividade aparecerá somente nos dias escolhidos, até a data final inclusive. As semanas são contadas de segunda a domingo.' : 'A data acima será a primeira ocorrência. A tarefa aparecerá no mesmo dia da semana nas semanas seguintes.'}</p>
+                  {repeatCustom && <>
+                    <fieldset className="repeat-days wide"><legend>Repetir nos dias</legend>{REPEAT_DAYS.map((day, index) => <label key={day}><input type="checkbox" checked={repeatDays.includes(index)} onChange={event => setRepeatDays(event.target.checked ? [...repeatDays, index] : repeatDays.filter(value => value !== index))} /><span>{day}</span></label>)}</fieldset>
+                    <label>A cada quantas semanas?<input type="number" min={1} max={12} required value={repeatInterval} onChange={event => setRepeatInterval(Number(event.target.value))} /></label>
+                  </>}
+                  <label>{repeatCustom ? 'Data final' : 'Repetir até (opcional)'}<input required={repeatCustom} type="date" min={form.date} value={repeatEndDate} onChange={(event) => setRepeatEndDate(event.target.value)} /></label>
                 </>}
                 {!repeatWeekly && (!editing || isSuperAdmin) && <label className="toggle wide"><input type="checkbox" checked={isGlobalForm} onChange={(event) => setIsGlobalForm(event.target.checked)} /><span /> Evento geral (aparece em todas as turmas)</label>}
                 {!repeatWeekly && isGlobalForm ? (
@@ -2303,10 +2442,19 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
                 {hasTime && <label>Horário<input required type="time" value={form.time ?? ''} onChange={(event) => setForm({ ...form, time: event.target.value })} /></label>}
                 <label className="wide">Descrição<textarea rows={3} value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} placeholder="Detalhes, capítulos, critérios de entrega…" /></label>
               </div>
-              {saveError && <p className="form-error">{saveError}</p>}
+              {ATTACHMENTS_ENABLED && !repeatWeekly && <section className="attachment-editor" aria-labelledby="attachment-editor-title">
+                <div className="attachment-editor-heading"><Paperclip size={17} /><div><strong id="attachment-editor-title">Anexos</strong><span>Até 5 arquivos · 10 MB cada · PDF, Word, PowerPoint, ZIP ou imagem</span></div></div>
+                {editorAttachments.map(item => <div className="attachment-editor-item" key={item.id}><span>{item.name} <small>{formatAttachmentSize(item.size)}</small></span><button type="button" disabled={busy} onClick={() => removeExistingAttachment(item.id)} aria-label={`Remover ${item.name}`}><Trash2 size={16} /></button></div>)}
+                {selectedFiles.map((file, index) => <div className="attachment-editor-item pending" key={`${file.name}-${index}`}><span>{file.name} <small>{formatAttachmentSize(file.size)} · aguardando envio</small></span><button type="button" disabled={busy} onClick={() => setSelectedFiles(current => current.filter((_, position) => position !== index))} aria-label={`Remover ${file.name} da seleção`}><X size={16} /></button></div>)}
+                {editorAttachments.length + selectedFiles.length < MAX_ATTACHMENTS && (!isGlobalForm || isSuperAdmin) && <label className="attachment-pick"><Plus size={16} /> Escolher arquivos<input type="file" multiple accept=".pdf,.docx,.pptx,.zip,.jpg,.jpeg,.png,.webp" onChange={event => { selectAttachments(event.target.files); event.target.value = '' }} /></label>}
+                {isGlobalForm && !isSuperAdmin && <p>Arquivos em eventos gerais só podem ser incluídos por administradores.</p>}
+              </section>}
+              {saveError && <p className="form-error" role="alert">{saveError}</p>}
+              </div>
               <div className="form-actions"><button type="button" className="secondary-button" onClick={() => quickEditActivity ? onClose() : setFormOpen(false)}>Cancelar</button><button className="primary-button compact" disabled={busy}>{busy ? <LoaderCircle className="spin" /> : repeatWeekly ? 'Salvar repetição' : 'Salvar atividade'}</button></div>
             </form>
-          </div>
+          </div>,
+          document.body,
         )}
 
         {closingSuggestion && (

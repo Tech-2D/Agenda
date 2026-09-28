@@ -92,14 +92,22 @@ service cloud.firestore {
     }
 
     function isValidFeedback(data) {
-      return data.keys().hasOnly(['message', 'turmaId', 'createdAt', 'createdBy', 'createdByEmail'])
+      return data.keys().hasOnly(['message', 'turmaId', 'createdAt', 'createdBy', 'createdByEmail', 'publicCreditAllowed', 'publicCreditName'])
         && data.keys().hasAll(['message', 'turmaId', 'createdAt', 'createdBy', 'createdByEmail'])
         && data.message is string && data.message.size() > 0 && data.message.size() <= 2000
         && (data.turmaId == null || (data.turmaId is string && data.turmaId.size() > 0))
         && data.createdBy == request.auth.uid
         && request.auth.token.email is string
         && data.createdByEmail == request.auth.token.email
-        && data.createdAt == request.time;
+        && data.createdAt == request.time
+        && (!data.keys().hasAny(['publicCreditAllowed', 'publicCreditName']) || (
+          data.keys().hasAll(['publicCreditAllowed', 'publicCreditName'])
+          && data.publicCreditAllowed is bool
+          && data.publicCreditName is string
+          && data.publicCreditName.size() <= 60
+          && !data.publicCreditName.matches('.*@.*')
+          && (!data.publicCreditAllowed || data.publicCreditName.size() > 0)
+        ));
     }
 
     function isValidAnnouncement(data) {
@@ -162,6 +170,7 @@ service cloud.firestore {
       allow read: if true;
 
       allow create: if isValidActivity(request.resource.data)
+        && !request.resource.data.keys().hasAny(['attachments'])
         && canCreateActivity(request.resource.data);
 
       // Precisa poder gerenciar a turma/escopo ATUAL (antes da edição) e também
@@ -169,9 +178,12 @@ service cloud.firestore {
       // mas sem burlar quem pode criar/gerenciar cada tipo.
       allow update: if canEditCalendarActivity(resource.data)
         && canEditCalendarActivity(request.resource.data)
-        && isValidActivity(request.resource.data);
+        && isValidActivity(request.resource.data)
+        && request.resource.data.get('attachments', []) == resource.data.get('attachments', []);
 
-      allow delete: if canManageActivity(resource.data);
+      // Atividades com anexos passam pela API, que remove os objetos do R2 primeiro.
+      allow delete: if canManageActivity(resource.data)
+        && resource.data.get('attachments', []).size() == 0;
     }
 
     // Modelos semanais; o cron com Admin SDK cria/remove ocorrências em activities.
@@ -179,7 +191,7 @@ service cloud.firestore {
       allow get, list: if canManage(resource.data.turmaId);
       allow create: if canManage(request.resource.data.turmaId)
         && isKnownAgendaTurma(request.resource.data.turmaId)
-        && request.resource.data.keys().hasOnly(['title', 'description', 'type', 'subject', 'time', 'turmaId', 'startDate', 'endDate', 'active', 'createdBy', 'createdByEmail', 'createdAt'])
+        && request.resource.data.keys().hasOnly(['title', 'description', 'type', 'subject', 'time', 'turmaId', 'startDate', 'endDate', 'active', 'createdBy', 'createdByEmail', 'createdAt', 'weekdays', 'intervalWeeks'])
         && request.resource.data.keys().hasAll(['title', 'description', 'type', 'subject', 'time', 'turmaId', 'startDate', 'endDate', 'active', 'createdBy', 'createdByEmail', 'createdAt'])
         && request.resource.data.title is string && request.resource.data.title.size() > 0 && request.resource.data.title.size() <= 120
         && request.resource.data.description is string && request.resource.data.description.size() <= 2000
@@ -188,6 +200,16 @@ service cloud.firestore {
         && (request.resource.data.time == null || (request.resource.data.time is string && request.resource.data.time.matches('^([01][0-9]|2[0-3]):[0-5][0-9]$')))
         && request.resource.data.startDate is string && request.resource.data.startDate.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
         && (request.resource.data.endDate == null || (request.resource.data.endDate is string && request.resource.data.endDate.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$') && request.resource.data.endDate >= request.resource.data.startDate))
+        && (!request.resource.data.keys().hasAny(['weekdays', 'intervalWeeks']) || (
+          request.resource.data.keys().hasAll(['weekdays', 'intervalWeeks'])
+          && request.resource.data.weekdays is list
+          && request.resource.data.weekdays.size() >= 1 && request.resource.data.weekdays.size() <= 7
+          && request.resource.data.weekdays.hasOnly([0, 1, 2, 3, 4, 5, 6])
+          && request.resource.data.weekdays.toSet().size() == request.resource.data.weekdays.size()
+          && request.resource.data.intervalWeeks is int
+          && request.resource.data.intervalWeeks >= 1 && request.resource.data.intervalWeeks <= 12
+          && request.resource.data.endDate != null
+        ))
         && request.resource.data.active == true
         && request.resource.data.createdBy == request.auth.uid
         && request.resource.data.createdByEmail == request.auth.token.email
@@ -367,8 +389,41 @@ service cloud.firestore {
     // Comentários de melhoria exigem conta autenticada; só o super-admin lê.
     match /feedback/{feedbackId} {
       allow create: if isSignedIn() && isValidFeedback(request.resource.data);
-      allow get, list, delete: if isSuperAdmin();
-      allow update: if false;
+      allow get, list: if isSuperAdmin() || (isSignedIn() && resource.data.createdBy == request.auth.uid);
+      allow delete: if isSuperAdmin() && !resource.data.keys().hasAny(['createdBy']);
+      allow update: if (isSuperAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'completedAt', 'completedBy'])
+        && request.resource.data.keys().hasAll(['status', 'completedAt', 'completedBy'])
+        && ((request.resource.data.status == 'completed'
+          && request.resource.data.completedAt == request.time
+          && request.resource.data.completedBy == request.auth.uid)
+          || (request.resource.data.status == 'pending'
+            && request.resource.data.completedAt == null
+            && request.resource.data.completedBy == null)))
+        || (isSignedIn() && resource.data.createdBy == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['publicCreditAllowed', 'publicCreditName'])
+        && request.resource.data.keys().hasAll(['publicCreditAllowed', 'publicCreditName'])
+        && request.resource.data.publicCreditAllowed is bool
+        && request.resource.data.publicCreditName is string
+        && request.resource.data.publicCreditName.size() <= 60
+        && !request.resource.data.publicCreditName.matches('.*@.*')
+        && (!request.resource.data.publicCreditAllowed || request.resource.data.publicCreditName.size() > 0));
+      match /messages/{messageId} {
+        function canConverse() {
+          return isSignedIn() && (isSuperAdmin()
+            || get(/databases/$(database)/documents/feedback/$(feedbackId)).data.createdBy == request.auth.uid);
+        }
+        allow get: if canConverse();
+        allow list: if canConverse() && request.query.limit != null && request.query.limit <= 100;
+        allow create: if canConverse()
+          && request.resource.data.keys().hasOnly(['text', 'senderId', 'createdAt'])
+          && request.resource.data.keys().hasAll(['text', 'senderId', 'createdAt'])
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0 && request.resource.data.text.size() <= 2000
+          && request.resource.data.senderId == request.auth.uid
+          && request.resource.data.createdAt == request.time;
+        allow update, delete: if false;
+      }
     }
 
     // Aviso único mostrado para todo mundo (documento fixo "latest"). Só o
@@ -385,7 +440,7 @@ service cloud.firestore {
     match /agendaUpdates/{updateId} {
       allow get, list: if true;
       allow create: if isSuperAdmin()
-        && request.resource.data.keys().hasOnly(['title', 'body', 'createdBy', 'publishedAt'])
+        && request.resource.data.keys().hasOnly(['title', 'body', 'createdBy', 'publishedAt', 'sourceFeedbackId', 'sourceName', 'sourceMessage'])
         && request.resource.data.keys().hasAll(['title', 'body', 'createdBy', 'publishedAt'])
         && request.resource.data.title is string
         && request.resource.data.title.size() > 0
@@ -394,7 +449,16 @@ service cloud.firestore {
         && request.resource.data.body.size() > 0
         && request.resource.data.body.size() <= 2000
         && request.resource.data.createdBy == request.auth.uid
-        && request.resource.data.publishedAt == request.time;
+        && request.resource.data.publishedAt == request.time
+        && (!request.resource.data.keys().hasAny(['sourceFeedbackId', 'sourceName', 'sourceMessage']) || (
+          request.resource.data.keys().hasAll(['sourceFeedbackId', 'sourceName', 'sourceMessage'])
+          && request.resource.data.sourceFeedbackId is string
+          && request.resource.data.sourceName is string
+          && request.resource.data.sourceMessage is string
+          && get(/databases/$(database)/documents/feedback/$(request.resource.data.sourceFeedbackId)).data.publicCreditAllowed == true
+          && get(/databases/$(database)/documents/feedback/$(request.resource.data.sourceFeedbackId)).data.publicCreditName == request.resource.data.sourceName
+          && get(/databases/$(database)/documents/feedback/$(request.resource.data.sourceFeedbackId)).data.message == request.resource.data.sourceMessage
+        ));
       allow update, delete: if false;
     }
 
