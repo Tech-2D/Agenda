@@ -634,7 +634,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .menu-trigger { width: 42px; height: 42px; }
   .main-content { width: calc(100% - 24px); padding: 12px 0 16px; }
   .agenda-toolbar { gap: 10px; margin-bottom: 10px; }
-  .agenda-controls { flex-wrap: nowrap; gap: 8px; }
+  .agenda-controls { flex-wrap: wrap; gap: 10px; }
+  .agenda-actions { width: 100%; justify-content: flex-end; }
   .action-button { width: 38px; padding: 0; }
   .action-button span { display: none; }
   .agenda-heading { justify-content: space-between; }
