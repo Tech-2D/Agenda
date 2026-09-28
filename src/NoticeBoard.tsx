@@ -7,7 +7,6 @@ import { db } from './firebase'
 import {
   NOTICE_BODY_MAX,
   NOTICE_MAX_DAYS,
-  NOTICE_PREVIEW_COUNT,
   NOTICE_TITLE_MAX,
   NOTICE_TYPES,
   NOTICE_TYPE_LABELS,
@@ -145,27 +144,6 @@ function PostIt({ notice, api }: { notice: Notice; api: PreviewApi }) {
       <strong className="postit-title">{notice.title}</strong>
       <span className="postit-body">{notice.body}</span>
     </button>
-  )
-}
-
-// ——— Faixa da home ———
-
-export function NoticeStrip({ notices, onOpenBoard }: { notices: Notice[]; onOpenBoard: () => void }) {
-  const api = useNoticePreview()
-  const shown = notices.slice(0, NOTICE_PREVIEW_COUNT)
-  if (notices.length === 0) return null
-  return (
-    <section className="notice-strip" aria-label="Quadro de avisos da turma">
-      <div className="notice-strip-list">
-        {shown.map((notice) => <PostIt key={notice.id} notice={notice} api={api} />)}
-        <button type="button" className="postit-more" onClick={onOpenBoard}>
-          <StickyNote size={18} aria-hidden="true" />
-          <strong>Ver todos</strong>
-          <span>{notices.length} aviso{notices.length === 1 ? '' : 's'}</span>
-        </button>
-      </div>
-      <NoticePreviewCard api={api} />
-    </section>
   )
 }
 

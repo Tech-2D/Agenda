@@ -102,7 +102,7 @@ import { markAnnouncementSeen, readAnnouncementSeenAt } from './announcementSeen
 import { isValidRepresentativeEmail, normalizeRepresentativeEmail, readRepresentativeRequestId, storeRepresentativeRequestId, type RepresentativeRequest } from './representativeAccess'
 import { canCreateForSelectedClass } from './quickCreate'
 import { PollsDialog } from './PollsDialog'
-import { NoticeBoardDialog, NoticeStrip, NoticesAdminPanel } from './NoticeBoard'
+import { NoticeBoardDialog, NoticesAdminPanel } from './NoticeBoard'
 import { activeNotices, canManageNotices } from './notices'
 import { useNow, useTurmaNotices } from './useNotices'
 import { readPreferredTurma, savePreferredTurma } from './classPreference'
@@ -479,8 +479,6 @@ function App() {
           )}
           </div>
         </div>
-
-        {turmaId && <NoticeStrip notices={visibleNotices} onOpenBoard={() => setNoticesOpen(true)} />}
 
         <section className="calendar-section" aria-label={calendarView === 'month' ? 'Calendário mensal' : calendarView === 'week' ? 'Calendário semanal' : 'Calendário diário'}>
           {!turmaId ? (

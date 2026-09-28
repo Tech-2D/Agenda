@@ -17,7 +17,6 @@ export const NOTICE_BODY_MAX = 500
 export const NOTICE_DEFAULT_DAYS = 30
 export const NOTICE_MAX_DAYS = 365
 export const NOTICE_PURGE_GRACE_DAYS = 30
-export const NOTICE_PREVIEW_COUNT = 3
 
 const DAY_MS = 24 * 60 * 60 * 1000
 

@@ -729,9 +729,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
    também é identificado por ícone e rótulo, nunca só pela cor. */
 .action-badge { min-width: 18px; padding: 1px 6px; border-radius: 10px; background: #e5484d; color: #fff; font-size: 10px; font-weight: 800; line-height: 16px; text-align: center; }
 
-.notice-strip { margin-bottom: 14px; }
-.notice-strip-list { display: flex; gap: 12px; overflow-x: auto; padding: 6px 4px 10px; scrollbar-width: thin; }
-.postit { flex: 0 0 210px; height: 118px; display: grid; align-content: start; gap: 5px; min-width: 0; padding: 10px 12px; overflow: hidden; border: 1px solid rgba(0, 0, 0, .2); border-radius: 3px 3px 12px 3px; color: #1c1c1c; text-align: left; font: inherit; cursor: pointer; box-shadow: 0 3px 8px rgba(0, 0, 0, .16); transform: rotate(-.6deg); transition: transform .15s, box-shadow .15s; }
+.postit { height: 118px; display: grid; align-content: start; gap: 5px; min-width: 0; padding: 10px 12px; overflow: hidden; border: 1px solid rgba(0, 0, 0, .2); border-radius: 3px 3px 12px 3px; color: #1c1c1c; text-align: left; font: inherit; cursor: pointer; box-shadow: 0 3px 8px rgba(0, 0, 0, .16); transform: rotate(-.6deg); transition: transform .15s, box-shadow .15s; }
 .postit:nth-child(even) { transform: rotate(.6deg); }
 .postit:hover, .postit:focus-visible { transform: translateY(-2px) rotate(0); box-shadow: 0 8px 16px rgba(0, 0, 0, .22); }
 .postit-aviso { background: #fff2a8; }
@@ -742,10 +740,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .postit-title, .postit-body { display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
 .postit-title { -webkit-line-clamp: 2; font-size: 13px; line-height: 1.25; }
 .postit-body { -webkit-line-clamp: 2; font-size: 12px; line-height: 1.35; }
-.postit-more { flex: 0 0 120px; display: grid; place-content: center; justify-items: center; gap: 4px; height: 118px; border: 2px dashed var(--line); border-radius: 8px; background: var(--paper); color: var(--ink); font: inherit; cursor: pointer; }
-.postit-more:hover { border-color: var(--accent); background: var(--surface-alt); }
-.postit-more strong { font-size: 12px; }
-.postit-more span { color: var(--ink-soft); font-size: 10px; }
 [data-contrast="alto"] .postit { border: 2px solid #000; }
 
 .notice-preview { z-index: 40; border-left-width: 6px; border-left-style: solid; gap: 8px; }
@@ -785,8 +779,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .notice-row-meta { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 4px; }
 
 @media (max-width: 640px) {
-  .postit { flex-basis: 170px; height: 112px; }
-  .postit-more { flex-basis: 96px; height: 112px; }
+  .postit { height: 112px; }
   .action-button { position: relative; }
   .action-badge { position: absolute; top: -6px; right: -6px; }
   .notice-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 12px; }
