@@ -474,7 +474,7 @@ function App() {
           {turmaId && (
             <div className="teacher-finder-row">
               <a className="action-button" aria-label="Aulas de hoje no Cadê o professor?" title="Aulas de hoje" href={teacherFinderTodayUrl(turmaId)} target="_blank" rel="noopener noreferrer">
-                <CalendarClock size={16} aria-hidden="true" /><span>Aulas de hoje</span>
+                <span className="action-icon"><CalendarClock size={16} aria-hidden="true" /></span><span className="action-label">Aulas de hoje</span>
               </a>
             </div>
           )}
@@ -497,14 +497,17 @@ function App() {
           {turmaId && (
             <div className="agenda-actions">
               <button type="button" className="action-button" aria-label={`Quadro de avisos${visibleNotices.length ? `, ${visibleNotices.length} ativos` : ''}`} title="Quadro de avisos" onClick={() => setNoticesOpen(true)}>
-                <StickyNote size={16} aria-hidden="true" /><span>Quadro de avisos</span>
-                {visibleNotices.length > 0 && <span className="action-badge">{visibleNotices.length}</span>}
+                <span className="action-icon">
+                  <StickyNote size={16} aria-hidden="true" />
+                  {visibleNotices.length > 0 && <span className="action-badge">{visibleNotices.length}</span>}
+                </span>
+                <span className="action-label">Quadro de avisos</span>
               </button>
               <button type="button" className="action-button" aria-label="Enquetes da turma" title="Enquetes da turma" onClick={() => setPollsOpen(true)}>
-                <Vote size={16} aria-hidden="true" /><span>Enquetes da turma</span>
+                <span className="action-icon"><Vote size={16} aria-hidden="true" /></span><span className="action-label">Enquetes da turma</span>
               </button>
               <button type="button" className="action-button" aria-label="Sugerir atividade" title="Sugerir atividade" onClick={() => setSuggestOpen(true)}>
-                <Lightbulb size={16} aria-hidden="true" /><span>Sugerir atividade</span>
+                <span className="action-icon"><Lightbulb size={16} aria-hidden="true" /></span><span className="action-label">Sugerir atividade</span>
               </button>
             </div>
           )}
