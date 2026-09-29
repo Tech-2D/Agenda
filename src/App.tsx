@@ -471,6 +471,14 @@ function App() {
             )}
           </div>
 
+          {turmaId && (
+            <div className="teacher-finder-row">
+              <a className="action-button" aria-label="Aulas de hoje no Cadê o professor?" title="Aulas de hoje" href={teacherFinderTodayUrl(turmaId)} target="_blank" rel="noopener noreferrer">
+                <CalendarClock size={16} aria-hidden="true" /><span>Aulas de hoje</span>
+              </a>
+            </div>
+          )}
+
           <div className="agenda-controls">
           <div className="calendar-view-tools">
           <div className="calendar-view-switch" role="group" aria-label="Visualização da agenda">
@@ -498,9 +506,6 @@ function App() {
               <button type="button" className="action-button" aria-label="Sugerir atividade" title="Sugerir atividade" onClick={() => setSuggestOpen(true)}>
                 <Lightbulb size={16} aria-hidden="true" /><span>Sugerir atividade</span>
               </button>
-              <a className="action-button" aria-label="Aulas de hoje no Cadê o professor?" title="Aulas de hoje" href={teacherFinderTodayUrl(turmaId)} target="_blank" rel="noopener noreferrer">
-                <CalendarClock size={16} aria-hidden="true" /><span>Aulas de hoje</span>
-              </a>
             </div>
           )}
           </div>
