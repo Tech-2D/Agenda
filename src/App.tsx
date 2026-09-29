@@ -60,6 +60,8 @@ import {
 } from 'firebase/firestore'
 import { auth, db } from './firebase'
 import { CLASS_NAMES } from './classNames'
+import { normalizeClassName, isValidClassName, type ClassRequest } from './classRequests'
+import { ClassRequestDialog } from './ClassRequestDialog'
 import { SUBJECTS } from './subjects'
 import { REPEAT_DAYS, recurrenceLabel, validateCustomRepeat } from './recurrence'
 import { filterFeedback, isFeedbackCompleted, type FeedbackFilter } from './feedbackStatus'
@@ -162,14 +164,23 @@ async function loadOrClaimAdminProfile(account: User): Promise<AdminProfile | nu
   const email = normalizeRepresentativeEmail(account.email)
   const invite = await getDoc(doc(db, 'representativeInvites', email))
   const turmaId = invite.data()?.turmaId
-  if (!invite.exists() || invite.data()?.email !== email || !(CLASS_NAMES as readonly string[]).includes(turmaId)) return null
+  if (!invite.exists() || invite.data()?.email !== email || !(await isAvailableClass(turmaId))) return null
 
   await setDoc(doc(db, 'admins', account.uid), { role: 'representante', turmaId, createdAt: serverTimestamp() })
   return { role: 'representante', turmaId }
 }
 
+async function isAvailableClass(name: unknown): Promise<boolean> {
+  if (typeof name !== 'string') return false
+  if ((CLASS_NAMES as readonly string[]).includes(name)) return true
+  const snapshot = await getDoc(doc(db, 'agendaClasses', name))
+  return snapshot.exists() && snapshot.data().active === true && snapshot.data().name === name
+}
+
 function App() {
   const [turmaId, setTurmaId] = useState<string | null>(readPreferredTurma)
+  const [classNames, setClassNames] = useState<string[]>([...CLASS_NAMES])
+  const [classRequestOpen, setClassRequestOpen] = useState(false)
   const [subjectFilter, setSubjectFilter] = useState('')
   const [turmaActivities, setTurmaActivities] = useState<Activity[]>([])
   const [globalActivities, setGlobalActivities] = useState<Activity[]>([])
@@ -221,6 +232,11 @@ function App() {
       reset: () => { setQuickCreateDate(null); setQuickEditActivity(null) },
     })
   }, [])
+
+  useEffect(() => onSnapshot(collection(db, 'agendaClasses'), snapshot => {
+    const approved = snapshot.docs.filter(item => item.data().active === true && item.data().name === item.id).map(item => item.id)
+    setClassNames([...new Set([...CLASS_NAMES, ...approved])].sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true })))
+  }, () => setClassNames([...CLASS_NAMES])), [])
 
   function setNeon(value: NeonColor) {
     setNeonState(value)
@@ -436,7 +452,7 @@ function App() {
             <label className="turma-select-inline" aria-label="Turma selecionada">
               <select value={turmaId ?? ''} onChange={(event) => chooseTurma(event.target.value)}>
                 <option value="" disabled>Selecione uma turma</option>
-                {CLASS_NAMES.map((name) => <option key={name} value={name}>{name}</option>)}
+                {classNames.map((name) => <option key={name} value={name}>{name}</option>)}
               </select>
             </label>
             {turmaId && (
@@ -565,13 +581,14 @@ function App() {
         <DayDetail day={selectedDay} activities={activitiesByDay.get(dateKey(selectedDay)) ?? []} profile={calendarProfile} canAdd={canCreateForSelectedClass(calendarProfile, turmaId)} onEditActivity={openCalendarEdit} onAddActivity={() => openAdminForDay(selectedDay)} onClose={() => setSelectedDay(null)} />
       )}
 
-      {!turmaId && <TurmaPickerModal onChoose={chooseTurma} />}
+      {!turmaId && !classRequestOpen && <TurmaPickerModal classNames={classNames} onChoose={chooseTurma} onRequest={() => setClassRequestOpen(true)} />}
 
       {menuOpen && (
         <SideMenu
           onClose={() => setMenuOpen(false)}
           onOpenConfig={() => { setConfigOpen(true); setMenuOpen(false) }}
           onOpenAdmin={() => { openAdmin(); setMenuOpen(false) }}
+          onRequestClass={() => { setClassRequestOpen(true); setMenuOpen(false) }}
           onOpenMySuggestions={() => { setMySuggestionsOpen(true); setMenuOpen(false) }}
           onOpenPolls={() => { setPollsOpen(true); setMenuOpen(false) }}
           onOpenFeedback={() => { setFeedbackOpen(true); setMenuOpen(false) }}
@@ -639,7 +656,8 @@ function App() {
         />
       )}
 
-      {adminOpen && <AdminDialog publicTurmaId={turmaId} quickCreateDate={quickCreateDate} quickEditActivity={quickEditActivity} systemUpdates={systemUpdates} onClose={closeAdmin} />}
+      {classRequestOpen && <ClassRequestDialog classNames={classNames} onClose={() => setClassRequestOpen(false)} />}
+      {adminOpen && <AdminDialog publicTurmaId={turmaId} classNames={classNames} quickCreateDate={quickCreateDate} quickEditActivity={quickEditActivity} systemUpdates={systemUpdates} onClose={closeAdmin} />}
 
       {showSystemUpdate && unseenSystemUpdate && (
         <SystemUpdateWelcome update={unseenSystemUpdate} onClose={() => {
@@ -677,10 +695,11 @@ function VLibrasWidget() {
   )
 }
 
-function SideMenu({ onClose, onOpenConfig, onOpenAdmin, onOpenMySuggestions, onOpenPolls, onOpenFeedback, onOpenNotifications, onOpenDocs, onOpenUpdates, unseenNotifications, latestUpdateIsNew }: {
+function SideMenu({ onClose, onOpenConfig, onOpenAdmin, onRequestClass, onOpenMySuggestions, onOpenPolls, onOpenFeedback, onOpenNotifications, onOpenDocs, onOpenUpdates, unseenNotifications, latestUpdateIsNew }: {
   onClose: () => void
   onOpenConfig: () => void
   onOpenAdmin: () => void
+  onRequestClass: () => void
   onOpenMySuggestions: () => void
   onOpenPolls: () => void
   onOpenFeedback: () => void
@@ -713,6 +732,7 @@ function SideMenu({ onClose, onOpenConfig, onOpenAdmin, onOpenMySuggestions, onO
           <button type="button" onClick={onOpenConfig}><Settings size={18} /> Configurações</button>
           <button type="button" onClick={onOpenDocs}><BookOpen size={18} /> Como funciona</button>
           <button type="button" onClick={onOpenAdmin}><KeyRound size={18} /> Sou representante</button>
+          <button type="button" onClick={onRequestClass}><Plus size={18} /> Pedir agenda para minha turma</button>
           <button type="button" onClick={onOpenFeedback}><MessageSquarePlus size={18} /> Comentar melhoria</button>
           <button type="button" onClick={onOpenMySuggestions}><ListChecks size={18} /> Minhas sugestões</button>
           <a className="side-menu-external" href="https://tech-2d.github.io/professores/" target="_blank" rel="noopener noreferrer">
@@ -908,9 +928,9 @@ function DocsDialog({ onClose }: { onClose: () => void }) {
   )
 }
 
-function TurmaPickerModal({ onChoose }: { onChoose: (turmaId: string) => void }) {
+function TurmaPickerModal({ classNames, onChoose, onRequest }: { classNames: string[]; onChoose: (turmaId: string) => void; onRequest: () => void }) {
   const [search, setSearch] = useState('')
-  const options = CLASS_NAMES.filter((name) => name.toLowerCase().includes(search.trim().toLowerCase()))
+  const options = classNames.filter((name) => name.toLowerCase().includes(search.trim().toLowerCase()))
   return (
     <div className="modal-backdrop" role="presentation">
       <section className="turma-picker" role="dialog" aria-modal="true" aria-labelledby="turma-picker-title">
@@ -929,6 +949,7 @@ function TurmaPickerModal({ onChoose }: { onChoose: (turmaId: string) => void })
             <button type="button" key={name} onClick={() => onChoose(name)}>{name}</button>
           ))}
         </div>
+        <button type="button" className="access-switch" onClick={onRequest}>Minha turma não aparece? Solicite uma agenda</button>
       </section>
     </div>
   )
@@ -1378,13 +1399,14 @@ function DayDetail({ day, activities, profile, canAdd, onEditActivity, onAddActi
 
 type AdminDialogProps = {
   publicTurmaId: string | null
+  classNames: string[]
   quickCreateDate: string | null
   quickEditActivity: Activity | null
   systemUpdates: SystemUpdate[]
   onClose: () => void
 }
 
-function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, systemUpdates, onClose }: AdminDialogProps) {
+function AdminDialog({ publicTurmaId, classNames, quickCreateDate, quickEditActivity, systemUpdates, onClose }: AdminDialogProps) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [authError, setAuthError] = useState('')
@@ -1407,6 +1429,7 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
   const [globalActivities, setGlobalActivities] = useState<Activity[]>([])
   const [managedSuggestions, setManagedSuggestions] = useState<Suggestion[]>([])
   const [representativeRequests, setRepresentativeRequests] = useState<RepresentativeRequest[]>([])
+  const [classRequests, setClassRequests] = useState<ClassRequest[]>([])
   const [feedbackList, setFeedbackList] = useState<Feedback[]>([])
   const [feedbackFilter, setFeedbackFilter] = useState<FeedbackFilter>('pending')
   const pendingFeedbackCount = filterFeedback(feedbackList, 'pending').length
@@ -1418,7 +1441,7 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
   const [updateBody, setUpdateBody] = useState('')
   const [updateFeedbackId, setUpdateFeedbackId] = useState('')
   const [adminSearch, setAdminSearch] = useState('')
-  const [adminTab, setAdminTab] = useState<'activities' | 'recurrences' | 'retention' | 'notices' | 'chat' | 'suggestions' | 'representatives' | 'site'>('activities')
+  const [adminTab, setAdminTab] = useState<'activities' | 'recurrences' | 'retention' | 'notices' | 'chat' | 'suggestions' | 'representatives' | 'classes' | 'site'>('activities')
   const [recurrences, setRecurrences] = useState<RecurringActivity[]>([])
   const [repeatWeekly, setRepeatWeekly] = useState(false)
   const [repeatCustom, setRepeatCustom] = useState(false)
@@ -1589,6 +1612,14 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
 
   useEffect(() => {
     if (!isSuperAdmin) return
+    const pendingQuery = query(collection(db, 'agendaClassRequests'), where('status', '==', 'pendente'))
+    return onSnapshot(pendingQuery, snapshot => {
+      setClassRequests(snapshot.docs.map(item => ({ id: item.id, ...item.data() }) as ClassRequest))
+    }, () => setNotice('Não foi possível carregar os pedidos de novas turmas. Confira as regras do Firestore.'))
+  }, [isSuperAdmin])
+
+  useEffect(() => {
+    if (!isSuperAdmin) return
     return onSnapshot(collection(db, 'feedback'), (snapshot) => {
       setFeedbackList(snapshot.docs.map((item) => ({ id: item.id, ...item.data() }) as Feedback))
     })
@@ -1605,7 +1636,7 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
 
   const isRepresentante = profile?.role === 'representante'
   const quickCreateMismatch = Boolean(quickCreateDate && profile && !canCreateForSelectedClass(profile, publicTurmaId))
-  const turmaMismatch = isRepresentante && !!profile?.turmaId && !(CLASS_NAMES as readonly string[]).includes(profile.turmaId)
+  const turmaMismatch = isRepresentante && !!profile?.turmaId && !classNames.includes(profile.turmaId)
   const filteredActivities = managedActivities
     .filter((activity) => matchesSearch(activity, adminSearch))
     .sort((a, b) => a.date.localeCompare(b.date) || compareActivities(a, b))
@@ -1742,7 +1773,7 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
 
   async function reviewRepresentativeRequest(item: RepresentativeRequest, approved: boolean) {
     if (!isSuperAdmin) return
-    if (!isValidRepresentativeEmail(item.email) || !(CLASS_NAMES as readonly string[]).includes(item.turmaId)) {
+    if (!isValidRepresentativeEmail(item.email) || !classNames.includes(item.turmaId)) {
       setNotice('Esta solicitação tem e-mail ou turma inválida e não pode ser aprovada.')
       return
     }
@@ -1767,6 +1798,33 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
     } finally {
       setBusy(false)
     }
+  }
+
+  async function reviewClassRequest(item: ClassRequest, approved: boolean) {
+    if (!isSuperAdmin) return
+    const className = normalizeClassName(item.className)
+    if (!isValidClassName(className) || className !== item.className) {
+      setNotice('O nome desta turma não é válido. Recuse e peça uma nova solicitação.')
+      return
+    }
+    if (approved && classNames.includes(className)) {
+      setNotice('Essa turma já tem uma agenda. Recuse o pedido duplicado.')
+      return
+    }
+    setBusy(true)
+    try {
+      if (approved) {
+        const batch = writeBatch(db)
+        batch.set(doc(db, 'agendaClasses', className), { name: className, active: true, requestId: item.id, approvedAt: serverTimestamp() })
+        batch.update(doc(db, 'agendaClassRequests', item.id), { status: 'aprovada', reviewedAt: serverTimestamp() })
+        await batch.commit()
+      } else {
+        await updateDoc(doc(db, 'agendaClassRequests', item.id), { status: 'rejeitada', reviewedAt: serverTimestamp() })
+      }
+      setNotice(approved ? `Agenda de ${className} liberada. A turma já aparece no seletor; representantes ainda precisam solicitar acesso.` : `Pedido de ${className} recusado.`)
+    } catch {
+      setNotice('Não foi possível avaliar este pedido. Confira as regras do Firestore e tente novamente.')
+    } finally { setBusy(false) }
   }
 
   function startCreate() {
@@ -2127,7 +2185,7 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
                   <input id="representative-email" type="email" value={requestEmail} onChange={(event) => setRequestEmail(event.target.value)} autoComplete="email" required />
                   <label htmlFor="representative-class">Sua turma</label>
                   <select id="representative-class" value={requestTurma} onChange={(event) => setRequestTurma(event.target.value)}>
-                    {CLASS_NAMES.map((name) => <option key={name} value={name}>{name}</option>)}
+                    {classNames.map((name) => <option key={name} value={name}>{name}</option>)}
                   </select>
                   <button className="primary-button" disabled={busy}>{busy ? <LoaderCircle className="spin" /> : 'Enviar solicitação'}</button>
                 </form>
@@ -2189,6 +2247,7 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
                       icon: <ShieldCheck size={16} />,
                       tabs: [
                         { id: 'representatives' as const, label: 'Representantes', icon: <Users size={15} />, count: representativeRequests.length },
+                        { id: 'classes' as const, label: 'Novas turmas', icon: <Plus size={15} />, count: classRequests.length },
                         { id: 'site' as const, label: 'Site', icon: <Globe size={15} />, count: pendingFeedbackCount },
                       ],
                     }] : []),
@@ -2336,6 +2395,25 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
                       </div>
                     </>
                   )}
+                  {isSuperAdmin && adminTab === 'classes' && (
+                    <>
+                      <div className="admin-list-heading"><strong>Pedidos de agenda para novas turmas</strong></div>
+                      <p className="representative-hint">Aprovar cria a agenda pública da turma. Não concede acesso de representante ao solicitante.</p>
+                      <div className="admin-list">
+                        {classRequests.length === 0 ? <p className="admin-empty">Nenhum pedido pendente.</p> : classRequests.map(item => (
+                          <article key={item.id} className="admin-row compact representative-row">
+                            <div className="avatar"><Calendar /></div>
+                            <div className="admin-row-main"><strong>{item.className}</strong><span>{item.email}</span></div>
+                            <div className="admin-row-meta"><span>Solicitado em</span><strong>{item.createdAt ? item.createdAt.toDate().toLocaleDateString('pt-BR') : '—'}</strong></div>
+                            <div className="row-actions">
+                              <button type="button" onClick={() => reviewClassRequest(item, true)} disabled={busy} aria-label={`Aprovar agenda de ${item.className}`} title="Aprovar"><Check /></button>
+                              <button type="button" className="danger" onClick={() => reviewClassRequest(item, false)} disabled={busy} aria-label={`Recusar agenda de ${item.className}`} title="Recusar"><X /></button>
+                            </div>
+                          </article>
+                        ))}
+                      </div>
+                    </>
+                  )}
                   {adminTab === 'site' && (
                     <>
                       <div className="admin-list-heading"><strong>Atualizações do sistema</strong></div>
@@ -2414,7 +2492,7 @@ function AdminDialog({ publicTurmaId, quickCreateDate, quickEditActivity, system
                     <strong>{managedTurma}</strong>
                   ) : (
                     <select value={managedTurma} onChange={(event) => setManagedTurma(event.target.value)}>
-                      {CLASS_NAMES.map((name) => <option key={name} value={name}>{name}</option>)}
+                      {classNames.map((name) => <option key={name} value={name}>{name}</option>)}
                     </select>
                   )}
                 </div>

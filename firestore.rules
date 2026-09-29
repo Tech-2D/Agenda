@@ -20,7 +20,11 @@ service cloud.firestore {
     }
 
     function isKnownAgendaTurma(turmaId) {
-      return turmaId in ['2° TECH D', '2° TECH E', '2° TECH F', '2° TECH G', '2° TECH H', '2° TECH I'];
+      return turmaId in ['2° TECH D', '2° TECH E', '2° TECH F', '2° TECH G', '2° TECH H', '2° TECH I',
+        '3° TECH AD H', '3° TECH AD I', '3° TECH DS E', '3° TECH DS F', '3° TECH DS G']
+        || (turmaId is string
+          && exists(/databases/$(database)/documents/agendaClasses/$(turmaId))
+          && get(/databases/$(database)/documents/agendaClasses/$(turmaId)).data.active == true);
     }
 
     function canClaimRepresentativeAccess(uid) {
@@ -120,6 +124,40 @@ service cloud.firestore {
       allow get: if isSignedIn() && request.auth.uid == uid;
       allow create: if canClaimRepresentativeAccess(uid);
       allow list, update, delete: if false;
+    }
+
+    // Pedir uma turma não concede acesso para editar sua agenda.
+    match /agendaClassRequests/{requestId} {
+      allow get, list: if isSuperAdmin();
+      allow create: if request.resource.data.keys().hasOnly(['className', 'email', 'status', 'createdAt'])
+        && request.resource.data.keys().hasAll(['className', 'email', 'status', 'createdAt'])
+        && request.resource.data.className is string
+        && request.resource.data.className.size() >= 3
+        && request.resource.data.className.size() <= 60
+        && request.resource.data.className.matches('^[^/\\n\\r]+$')
+        && request.resource.data.email is string
+        && request.resource.data.email.size() <= 254
+        && request.resource.data.email.matches('^[a-z0-9._%+-]+@[a-z0-9.-]+[.][a-z]{2,}$')
+        && request.resource.data.status == 'pendente'
+        && request.resource.data.createdAt == request.time;
+      allow update: if isSuperAdmin()
+        && resource.data.status == 'pendente'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'reviewedAt'])
+        && request.resource.data.status in ['aprovada', 'rejeitada']
+        && request.resource.data.reviewedAt == request.time;
+      allow delete: if false;
+    }
+
+    match /agendaClasses/{className} {
+      allow get, list: if true;
+      allow create: if isSuperAdmin()
+        && request.resource.data.keys().hasOnly(['name', 'active', 'requestId', 'approvedAt'])
+        && request.resource.data.keys().hasAll(['name', 'active', 'requestId', 'approvedAt'])
+        && request.resource.data.name == className
+        && request.resource.data.active == true
+        && request.resource.data.requestId is string
+        && request.resource.data.approvedAt == request.time;
+      allow update, delete: if false;
     }
 
     match /representativeRequests/{requestId} {

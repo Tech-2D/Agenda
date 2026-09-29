@@ -7,6 +7,7 @@ function mockStorage(values = new Map<string, string>()) {
   vi.stubGlobal('window', { localStorage: {
     getItem: (key: string) => values.get(key) ?? null,
     setItem: (key: string, value: string) => values.set(key, value),
+    removeItem: (key: string) => values.delete(key),
   } })
   return values
 }
@@ -24,5 +25,19 @@ describe('preferência de turma da Agenda', () => {
     expect(readPreferredTurma()).toBe('2° TECH D')
     values.set('tech-2d:preferredClass', '8º A')
     expect(readPreferredTurma()).toBeNull()
+  })
+
+  it('compartilha as turmas Tech do 3º ano com Professores', () => {
+    const values = mockStorage()
+    savePreferredTurma('3° TECH DS G')
+    expect(values.get('tech-2d:preferredClass')).toBe('3º Tec DS G')
+    expect(readPreferredTurma()).toBe('3° TECH DS G')
+  })
+
+  it('preserva turmas novas aprovadas mesmo sem correspondência no site Professores', () => {
+    const values = mockStorage()
+    savePreferredTurma('8º A')
+    expect(values.has('tech-2d:preferredClass')).toBe(false)
+    expect(readPreferredTurma()).toBe('8º A')
   })
 })
