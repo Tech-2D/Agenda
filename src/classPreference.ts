@@ -32,6 +32,12 @@ export function readPreferredTurma(): string | null {
   }
 }
 
+// Usado para linkar direto para uma turma no site Cadê o professor?
+// (turmas fora dessa lista, como as pedidas dinamicamente, não têm par lá).
+export function professorClassFor(turmaId: string): string | null {
+  return PROFESSOR_CLASS_BY_AGENDA_CLASS[turmaId as (typeof CLASS_NAMES)[number]] ?? null
+}
+
 export function savePreferredTurma(turmaId: string): void {
   if (!turmaId) return
   try {
