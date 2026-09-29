@@ -99,7 +99,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 
 .agenda-toolbar { display: grid; gap: 14px; margin-bottom: 16px; }
 .agenda-controls { display: flex; align-items: center; justify-content: space-between; gap: 14px 20px; flex-wrap: wrap; }
-.agenda-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; }
+.agenda-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; margin-left: auto; }
 .action-button { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 38px; padding: 0 14px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); color: var(--text); font-size: 12px; font-weight: 800; white-space: nowrap; text-decoration: none; cursor: pointer; transition: background .15s, border-color .15s; }
 .action-button:hover, .action-button:focus-visible { background: var(--surface-alt); border-color: var(--accent); }
 .action-button svg { flex-shrink: 0; color: var(--ink); }

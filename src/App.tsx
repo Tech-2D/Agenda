@@ -471,6 +471,21 @@ function App() {
             )}
           </div>
 
+          <div className="agenda-controls">
+          <div className="calendar-view-tools">
+          <div className="calendar-view-switch" role="group" aria-label="Visualização da agenda">
+            {CALENDAR_VIEWS.map(view => <button key={view.id} type="button" aria-pressed={calendarView === view.id} onClick={() => { setCalendarView(view.id); setDayPreview(null) }}>{view.label}</button>)}
+          </div>
+          <div className="month-nav">
+            <button type="button" onClick={() => { setDayPreview(null); setMonthCursor((current) => movePeriod(current, calendarView, -1)) }} aria-label={calendarView === 'month' ? 'Mês anterior' : calendarView === 'week' ? 'Semana anterior' : 'Dia anterior'}><ChevronLeft /></button>
+            <div className="month-nav-title">
+              <strong aria-live="polite">{periodTitle(monthCursor, calendarView)}</strong>
+              <button type="button" className="today-button" onClick={() => { setDayPreview(null); setMonthCursor(new Date()) }}>Hoje</button>
+            </div>
+            <button type="button" onClick={() => { setDayPreview(null); setMonthCursor((current) => movePeriod(current, calendarView, 1)) }} aria-label={calendarView === 'month' ? 'Próximo mês' : calendarView === 'week' ? 'Próxima semana' : 'Próximo dia'}><ChevronRight /></button>
+          </div>
+          </div>
+
           {turmaId && (
             <div className="agenda-actions">
               <button type="button" className="action-button" aria-label={`Quadro de avisos${visibleNotices.length ? `, ${visibleNotices.length} ativos` : ''}`} title="Quadro de avisos" onClick={() => setNoticesOpen(true)}>
@@ -488,21 +503,6 @@ function App() {
               </a>
             </div>
           )}
-
-          <div className="agenda-controls">
-          <div className="calendar-view-tools">
-          <div className="calendar-view-switch" role="group" aria-label="Visualização da agenda">
-            {CALENDAR_VIEWS.map(view => <button key={view.id} type="button" aria-pressed={calendarView === view.id} onClick={() => { setCalendarView(view.id); setDayPreview(null) }}>{view.label}</button>)}
-          </div>
-          <div className="month-nav">
-            <button type="button" onClick={() => { setDayPreview(null); setMonthCursor((current) => movePeriod(current, calendarView, -1)) }} aria-label={calendarView === 'month' ? 'Mês anterior' : calendarView === 'week' ? 'Semana anterior' : 'Dia anterior'}><ChevronLeft /></button>
-            <div className="month-nav-title">
-              <strong aria-live="polite">{periodTitle(monthCursor, calendarView)}</strong>
-              <button type="button" className="today-button" onClick={() => { setDayPreview(null); setMonthCursor(new Date()) }}>Hoje</button>
-            </div>
-            <button type="button" onClick={() => { setDayPreview(null); setMonthCursor((current) => movePeriod(current, calendarView, 1)) }} aria-label={calendarView === 'month' ? 'Próximo mês' : calendarView === 'week' ? 'Próxima semana' : 'Próximo dia'}><ChevronRight /></button>
-          </div>
-          </div>
           </div>
         </div>
 
