@@ -100,7 +100,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .agenda-toolbar { display: grid; gap: 14px; margin-bottom: 16px; }
 .agenda-controls { display: flex; align-items: center; justify-content: space-between; gap: 14px 20px; flex-wrap: wrap; }
 .agenda-actions { display: flex; align-items: center; gap: 8px; }
-.teacher-finder-row { display: flex; justify-content: flex-end; }
 /* Começam só com o ícone e crescem para mostrar o texto ao passar o mouse
    ou focar (teclado). O texto sempre existe no DOM — leitor de tela lê
    normalmente, só a aparência visual muda. */
