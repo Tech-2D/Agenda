@@ -12,7 +12,6 @@ import {
   DoorOpen,
   Edit3,
   ExternalLink,
-  Gamepad2,
   Globe,
   History,
   KeyRound,
@@ -41,6 +40,7 @@ import {
 import { createUserWithEmailAndPassword, onAuthStateChanged, signInWithEmailAndPassword, signOut, type User } from 'firebase/auth'
 import { requestPasswordReset } from './passwordReset'
 import { WeeklyDigestSettings } from './WeeklyDigestSettings'
+import { ProfileDialog } from './ProfileDialog'
 import { AttachmentLinks } from './AttachmentLinks'
 import { StorageAdminPanel } from './StorageAdminPanel'
 import { ATTACHMENTS_ENABLED, deleteActivityWithAttachments, formatAttachmentSize, MAX_ATTACHMENTS, removeAttachment, uploadAttachment, validateAttachment } from './attachments'
@@ -200,6 +200,7 @@ function App() {
   const [calendarProfile, setCalendarProfile] = useState<AdminProfile | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
   const [configOpen, setConfigOpen] = useState(false)
+  const [profilesOpen, setProfilesOpen] = useState(false)
   const [suggestOpen, setSuggestOpen] = useState(false)
   const [mySuggestionsOpen, setMySuggestionsOpen] = useState(false)
   const [feedbackOpen, setFeedbackOpen] = useState(false)
@@ -590,6 +591,7 @@ function App() {
         <SideMenu
           onClose={() => setMenuOpen(false)}
           onOpenConfig={() => { setConfigOpen(true); setMenuOpen(false) }}
+          onOpenProfiles={() => { setProfilesOpen(true); setMenuOpen(false) }}
           onOpenAdmin={() => { openAdmin(); setMenuOpen(false) }}
           onRequestClass={() => { setClassRequestOpen(true); setMenuOpen(false) }}
           onOpenMySuggestions={() => { setMySuggestionsOpen(true); setMenuOpen(false) }}
@@ -608,6 +610,7 @@ function App() {
       )}
 
       {docsOpen && <DocsDialog onClose={() => setDocsOpen(false)} />}
+      {profilesOpen && <ProfileDialog onClose={() => setProfilesOpen(false)} />}
 
       {updatesOpen && <SystemUpdatesDialog onClose={() => setUpdatesOpen(false)} />}
 
@@ -698,9 +701,10 @@ function VLibrasWidget() {
   )
 }
 
-function SideMenu({ onClose, onOpenConfig, onOpenAdmin, onRequestClass, onOpenMySuggestions, onOpenPolls, onOpenFeedback, onOpenNotifications, onOpenDocs, onOpenUpdates, unseenNotifications, latestUpdateIsNew }: {
+function SideMenu({ onClose, onOpenConfig, onOpenProfiles, onOpenAdmin, onRequestClass, onOpenMySuggestions, onOpenPolls, onOpenFeedback, onOpenNotifications, onOpenDocs, onOpenUpdates, unseenNotifications, latestUpdateIsNew }: {
   onClose: () => void
   onOpenConfig: () => void
+  onOpenProfiles: () => void
   onOpenAdmin: () => void
   onRequestClass: () => void
   onOpenMySuggestions: () => void
@@ -733,6 +737,7 @@ function SideMenu({ onClose, onOpenConfig, onOpenAdmin, onRequestClass, onOpenMy
           <button type="button" onClick={onOpenUpdates}><History size={18} /> Atualizações{latestUpdateIsNew && <span className="notif-count">Novo</span>}</button>
           <button type="button" onClick={onOpenPolls}><Vote size={18} /> Enquetes da turma</button>
           <button type="button" onClick={onOpenConfig}><Settings size={18} /> Configurações</button>
+          <button type="button" onClick={onOpenProfiles}><UserRound size={18} /> Perfis da comunidade</button>
           <button type="button" onClick={onOpenDocs}><BookOpen size={18} /> Como funciona</button>
           <button type="button" onClick={onOpenAdmin}><KeyRound size={18} /> Sou representante</button>
           <button type="button" onClick={onRequestClass}><Plus size={18} /> Pedir agenda para minha turma</button>
@@ -743,12 +748,22 @@ function SideMenu({ onClose, onOpenConfig, onOpenAdmin, onRequestClass, onOpenMy
             <ExternalLink size={14} className="external-icon" />
           </a>
           <a className="side-menu-external" href="https://ligagerminare-pong.vercel.app/" target="_blank" rel="noopener noreferrer">
-            <Gamepad2 size={18} /> Liga Germinare Pong
+            <TableTennisPaddle /> Liga Germinare Pong
             <ExternalLink size={14} className="external-icon" />
           </a>
         </nav>
       </aside>
     </div>
+  )
+}
+
+function TableTennisPaddle() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="18.5" cy="5.5" r="2" fill="currentColor" stroke="none" />
+      <path d="M13.9 15.7 18 20a2 2 0 0 1-2.8 2.8l-4.2-4.2" />
+      <path d="M15.5 3.5c-3.7-2.2-8.8-.8-11.6 2.7-2.8 3.5-2.8 8.2.1 11.1 2.9 2.9 7.6 2.9 11.1.1 3.5-3.5 4.8-8.6 2.7-11.6" />
+    </svg>
   )
 }
 
