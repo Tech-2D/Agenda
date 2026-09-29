@@ -29,6 +29,7 @@ import {
   Repeat,
   Settings,
   ShieldCheck,
+  HardDrive,
   StickyNote,
   Trash2,
   UserRound,
@@ -40,6 +41,7 @@ import { createUserWithEmailAndPassword, onAuthStateChanged, signInWithEmailAndP
 import { requestPasswordReset } from './passwordReset'
 import { WeeklyDigestSettings } from './WeeklyDigestSettings'
 import { AttachmentLinks } from './AttachmentLinks'
+import { StorageAdminPanel } from './StorageAdminPanel'
 import { ATTACHMENTS_ENABLED, deleteActivityWithAttachments, formatAttachmentSize, MAX_ATTACHMENTS, removeAttachment, uploadAttachment, validateAttachment } from './attachments'
 import { FirebaseError } from 'firebase/app'
 import {
@@ -1441,7 +1443,7 @@ function AdminDialog({ publicTurmaId, classNames, quickCreateDate, quickEditActi
   const [updateBody, setUpdateBody] = useState('')
   const [updateFeedbackId, setUpdateFeedbackId] = useState('')
   const [adminSearch, setAdminSearch] = useState('')
-  const [adminTab, setAdminTab] = useState<'activities' | 'recurrences' | 'retention' | 'notices' | 'chat' | 'suggestions' | 'representatives' | 'classes' | 'site'>('activities')
+  const [adminTab, setAdminTab] = useState<'activities' | 'recurrences' | 'retention' | 'notices' | 'chat' | 'suggestions' | 'representatives' | 'classes' | 'site' | 'storage'>('activities')
   const [recurrences, setRecurrences] = useState<RecurringActivity[]>([])
   const [repeatWeekly, setRepeatWeekly] = useState(false)
   const [repeatCustom, setRepeatCustom] = useState(false)
@@ -2248,6 +2250,7 @@ function AdminDialog({ publicTurmaId, classNames, quickCreateDate, quickEditActi
                       tabs: [
                         { id: 'representatives' as const, label: 'Representantes', icon: <Users size={15} />, count: representativeRequests.length },
                         { id: 'classes' as const, label: 'Novas turmas', icon: <Plus size={15} />, count: classRequests.length },
+                        { id: 'storage' as const, label: 'Arquivos', icon: <HardDrive size={15} /> },
                         { id: 'site' as const, label: 'Site', icon: <Globe size={15} />, count: pendingFeedbackCount },
                       ],
                     }] : []),
@@ -2414,6 +2417,7 @@ function AdminDialog({ publicTurmaId, classNames, quickCreateDate, quickEditActi
                       </div>
                     </>
                   )}
+                  {isSuperAdmin && adminTab === 'storage' && <StorageAdminPanel />}
                   {adminTab === 'site' && (
                     <>
                       <div className="admin-list-heading"><strong>Atualizações do sistema</strong></div>
