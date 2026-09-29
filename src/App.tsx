@@ -471,6 +471,24 @@ function App() {
             )}
           </div>
 
+          {turmaId && (
+            <div className="agenda-actions">
+              <button type="button" className="action-button" aria-label={`Quadro de avisos${visibleNotices.length ? `, ${visibleNotices.length} ativos` : ''}`} title="Quadro de avisos" onClick={() => setNoticesOpen(true)}>
+                <StickyNote size={16} aria-hidden="true" /><span className="action-label">Quadro de avisos</span>
+                {visibleNotices.length > 0 && <span className="action-badge">{visibleNotices.length}</span>}
+              </button>
+              <button type="button" className="action-button" aria-label="Enquetes da turma" title="Enquetes da turma" onClick={() => setPollsOpen(true)}>
+                <Vote size={16} aria-hidden="true" /><span className="action-label">Enquetes da turma</span>
+              </button>
+              <button type="button" className="action-button" aria-label="Sugerir atividade" title="Sugerir atividade" onClick={() => setSuggestOpen(true)}>
+                <Lightbulb size={16} aria-hidden="true" /><span className="action-label">Sugerir atividade</span>
+              </button>
+              <a className="action-button" aria-label="Aulas de hoje no Cadê o professor?" title="Aulas de hoje" href={teacherFinderTodayUrl(turmaId)} target="_blank" rel="noopener noreferrer">
+                <CalendarClock size={16} aria-hidden="true" /><span className="action-label">Aulas de hoje</span>
+              </a>
+            </div>
+          )}
+
           <div className="agenda-controls">
           <div className="calendar-view-tools">
           <div className="calendar-view-switch" role="group" aria-label="Visualização da agenda">
@@ -485,27 +503,6 @@ function App() {
             <button type="button" onClick={() => { setDayPreview(null); setMonthCursor((current) => movePeriod(current, calendarView, 1)) }} aria-label={calendarView === 'month' ? 'Próximo mês' : calendarView === 'week' ? 'Próxima semana' : 'Próximo dia'}><ChevronRight /></button>
           </div>
           </div>
-
-          {turmaId && (
-            <div className="agenda-actions">
-              <button type="button" className="action-button" aria-label={`Quadro de avisos${visibleNotices.length ? `, ${visibleNotices.length} ativos` : ''}`} title="Quadro de avisos" onClick={() => setNoticesOpen(true)}>
-                <span className="action-icon">
-                  <StickyNote size={16} aria-hidden="true" />
-                  {visibleNotices.length > 0 && <span className="action-badge">{visibleNotices.length}</span>}
-                </span>
-                <span className="action-label">Quadro de avisos</span>
-              </button>
-              <button type="button" className="action-button" aria-label="Enquetes da turma" title="Enquetes da turma" onClick={() => setPollsOpen(true)}>
-                <span className="action-icon"><Vote size={16} aria-hidden="true" /></span><span className="action-label">Enquetes da turma</span>
-              </button>
-              <button type="button" className="action-button" aria-label="Sugerir atividade" title="Sugerir atividade" onClick={() => setSuggestOpen(true)}>
-                <span className="action-icon"><Lightbulb size={16} aria-hidden="true" /></span><span className="action-label">Sugerir atividade</span>
-              </button>
-              <a className="action-button" aria-label="Aulas de hoje no Cadê o professor?" title="Aulas de hoje" href={teacherFinderTodayUrl(turmaId)} target="_blank" rel="noopener noreferrer">
-                <span className="action-icon"><CalendarClock size={16} aria-hidden="true" /></span><span className="action-label">Aulas de hoje</span>
-              </a>
-            </div>
-          )}
           </div>
         </div>
 

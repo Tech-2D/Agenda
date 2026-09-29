@@ -99,16 +99,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 
 .agenda-toolbar { display: grid; gap: 14px; margin-bottom: 16px; }
 .agenda-controls { display: flex; align-items: center; justify-content: space-between; gap: 14px 20px; flex-wrap: wrap; }
-.agenda-actions { display: flex; align-items: center; gap: 8px; }
-/* Começam só com o ícone e crescem para mostrar o texto ao passar o mouse
-   ou focar (teclado). O texto sempre existe no DOM — leitor de tela lê
-   normalmente, só a aparência visual muda. */
-.action-button { position: relative; display: inline-flex; align-items: center; justify-content: flex-start; gap: 0; height: 38px; padding: 0 11px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); color: var(--text); font-size: 12px; font-weight: 800; white-space: nowrap; text-decoration: none; cursor: pointer; transition: gap .2s ease, background .15s, border-color .15s; }
-.action-button:hover, .action-button:focus-visible { gap: 8px; background: var(--surface-alt); border-color: var(--accent); }
+.agenda-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; }
+.action-button { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 38px; padding: 0 14px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); color: var(--text); font-size: 12px; font-weight: 800; white-space: nowrap; text-decoration: none; cursor: pointer; transition: background .15s, border-color .15s; }
+.action-button:hover, .action-button:focus-visible { background: var(--surface-alt); border-color: var(--accent); }
 .action-button svg { flex-shrink: 0; color: var(--ink); }
-.action-label { max-width: 0; overflow: hidden; opacity: 0; transition: max-width .25s ease, opacity .15s ease; }
-.action-button:hover .action-label, .action-button:focus-visible .action-label { max-width: 200px; opacity: 1; }
-.action-icon { position: relative; display: inline-flex; flex-shrink: 0; }
 .agenda-heading { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
 .agenda-heading h1 { margin: 0; color: var(--ink); font-size: 22px; line-height: 1.2; letter-spacing: -.03em; }
 .turma-select-inline select { height: 38px; padding: 0 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); color: var(--text); font-size: 12px; font-weight: 700; }
@@ -668,7 +662,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .main-content { width: calc(100% - 24px); padding: 12px 0 16px; }
   .agenda-toolbar { gap: 10px; margin-bottom: 10px; }
   .agenda-controls { flex-wrap: wrap; gap: 10px; }
-  .agenda-actions { width: 100%; justify-content: flex-end; }
+  .action-button { width: 38px; padding: 0; }
+  .action-label { display: none; }
+  .action-badge { position: absolute; top: -6px; right: -6px; }
   .agenda-heading { justify-content: space-between; }
   .agenda-heading h1 { font-size: 17px; }
   .month-nav { flex: 1; min-width: 0; justify-content: space-between; gap: 8px; }
@@ -769,7 +765,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 
 /* Quadro de avisos: post-its com cores fixas (legíveis em qualquer tema). O tipo
    também é identificado por ícone e rótulo, nunca só pela cor. */
-.action-badge { position: absolute; top: -6px; right: -6px; min-width: 18px; padding: 1px 6px; border-radius: 10px; background: #e5484d; color: #fff; font-size: 10px; font-weight: 800; line-height: 16px; text-align: center; }
+.action-badge { min-width: 18px; padding: 1px 6px; border-radius: 10px; background: #e5484d; color: #fff; font-size: 10px; font-weight: 800; line-height: 16px; text-align: center; }
 
 .postit { height: 118px; display: grid; align-content: start; gap: 5px; min-width: 0; padding: 10px 12px; overflow: hidden; border: 1px solid rgba(0, 0, 0, .2); border-radius: 3px 3px 12px 3px; color: #1c1c1c; text-align: left; font: inherit; cursor: pointer; box-shadow: 0 3px 8px rgba(0, 0, 0, .16); transform: rotate(-.6deg); transition: transform .15s, box-shadow .15s; }
 .postit:nth-child(even) { transform: rotate(.6deg); }
