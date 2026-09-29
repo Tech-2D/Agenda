@@ -12,6 +12,7 @@ import {
   DoorOpen,
   Edit3,
   ExternalLink,
+  Gamepad2,
   Globe,
   History,
   KeyRound,
@@ -739,6 +740,10 @@ function SideMenu({ onClose, onOpenConfig, onOpenAdmin, onRequestClass, onOpenMy
           <button type="button" onClick={onOpenMySuggestions}><ListChecks size={18} /> Minhas sugestões</button>
           <a className="side-menu-external" href="https://tech-2d.github.io/professores/" target="_blank" rel="noopener noreferrer">
             <MapPin size={18} /> Cadê o professor?
+            <ExternalLink size={14} className="external-icon" />
+          </a>
+          <a className="side-menu-external" href="https://ligagerminare-pong.vercel.app/" target="_blank" rel="noopener noreferrer">
+            <Gamepad2 size={18} /> Liga Germinare Pong
             <ExternalLink size={14} className="external-icon" />
           </a>
         </nav>
