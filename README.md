@@ -182,7 +182,7 @@ Post-its do quadro de avisos de uma turma. Leitura pública (sem login); só os 
 
 ### Anexos de atividades
 
-O formulário pode anexar até cinco PDF, DOCX, PPTX, ZIP ou imagens de até 10 MB cada. Os arquivos ficam no bucket R2 privado `tech-2d-agenda`; a atividade guarda apenas `attachments` com nome, tipo, tamanho, caminho e data. Qualquer visitante pode baixar anexos por URL temporária, enquanto somente o representante da turma ou o super-admin pode enviar/remover. Anexos de repetições ainda não são suportados. ZIPs não são descompactados no servidor.
+O formulário pode anexar até cinco PDF, DOCX, PPTX, ZIP ou imagens de até 50 MB cada. Os arquivos ficam no bucket R2 privado `tech-2d-agenda`; a atividade guarda apenas `attachments` com nome, tipo, tamanho, caminho e data. Qualquer visitante pode baixar anexos por URL temporária, enquanto somente o representante da turma ou o super-admin pode enviar/remover. Anexos de repetições ainda não são suportados. ZIPs não são descompactados no servidor.
 
 O recurso foi ativado em produção após publicar as regras e validar envio, download e remoção. Em novos ambientes continua **desligado por padrão**. Para ativá-lo com segurança: (1) publique `firestore.rules` para impedir alterações diretas dos metadados; (2) confira os secrets `R2_*` e `CRON_SECRET` no backend Vercel e `R2_*` no cron de expurgo; (3) ative `R2_UPLOAD_ENABLED=true` na Vercel e republique a API, mantendo a interface oculta durante o teste; (4) teste upload, abertura e exclusão com atividade de teste; (5) defina a variável de repositório `VITE_ATTACHMENTS_ENABLED=true` e execute o workflow de publicação. Se as regras ainda não foram publicadas, **não ative** a opção no site.
 
