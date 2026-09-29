@@ -1,7 +1,7 @@
 import { auth } from './firebase'
 import type { ActivityAttachment } from './types'
 
-export const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024
+export const MAX_ATTACHMENT_BYTES = 50 * 1024 * 1024
 export const MAX_ATTACHMENTS = 5
 export const ATTACHMENTS_ENABLED = import.meta.env.VITE_ATTACHMENTS_ENABLED === 'true'
 const API = import.meta.env.VITE_STORAGE_API_URL?.trim() || 'https://tech-2d-auth-email.vercel.app/api/storage'
@@ -22,7 +22,7 @@ export function validateAttachment(file: File): string {
   if (!expected || !file.name || file.name.length > 180 || /[\\/]/.test(file.name) || Array.from(file.name).some(character => character.charCodeAt(0) < 32)) throw new Error('Escolha um PDF, DOCX, PPTX, ZIP, JPG, PNG ou WebP.')
   const zipAlias = extension === 'zip' && ['application/x-zip-compressed', 'application/octet-stream'].includes(file.type)
   if (file.type && file.type !== expected && !zipAlias) throw new Error('A extensão e o tipo do arquivo não correspondem.')
-  if (file.size < 1 || file.size > MAX_ATTACHMENT_BYTES) throw new Error('Cada arquivo deve ter até 10 MB e não pode estar vazio.')
+  if (file.size < 1 || file.size > MAX_ATTACHMENT_BYTES) throw new Error('Cada arquivo deve ter até 50 MB e não pode estar vazio.')
   return expected
 }
 

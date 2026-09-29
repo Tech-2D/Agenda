@@ -41,6 +41,7 @@ import {
 import { createUserWithEmailAndPassword, onAuthStateChanged, signInWithEmailAndPassword, signOut, type User } from 'firebase/auth'
 import { requestPasswordReset } from './passwordReset'
 import { WeeklyDigestSettings } from './WeeklyDigestSettings'
+import { ProfileDialog } from './ProfileDialog'
 import { AttachmentLinks } from './AttachmentLinks'
 import { StorageAdminPanel } from './StorageAdminPanel'
 import { ATTACHMENTS_ENABLED, deleteActivityWithAttachments, formatAttachmentSize, MAX_ATTACHMENTS, removeAttachment, uploadAttachment, validateAttachment } from './attachments'
@@ -201,6 +202,7 @@ function App() {
   const [calendarProfile, setCalendarProfile] = useState<AdminProfile | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
   const [configOpen, setConfigOpen] = useState(false)
+  const [profilesOpen, setProfilesOpen] = useState(false)
   const [suggestOpen, setSuggestOpen] = useState(false)
   const [mySuggestionsOpen, setMySuggestionsOpen] = useState(false)
   const [feedbackOpen, setFeedbackOpen] = useState(false)
@@ -594,6 +596,7 @@ function App() {
         <SideMenu
           onClose={() => setMenuOpen(false)}
           onOpenConfig={() => { setConfigOpen(true); setMenuOpen(false) }}
+          onOpenProfiles={() => { setProfilesOpen(true); setMenuOpen(false) }}
           onOpenAdmin={() => { openAdmin(); setMenuOpen(false) }}
           onRequestClass={() => { setClassRequestOpen(true); setMenuOpen(false) }}
           onOpenMySuggestions={() => { setMySuggestionsOpen(true); setMenuOpen(false) }}
@@ -612,6 +615,7 @@ function App() {
       )}
 
       {docsOpen && <DocsDialog onClose={() => setDocsOpen(false)} />}
+      {profilesOpen && <ProfileDialog onClose={() => setProfilesOpen(false)} />}
 
       {updatesOpen && <SystemUpdatesDialog onClose={() => setUpdatesOpen(false)} />}
 
@@ -702,9 +706,10 @@ function VLibrasWidget() {
   )
 }
 
-function SideMenu({ onClose, onOpenConfig, onOpenAdmin, onRequestClass, onOpenMySuggestions, onOpenPolls, onOpenFeedback, onOpenNotifications, onOpenDocs, onOpenUpdates, unseenNotifications, latestUpdateIsNew }: {
+function SideMenu({ onClose, onOpenConfig, onOpenProfiles, onOpenAdmin, onRequestClass, onOpenMySuggestions, onOpenPolls, onOpenFeedback, onOpenNotifications, onOpenDocs, onOpenUpdates, unseenNotifications, latestUpdateIsNew }: {
   onClose: () => void
   onOpenConfig: () => void
+  onOpenProfiles: () => void
   onOpenAdmin: () => void
   onRequestClass: () => void
   onOpenMySuggestions: () => void
@@ -737,6 +742,7 @@ function SideMenu({ onClose, onOpenConfig, onOpenAdmin, onRequestClass, onOpenMy
           <button type="button" onClick={onOpenUpdates}><History size={18} /> Atualizações{latestUpdateIsNew && <span className="notif-count">Novo</span>}</button>
           <button type="button" onClick={onOpenPolls}><Vote size={18} /> Enquetes da turma</button>
           <button type="button" onClick={onOpenConfig}><Settings size={18} /> Configurações</button>
+          <button type="button" onClick={onOpenProfiles}><UserRound size={18} /> Perfis da comunidade</button>
           <button type="button" onClick={onOpenDocs}><BookOpen size={18} /> Como funciona</button>
           <button type="button" onClick={onOpenAdmin}><KeyRound size={18} /> Sou representante</button>
           <button type="button" onClick={onRequestClass}><Plus size={18} /> Pedir agenda para minha turma</button>
@@ -746,9 +752,23 @@ function SideMenu({ onClose, onOpenConfig, onOpenAdmin, onRequestClass, onOpenMy
             <MapPin size={18} /> Cadê o professor?
             <ExternalLink size={14} className="external-icon" />
           </a>
+          <a className="side-menu-external" href="https://ligagerminare-pong.vercel.app/" target="_blank" rel="noopener noreferrer">
+            <TableTennisPaddle /> Liga Germinare Pong
+            <ExternalLink size={14} className="external-icon" />
+          </a>
         </nav>
       </aside>
     </div>
+  )
+}
+
+function TableTennisPaddle() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" aria-hidden="true">
+      <path d="m13.3 14.2 6.2 7" strokeWidth="3.2" />
+      <ellipse cx="9.2" cy="9.1" rx="5.7" ry="7" transform="rotate(-38 9.2 9.1)" fill="currentColor" stroke="none" />
+      <circle cx="19" cy="5" r="2.2" strokeWidth="1.8" />
+    </svg>
   )
 }
 
@@ -2546,7 +2566,7 @@ function AdminDialog({ publicTurmaId, classNames, quickCreateDate, quickEditActi
                 <label className="wide">Descrição<textarea rows={3} value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} placeholder="Detalhes, capítulos, critérios de entrega…" /></label>
               </div>
               {ATTACHMENTS_ENABLED && !repeatWeekly && <section className="attachment-editor" aria-labelledby="attachment-editor-title">
-                <div className="attachment-editor-heading"><Paperclip size={17} /><div><strong id="attachment-editor-title">Anexos</strong><span>Até 5 arquivos · 10 MB cada · PDF, Word, PowerPoint, ZIP ou imagem</span></div></div>
+                <div className="attachment-editor-heading"><Paperclip size={17} /><div><strong id="attachment-editor-title">Anexos</strong><span>Até 5 arquivos · 50 MB cada · PDF, Word, PowerPoint, ZIP ou imagem</span></div></div>
                 {editorAttachments.map(item => <div className="attachment-editor-item" key={item.id}><span>{item.name} <small>{formatAttachmentSize(item.size)}</small></span><button type="button" disabled={busy} onClick={() => removeExistingAttachment(item.id)} aria-label={`Remover ${item.name}`}><Trash2 size={16} /></button></div>)}
                 {selectedFiles.map((file, index) => <div className="attachment-editor-item pending" key={`${file.name}-${index}`}><span>{file.name} <small>{formatAttachmentSize(file.size)} · aguardando envio</small></span><button type="button" disabled={busy} onClick={() => setSelectedFiles(current => current.filter((_, position) => position !== index))} aria-label={`Remover ${file.name} da seleção`}><X size={16} /></button></div>)}
                 {editorAttachments.length + selectedFiles.length < MAX_ATTACHMENTS && (!isGlobalForm || isSuperAdmin) && <label className="attachment-pick"><Plus size={16} /> Escolher arquivos<input type="file" multiple accept=".pdf,.docx,.pptx,.zip,.jpg,.jpeg,.png,.webp" onChange={event => { selectAttachments(event.target.files); event.target.value = '' }} /></label>}
