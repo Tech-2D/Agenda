@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore'
 import { Calendar, Check, LoaderCircle, X } from 'lucide-react'
 import { db } from './firebase'
@@ -11,6 +11,12 @@ export function ClassRequestDialog({ classNames, onClose }: { classNames: string
   const [busy, setBusy] = useState(false)
   const [sent, setSent] = useState(false)
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    const closeOnEscape = (event: KeyboardEvent) => { if (event.key === 'Escape') onClose() }
+    window.addEventListener('keydown', closeOnEscape)
+    return () => window.removeEventListener('keydown', closeOnEscape)
+  }, [onClose])
 
   async function submit(event: FormEvent) {
     event.preventDefault()
@@ -41,7 +47,7 @@ export function ClassRequestDialog({ classNames, onClose }: { classNames: string
         <form className="activity-form standalone" onSubmit={submit}>
           <p className="config-hint">Não encontrou sua turma? Peça a criação da agenda. Isso não dá acesso para editar atividades; o representante poderá solicitar acesso depois.</p>
           <div className="form-grid">
-            <label className="wide">Nome da turma<input required maxLength={60} value={className} onChange={event => setClassName(event.target.value)} placeholder="Ex.: 3º Tech DS E" /></label>
+            <label className="wide">Nome da turma<input required maxLength={60} value={className} onChange={event => setClassName(event.target.value)} placeholder="Ex.: 3º Tech DS E" autoFocus /></label>
             <label className="wide">Seu e-mail para contato<input required type="email" maxLength={254} value={email} onChange={event => setEmail(event.target.value)} placeholder="voce@escola.com" /></label>
           </div>
           <p className="config-hint">Seu e-mail será visto apenas pelos administradores para avaliar o pedido.</p>
