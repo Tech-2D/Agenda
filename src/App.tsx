@@ -5,6 +5,7 @@ import {
   Bell,
   BookOpen,
   Calendar,
+  CalendarClock,
   CalendarDays,
   Check,
   ChevronLeft,
@@ -496,7 +497,7 @@ function App() {
                 <Lightbulb size={16} aria-hidden="true" /><span>Sugerir atividade</span>
               </button>
               <a className="action-button" aria-label="Aulas de hoje no Cadê o professor?" title="Aulas de hoje" href={teacherFinderTodayUrl(turmaId)} target="_blank" rel="noopener noreferrer">
-                <MapPin size={16} aria-hidden="true" /><span>Aulas de hoje</span>
+                <CalendarClock size={16} aria-hidden="true" /><span>Aulas de hoje</span>
               </a>
             </div>
           )}
