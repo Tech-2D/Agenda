@@ -759,10 +759,10 @@ function SideMenu({ onClose, onOpenConfig, onOpenProfiles, onOpenAdmin, onReques
 
 function TableTennisPaddle() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <circle cx="18.5" cy="5.5" r="2" fill="currentColor" stroke="none" />
-      <path d="M13.9 15.7 18 20a2 2 0 0 1-2.8 2.8l-4.2-4.2" />
-      <path d="M15.5 3.5c-3.7-2.2-8.8-.8-11.6 2.7-2.8 3.5-2.8 8.2.1 11.1 2.9 2.9 7.6 2.9 11.1.1 3.5-3.5 4.8-8.6 2.7-11.6" />
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" aria-hidden="true">
+      <path d="m13.3 14.2 6.2 7" strokeWidth="3.2" />
+      <ellipse cx="9.2" cy="9.1" rx="5.7" ry="7" transform="rotate(-38 9.2 9.1)" fill="currentColor" stroke="none" />
+      <circle cx="19" cy="5" r="2.2" strokeWidth="1.8" />
     </svg>
   )
 }
