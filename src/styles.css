@@ -99,10 +99,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 
 .agenda-toolbar { display: grid; gap: 14px; margin-bottom: 16px; }
 .agenda-controls { display: flex; align-items: center; justify-content: space-between; gap: 14px 20px; flex-wrap: wrap; }
-.agenda-actions { display: flex; align-items: center; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-left: auto; }
-.action-button { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 38px; padding: 0 14px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); color: var(--text); font-size: 12px; font-weight: 800; text-decoration: none; cursor: pointer; }
-.action-button:hover { background: var(--surface-alt); border-color: var(--accent); }
-.action-button svg { color: var(--ink); }
+.agenda-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 6px; margin-left: auto; }
+.action-button { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 32px; padding: 0 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); color: var(--text); font-size: 11px; font-weight: 800; white-space: nowrap; text-decoration: none; cursor: pointer; transition: background .15s, border-color .15s; }
+.action-button:hover, .action-button:focus-visible { background: var(--surface-alt); border-color: var(--accent); }
+.action-button svg { flex-shrink: 0; color: var(--ink); }
 .agenda-heading { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
 .agenda-heading h1 { margin: 0; color: var(--ink); font-size: 22px; line-height: 1.2; letter-spacing: -.03em; }
 .turma-select-inline select { height: 38px; padding: 0 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); color: var(--text); font-size: 12px; font-weight: 700; }
@@ -662,9 +662,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .main-content { width: calc(100% - 24px); padding: 12px 0 16px; }
   .agenda-toolbar { gap: 10px; margin-bottom: 10px; }
   .agenda-controls { flex-wrap: wrap; gap: 10px; }
-  .agenda-actions { width: 100%; justify-content: flex-end; }
-  .action-button { width: 38px; padding: 0; }
-  .action-button span { display: none; }
+  .action-button { width: 32px; padding: 0; }
+  .action-label { display: none; }
+  .action-badge { position: absolute; top: -6px; right: -6px; }
   .agenda-heading { justify-content: space-between; }
   .agenda-heading h1 { font-size: 17px; }
   .month-nav { flex: 1; min-width: 0; justify-content: space-between; gap: 8px; }
@@ -818,8 +818,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 
 @media (max-width: 640px) {
   .postit { height: 112px; }
-  .action-button { position: relative; }
-  .action-badge { position: absolute; top: -6px; right: -6px; }
   .notice-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 12px; }
   .notice-form-actions .primary-button, .notice-form-actions .secondary-button { flex: 1; }
 }
