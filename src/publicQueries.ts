@@ -19,6 +19,8 @@ export function observeCatalog<T>(resource: 'schedules' | 'agenda' | 'updates', 
   let timer: ReturnType<typeof setTimeout>
   let lastAttempt = 0
   let nextAllowed = 0
+  let lastContent = ''
+  let recovering = false
   const abort = new AbortController()
   const url = new URL(`${API}/${resource}`)
   if (className) url.searchParams.set('class', className)
@@ -40,10 +42,17 @@ export function observeCatalog<T>(resource: 'schedules' | 'agenda' | 'updates', 
         delay = Math.max(60000, Math.min((retry || 120) * 1000, 300000))
         throw new Error('PUBLIC_QUERY_FAILED')
       }
-      const data = hydrate(await response.json()) as T & { meta: CatalogMeta }
-      if (!stopped) change(data)
+      const payload = await response.json()
+      const content = JSON.stringify({ ...payload, meta: { stale: payload.meta?.stale } })
+      if (!stopped && (content !== lastContent || recovering)) {
+        const data = hydrate(payload) as T & { meta: CatalogMeta }
+        change(data)
+        lastContent = content
+      }
+      recovering = false
       nextAllowed = 0
     } catch {
+      recovering = true
       if (!stopped) error()
       nextAllowed = Date.now() + delay
     } finally {
