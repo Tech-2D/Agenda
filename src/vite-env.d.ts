@@ -1,6 +1,7 @@
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {
+  readonly VITE_PUBLIC_QUERY_API_URL?: string
   readonly VITE_PASSWORD_RESET_API_URL?: string
   readonly VITE_ATTACHMENTS_ENABLED?: string
   readonly VITE_STORAGE_API_URL?: string

@@ -44,6 +44,7 @@ jobs:
           VITE_ATTACHMENTS_ENABLED: ${{ vars.VITE_ATTACHMENTS_ENABLED }}
           VITE_STORAGE_API_URL: ${{ vars.VITE_STORAGE_API_URL }}
           VITE_STORAGE_ADMIN_API_URL: ${{ vars.VITE_STORAGE_ADMIN_API_URL }}
+          VITE_PUBLIC_QUERY_API_URL: ${{ vars.VITE_PUBLIC_QUERY_API_URL }}
 
       - name: Configurar GitHub Pages
         uses: actions/configure-pages@v5

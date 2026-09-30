@@ -52,9 +52,7 @@ import {
   deleteDoc,
   doc,
   getDoc,
-  limit,
   onSnapshot,
-  orderBy,
   query,
   serverTimestamp,
   setDoc,
@@ -114,6 +112,7 @@ import { activeNotices, canManageNotices } from './notices'
 import { useNow, useTurmaNotices } from './useNotices'
 import { readPreferredTurma, savePreferredTurma } from './classPreference'
 import { teacherFinderTodayUrl } from './teacherFinder'
+import { observeCatalog, invalidateCatalog, type CatalogMeta } from './publicQueries'
 import { latestUnseenUpdate, markSystemUpdateSeen, readSeenSystemUpdateId, type SystemUpdate } from './systemUpdates'
 import {
   NEON_COLORS,
@@ -191,6 +190,7 @@ function App() {
   const [globalActivities, setGlobalActivities] = useState<Activity[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
+  const [cacheNotice, setCacheNotice] = useState('')
   const [monthCursor, setMonthCursor] = useState(() => new Date())
   const [calendarView, setCalendarView] = useState<CalendarView>('month')
   const [selectedDay, setSelectedDay] = useState<Date | null>(null)
@@ -239,10 +239,6 @@ function App() {
     })
   }, [])
 
-  useEffect(() => onSnapshot(collection(db, 'agendaClasses'), snapshot => {
-    const approved = snapshot.docs.filter(item => item.data().active === true && item.data().name === item.id).map(item => item.id)
-    setClassNames([...new Set([...CLASS_NAMES, ...approved])].sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true })))
-  }, () => setClassNames([...CLASS_NAMES])), [])
 
   function setNeon(value: NeonColor) {
     setNeonState(value)
@@ -291,20 +287,6 @@ function App() {
     setNotificationsSeenAt(turmaId ? readLastSeen(turmaId) : 0)
   }, [turmaId])
 
-  useEffect(() => {
-    return onSnapshot(doc(db, 'announcement', 'latest'), (snapshot) => {
-      setAnnouncement(snapshot.exists() ? (snapshot.data() as Announcement) : null)
-    }, () => setAnnouncement(null))
-  }, [])
-
-  useEffect(() => onSnapshot(query(collection(db, 'agendaUpdates'), orderBy('publishedAt', 'desc'), limit(1)), (snapshot) => {
-    setSystemUpdates(snapshot.docs.map((item) => ({ id: item.id, ...item.data() }) as SystemUpdate))
-    setUpdatesReady(true)
-    setUpdatesError('')
-  }, () => {
-    setUpdatesReady(true)
-    setUpdatesError('Não foi possível carregar as atualizações. Tente novamente mais tarde.')
-  }), [])
 
   const unseenSystemUpdate = updatesReady && !updatesError
     ? latestUnseenUpdate(systemUpdates, seenSystemUpdateId)
@@ -320,33 +302,32 @@ function App() {
   }
 
   useEffect(() => {
-    if (!turmaId) {
-      setTurmaActivities([])
-      setLoading(false)
-      return
-    }
+    let loaded = false
     setLoading(true)
-    const activitiesQuery = query(collection(db, 'activities'), where('turmaId', '==', turmaId))
-    return onSnapshot(
-      activitiesQuery,
-      (snapshot) => {
-        setTurmaActivities(snapshot.docs.map((item) => ({ id: item.id, ...item.data() }) as Activity))
-        setLoading(false)
-        setLoadError('')
-      },
-      () => {
-        setLoading(false)
-        setLoadError('Não foi possível carregar a agenda. Confira a conexão e as regras do Firestore.')
-      },
-    )
+    setTurmaActivities([])
+    type PublicAgenda = { activities: Activity[]; classes: string[]; announcement: Announcement | null; updates: SystemUpdate[]; meta: CatalogMeta }
+    return observeCatalog<PublicAgenda>('agenda', data => {
+      loaded = true
+      setClassNames([...new Set([...CLASS_NAMES, ...data.classes])].sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true })))
+      setTurmaActivities(turmaId ? data.activities.filter(item => item.turmaId === turmaId) : [])
+      setGlobalActivities(data.activities.filter(item => item.turmaId === null))
+      setAnnouncement(data.announcement)
+      setSystemUpdates(data.updates)
+      setUpdatesReady(true)
+      setUpdatesError('')
+      setLoading(false)
+      setLoadError('')
+      setCacheNotice(data.meta.stale ? 'Exibindo os últimos dados disponíveis. A atualização está temporariamente indisponível.' : '')
+    }, () => {
+      setLoading(false)
+      setUpdatesReady(true)
+      if (loaded) setCacheNotice('Exibindo os últimos dados carregados. Não foi possível atualizá-los agora.')
+      else {
+        setLoadError('Não foi possível carregar a agenda. Tente novamente em alguns minutos.')
+        setUpdatesError('Não foi possível carregar as atualizações. Tente novamente mais tarde.')
+      }
+    }, turmaId || undefined)
   }, [turmaId])
-
-  useEffect(() => {
-    const globalQuery = query(collection(db, 'activities'), where('turmaId', '==', null))
-    return onSnapshot(globalQuery, (snapshot) => {
-      setGlobalActivities(snapshot.docs.map((item) => ({ id: item.id, ...item.data() }) as Activity))
-    }, () => setGlobalActivities([]))
-  }, [])
 
   const activities = useMemo(() => {
     const merged = [...turmaActivities, ...globalActivities]
@@ -507,6 +488,7 @@ function App() {
         </div>
 
         <section className="calendar-section" aria-label={calendarView === 'month' ? 'Calendário mensal' : calendarView === 'week' ? 'Calendário semanal' : 'Calendário diário'}>
+          {cacheNotice && <p className="form-notice" role="status">{cacheNotice}</p>}
           {!turmaId ? (
             <div className="state-card"><Calendar /><p>Escolha sua turma para ver a agenda.</p></div>
           ) : loading ? (
@@ -1312,8 +1294,8 @@ function SystemUpdatesDialog({ onClose }: { onClose: () => void }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
-  useEffect(() => onSnapshot(query(collection(db, 'agendaUpdates'), orderBy('publishedAt', 'desc')), (snapshot) => {
-    setUpdates(snapshot.docs.map((item) => ({ id: item.id, ...item.data() }) as SystemUpdate))
+  useEffect(() => observeCatalog<{ updates: SystemUpdate[] }>('updates', data => {
+    setUpdates(data.updates)
     setLoading(false)
     setError('')
   }, () => {
@@ -1845,6 +1827,7 @@ function AdminDialog({ publicTurmaId, classNames, quickCreateDate, quickEditActi
         batch.set(doc(db, 'agendaClasses', className), { name: className, active: true, requestId: item.id, approvedAt: serverTimestamp() })
         batch.update(doc(db, 'agendaClassRequests', item.id), { status: 'aprovada', reviewedAt: serverTimestamp() })
         await batch.commit()
+        await invalidateCatalog('agenda')
       } else {
         await updateDoc(doc(db, 'agendaClassRequests', item.id), { status: 'rejeitada', reviewedAt: serverTimestamp() })
       }
@@ -1927,6 +1910,7 @@ function AdminDialog({ publicTurmaId, classNames, quickCreateDate, quickEditActi
     setBusy(true)
     setSaveError('')
     let savingAttachments = false
+    let catalogChanged = false
     try {
       const payload = { ...form, subject: form.subject ?? null, time: hasTime ? form.time : null, turmaId: isGlobalForm ? null : managedTurma }
       let activityId = editing?.id
@@ -1963,6 +1947,7 @@ function AdminDialog({ publicTurmaId, classNames, quickCreateDate, quickEditActi
         setEditing({ id: created.id, ...payload, attachments: [] })
         setNotice(isGlobalForm ? 'Evento geral adicionado.' : 'Atividade adicionada.')
       }
+      catalogChanged = Boolean(activityId)
       if (activityId && selectedFiles.length) {
         savingAttachments = true
         for (let index = 0; index < selectedFiles.length; index += 1) {
@@ -1978,6 +1963,7 @@ function AdminDialog({ publicTurmaId, classNames, quickCreateDate, quickEditActi
     } catch (error) {
       setSaveError(activitySaveError(error, savingAttachments))
     } finally {
+      if (catalogChanged && !await invalidateCatalog('agenda')) setNotice('Atividade salva. A consulta pública será atualizada na próxima renovação do cache.')
       setBusy(false)
     }
   }
@@ -2001,6 +1987,7 @@ function AdminDialog({ publicTurmaId, classNames, quickCreateDate, quickEditActi
     try {
       if (activity.attachments?.length) await deleteActivityWithAttachments(activity.id)
       else await deleteDoc(doc(db, 'activities', activity.id))
+      await invalidateCatalog('agenda')
       setNotice('Atividade excluída.')
       window.setTimeout(() => setNotice(''), 2800)
     } catch {
@@ -2023,6 +2010,7 @@ function AdminDialog({ publicTurmaId, classNames, quickCreateDate, quickEditActi
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       })
+      await invalidateCatalog('agenda')
       await updateDoc(doc(db, 'suggestions', suggestion.id), { status: 'aprovada', updatedAt: serverTimestamp() })
       setNotice('Sugestão aprovada e adicionada à agenda.')
       window.setTimeout(() => setNotice(''), 2800)
@@ -2103,6 +2091,7 @@ function AdminDialog({ publicTurmaId, classNames, quickCreateDate, quickEditActi
     setBusy(true)
     try {
       await setDoc(doc(db, 'announcement', 'latest'), { message, updatedAt: serverTimestamp() })
+      await invalidateCatalog('agenda')
       setNotice('Aviso publicado para todos.')
       window.setTimeout(() => setNotice(''), 2800)
     } catch {
@@ -2116,6 +2105,7 @@ function AdminDialog({ publicTurmaId, classNames, quickCreateDate, quickEditActi
     if (!window.confirm('Remover o aviso atual?')) return
     try {
       await deleteDoc(doc(db, 'announcement', 'latest'))
+      await invalidateCatalog('agenda')
       setAnnouncementDraft('')
       setNotice('Aviso removido.')
       window.setTimeout(() => setNotice(''), 2800)
@@ -2144,6 +2134,7 @@ function AdminDialog({ publicTurmaId, classNames, quickCreateDate, quickEditActi
         title, body, createdBy: user.uid, publishedAt: serverTimestamp(),
         ...(source ? creditForUpdate(source) : {}),
       })
+      await invalidateCatalog('agenda')
       setUpdateTitle('')
       setUpdateBody('')
       setUpdateFeedbackId('')
