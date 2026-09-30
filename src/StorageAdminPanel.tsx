@@ -7,6 +7,7 @@ const API = import.meta.env.VITE_STORAGE_ADMIN_API_URL?.trim() || 'https://tech-
 type Usage = { bucket: string; bytes: number; count: number; partial: boolean }
 type StoredFile = { key: string; size: number; lastModified: string | null; managed: boolean }
 type FilePage = { files: StoredFile[]; nextCursor: string | null }
+type Overview = { usage: Usage; page: FilePage }
 
 function formatBytes(bytes: number) {
   if (bytes < 1024) return `${bytes} B`
@@ -29,6 +30,7 @@ async function request(action: string, extra: Record<string, unknown> = {}) {
 
 export function StorageAdminPanel() {
   const [usage, setUsage] = useState<Usage | null>(null)
+  const [loaded, setLoaded] = useState(false)
   const [files, setFiles] = useState<StoredFile[]>([])
   const [nextCursor, setNextCursor] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -40,7 +42,8 @@ export function StorageAdminPanel() {
     setLoading(true)
     setError('')
     try {
-      const [summary, page] = await Promise.all([request('usage'), request('list')]) as [Usage, FilePage]
+      const { usage: summary, page } = await request('overview') as Overview
+      setLoaded(true)
       setUsage(summary)
       setFiles(page.files)
       setNextCursor(page.nextCursor)
@@ -100,8 +103,8 @@ export function StorageAdminPanel() {
       <p className="storage-admin-note">Espaço ocupado pelos objetos atuais, calculado ao atualizar. Não é a métrica de faturamento do R2.</p>
       {error && <p className="form-error" role="alert">{error}</p>}
       {notice && <p className="storage-admin-success" role="status">{notice}</p>}
-      <div className="storage-admin-list-heading"><strong>Documentos</strong><span>{files.length} carregado{files.length === 1 ? '' : 's'}</span></div>
-      {loading && !files.length ? <p className="admin-empty"><LoaderCircle className="spin" size={18} /> Carregando arquivos…</p> : files.length === 0 ? <p className="admin-empty">Nenhum arquivo encontrado no bucket.</p> : (
+      <div className="storage-admin-list-heading"><strong>Documentos</strong><span>{loaded ? `${files.length} carregado${files.length === 1 ? '' : 's'}` : 'Consulta indisponível'}</span></div>
+      {loading && !files.length ? <p className="admin-empty"><LoaderCircle className="spin" size={18} /> Carregando arquivos…</p> : !loaded ? <p className="admin-empty">{error ? 'Não foi possível consultar os arquivos. Tente atualizar mais tarde.' : 'Aguardando consulta aos arquivos.'}</p> : files.length === 0 ? <p className="admin-empty">Nenhum arquivo encontrado no bucket.</p> : (
         <div className="storage-admin-list">
           {files.map(file => (
             <article className="storage-admin-file" key={file.key}>
