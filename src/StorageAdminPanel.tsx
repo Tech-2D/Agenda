@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Download, HardDrive, LoaderCircle, RefreshCw, Trash2 } from 'lucide-react'
 import { auth } from './firebase'
 
-const API = import.meta.env.VITE_STORAGE_ADMIN_API_URL?.trim() || 'https://tech-2d-auth-email.vercel.app/api/storage-admin'
+const API = import.meta.env.VITE_STORAGE_ADMIN_API_URL?.trim() || 'https://tech-2d-agenda-storage.onrender.com/api/storage-admin'
 
 type Usage = { bucket: string; bytes: number; count: number; partial: boolean }
 type StoredFile = { key: string; size: number; lastModified: string | null; managed: boolean }

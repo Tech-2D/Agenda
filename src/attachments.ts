@@ -4,7 +4,7 @@ import type { ActivityAttachment } from './types'
 export const MAX_ATTACHMENT_BYTES = 50 * 1024 * 1024
 export const MAX_ATTACHMENTS = 5
 export const ATTACHMENTS_ENABLED = import.meta.env.VITE_ATTACHMENTS_ENABLED === 'true'
-const API = import.meta.env.VITE_STORAGE_API_URL?.trim() || 'https://tech-2d-auth-email.vercel.app/api/storage'
+const API = import.meta.env.VITE_STORAGE_API_URL?.trim() || 'https://tech-2d-agenda-storage.onrender.com/api/storage'
 const MIME_BY_EXTENSION: Record<string, string> = {
   pdf: 'application/pdf',
   zip: 'application/zip',
