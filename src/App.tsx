@@ -31,6 +31,7 @@ import { latestUnseenUpdate, markSystemUpdateSeen, readSeenSystemUpdateId, type 
 import { NEON_COLORS, NEON_COLOR_LABELS, NEON_COLOR_SWATCHES, THEME_LABELS, THEME_PREVIEW, THEMES, readStoredNeon, readStoredTheme, storeNeon, storeTheme, type NeonColor, type Theme } from './theme'
 import { FONT_SCALES, FONT_SCALE_LABELS, readStoredFontScale, readStoredHighContrast, readStoredReduceMotion, storeFontScale, storeHighContrast, storeReduceMotion, type FontScale } from './accessibility'
 import { loadOrClaimAdminProfile } from './adminAccess'
+import { DEFAULT_MENU_SHORTCUTS, readMenuShortcuts, storeMenuShortcuts, type MenuShortcutId } from './menuShortcuts'
 
 const ProfileDialog = lazy(() => import('./ProfileDialog').then(module => ({ default: module.ProfileDialog })))
 const ClassRequestDialog = lazy(() => import('./ClassRequestDialog').then(module => ({ default: module.ClassRequestDialog })))
@@ -77,6 +78,7 @@ function App() {
   const [quickEditActivity, setQuickEditActivity] = useState<Activity | null>(null)
   const [calendarProfile, setCalendarProfile] = useState<AdminProfile | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [menuShortcuts, setMenuShortcuts] = useState(readMenuShortcuts)
   const [moreOptionsOpen, setMoreOptionsOpen] = useState(window.location.hash === '#opcoes')
   const [configOpen, setConfigOpen] = useState(false)
   const [profilesOpen, setProfilesOpen] = useState(false)
@@ -317,6 +319,39 @@ function App() {
     setQuickEditActivity(null)
   }
 
+  const menuAction = (action: () => void) => () => {
+    setMenuOpen(false)
+    leaveMoreOptions()
+    action()
+  }
+  const menuSections = menuOptionSections({
+    turmaId,
+    onOpenNotifications: menuAction(() => { setNotificationsOpen(true); if (turmaId) setNotificationsSeenAt(markNotificationsSeenNow(turmaId)) }),
+    onOpenUpdates: menuAction(() => setUpdatesOpen(true)),
+    onOpenPolls: menuAction(() => setPollsOpen(true)),
+    onOpenNotices: menuAction(() => setNoticesOpen(true)),
+    onSuggestActivity: menuAction(() => setSuggestOpen(true)),
+    onRequestClass: menuAction(() => setClassRequestOpen(true)),
+    onOpenFeedback: menuAction(() => setFeedbackOpen(true)),
+    onOpenMySuggestions: menuAction(() => setMySuggestionsOpen(true)),
+    onOpenAdmin: menuAction(openAdmin),
+    onOpenConfig: menuAction(() => setConfigOpen(true)),
+    onOpenProfiles: menuAction(() => setProfilesOpen(true)),
+    onOpenDocs: menuAction(() => setDocsOpen(true)),
+  })
+
+  function toggleMenuShortcut(id: MenuShortcutId) {
+    const next = menuShortcuts.includes(id) ? menuShortcuts.filter(item => item !== id) : [...menuShortcuts, id]
+    setMenuShortcuts(next)
+    storeMenuShortcuts(next)
+  }
+
+  function resetMenuShortcuts() {
+    const next = [...DEFAULT_MENU_SHORTCUTS]
+    setMenuShortcuts(next)
+    storeMenuShortcuts(next)
+  }
+
   return (
     <div className="app-shell">
       <header className="topbar">
@@ -341,18 +376,10 @@ function App() {
         <MoreOptionsPage
           turmaId={turmaId}
           onBack={closeMoreOptions}
-          onOpenNotifications={() => { leaveMoreOptions(); setNotificationsOpen(true); if (turmaId) setNotificationsSeenAt(markNotificationsSeenNow(turmaId)) }}
-          onOpenUpdates={() => { leaveMoreOptions(); setUpdatesOpen(true) }}
-          onOpenPolls={() => { leaveMoreOptions(); setPollsOpen(true) }}
-          onOpenNotices={() => { leaveMoreOptions(); setNoticesOpen(true) }}
-          onSuggestActivity={() => { leaveMoreOptions(); setSuggestOpen(true) }}
-          onRequestClass={() => { leaveMoreOptions(); setClassRequestOpen(true) }}
-          onOpenFeedback={() => { leaveMoreOptions(); setFeedbackOpen(true) }}
-          onOpenMySuggestions={() => { leaveMoreOptions(); setMySuggestionsOpen(true) }}
-          onOpenAdmin={() => { leaveMoreOptions(); openAdmin() }}
-          onOpenConfig={() => { leaveMoreOptions(); setConfigOpen(true) }}
-          onOpenProfiles={() => { leaveMoreOptions(); setProfilesOpen(true) }}
-          onOpenDocs={() => { leaveMoreOptions(); setDocsOpen(true) }}
+          sections={menuSections}
+          shortcuts={menuShortcuts}
+          onToggleShortcut={toggleMenuShortcut}
+          onResetShortcuts={resetMenuShortcuts}
         />
       ) : (
       <main id="inicio" className="main-content">
@@ -503,17 +530,11 @@ function App() {
       {menuOpen && (
         <SideMenu
           onClose={() => setMenuOpen(false)}
-          onOpenPolls={() => { setPollsOpen(true); setMenuOpen(false) }}
-          onOpenNotifications={() => {
-            setNotificationsOpen(true)
-            setMenuOpen(false)
-            if (turmaId) setNotificationsSeenAt(markNotificationsSeenNow(turmaId))
-          }}
-          onOpenUpdates={() => { setUpdatesOpen(true); setMenuOpen(false) }}
+          options={menuSections.flatMap(section => section.items)}
+          shortcuts={menuShortcuts}
           onOpenMoreOptions={openMoreOptions}
           latestUpdateIsNew={Boolean(unseenSystemUpdate)}
           unseenNotifications={unseenNotifications}
-          hasTurma={Boolean(turmaId)}
         />
       )}
 
@@ -636,15 +657,13 @@ function VLibrasWidget() {
   )
 }
 
-function SideMenu({ onClose, onOpenPolls, onOpenNotifications, onOpenUpdates, onOpenMoreOptions, unseenNotifications, latestUpdateIsNew, hasTurma }: {
+function SideMenu({ onClose, options, shortcuts, onOpenMoreOptions, unseenNotifications, latestUpdateIsNew }: {
   onClose: () => void
-  onOpenPolls: () => void
-  onOpenNotifications: () => void
-  onOpenUpdates: () => void
+  options: MoreOption[]
+  shortcuts: MenuShortcutId[]
   onOpenMoreOptions: () => void
   unseenNotifications: number
   latestUpdateIsNew: boolean
-  hasTurma: boolean
 }) {
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => event.key === 'Escape' && onClose()
@@ -660,12 +679,19 @@ function SideMenu({ onClose, onOpenPolls, onOpenNotifications, onOpenUpdates, on
           <button className="icon-button" onClick={onClose} aria-label="Fechar"><X /></button>
         </div>
         <nav className="side-menu-list" aria-label="Atalhos principais">
-          <button type="button" onClick={onOpenNotifications}>
-            <Bell size={18} /> Notificações
-            {unseenNotifications > 0 && <span className="notif-count">{unseenNotifications}</span>}
-          </button>
-          <button type="button" onClick={onOpenUpdates}><History size={18} /> Atualizações{latestUpdateIsNew && <span className="notif-count">Novo</span>}</button>
-          <button type="button" onClick={onOpenPolls} disabled={!hasTurma} title={!hasTurma ? 'Escolha uma turma para acessar as enquetes' : undefined}><Vote size={18} /> Enquetes da turma</button>
+          {shortcuts.map(id => {
+            const option = options.find(item => item.id === id)
+            if (!option) return null
+            const content = <><span className="side-menu-shortcut-icon" aria-hidden="true">{option.icon}</span><span>{option.title}</span>
+              {id === 'notifications' && unseenNotifications > 0 && <span className="notif-count">{unseenNotifications}</span>}
+              {id === 'updates' && latestUpdateIsNew && <span className="notif-count">Novo</span>}
+              {option.href && <ExternalLink size={14} className="external-icon" aria-hidden="true" />}
+            </>
+            return option.href
+              ? <a key={id} className="side-menu-external" href={option.href} target="_blank" rel="noopener noreferrer" onClick={onClose}>{content}</a>
+              : <button type="button" key={id} onClick={option.onClick} disabled={option.disabled} title={option.disabled ? option.description : undefined}>{content}</button>
+          })}
+          {shortcuts.length === 0 && <p className="side-menu-empty">Escolha seus atalhos em “Ver mais opções”.</p>}
         </nav>
         <div className="side-menu-more">
           <p>Precisa de outra ferramenta?</p>
@@ -681,6 +707,7 @@ function SideMenu({ onClose, onOpenPolls, onOpenNotifications, onOpenUpdates, on
 }
 
 type MoreOption = {
+  id: MenuShortcutId
   title: string
   description: string
   icon: ReactNode
@@ -689,9 +716,10 @@ type MoreOption = {
   disabled?: boolean
 }
 
-function MoreOptionsPage({ turmaId, onBack, onOpenNotifications, onOpenUpdates, onOpenPolls, onOpenNotices, onSuggestActivity, onRequestClass, onOpenFeedback, onOpenMySuggestions, onOpenAdmin, onOpenConfig, onOpenProfiles, onOpenDocs }: {
+type MoreOptionSection = { title: string; description: string; items: MoreOption[] }
+
+function menuOptionSections({ turmaId, onOpenNotifications, onOpenUpdates, onOpenPolls, onOpenNotices, onSuggestActivity, onRequestClass, onOpenFeedback, onOpenMySuggestions, onOpenAdmin, onOpenConfig, onOpenProfiles, onOpenDocs }: {
   turmaId: string | null
-  onBack: () => void
   onOpenNotifications: () => void
   onOpenUpdates: () => void
   onOpenPolls: () => void
@@ -704,50 +732,60 @@ function MoreOptionsPage({ turmaId, onBack, onOpenNotifications, onOpenUpdates, 
   onOpenConfig: () => void
   onOpenProfiles: () => void
   onOpenDocs: () => void
-}) {
+}): MoreOptionSection[] {
   const needsTurma = !turmaId
-  const options: { title: string; description: string; items: MoreOption[] }[] = [
+  return [
     {
       title: 'Acompanhar a turma',
       description: 'Avisos e atividades da turma selecionada.',
       items: [
-        { title: 'Notificações', description: 'Veja atividades adicionadas ou alteradas recentemente.', icon: <Bell />, onClick: onOpenNotifications },
-        { title: 'Atualizações', description: 'Confira o que mudou no sistema da Agenda.', icon: <History />, onClick: onOpenUpdates },
-        { title: 'Enquetes da turma', description: needsTurma ? 'Escolha uma turma para ver e responder enquetes.' : 'Acompanhe votações e participe das decisões.', icon: <Vote />, onClick: onOpenPolls, disabled: needsTurma },
-        { title: 'Quadro de avisos', description: needsTurma ? 'Escolha uma turma para abrir os avisos.' : 'Consulte comunicados importantes da turma.', icon: <StickyNote />, onClick: onOpenNotices, disabled: needsTurma },
-        { title: 'Sugerir atividade', description: needsTurma ? 'Escolha uma turma antes de enviar uma sugestão.' : 'Peça para incluir uma atividade na agenda.', icon: <Lightbulb />, onClick: onSuggestActivity, disabled: needsTurma },
-        { title: 'Aulas de hoje', description: needsTurma ? 'Escolha uma turma para consultar as aulas.' : 'Abra a localização das aulas de hoje.', icon: <CalendarClock />, href: turmaId ? teacherFinderTodayUrl(turmaId) : undefined, disabled: needsTurma },
+        { id: 'notifications', title: 'Notificações', description: 'Veja atividades adicionadas ou alteradas recentemente.', icon: <Bell />, onClick: onOpenNotifications },
+        { id: 'updates', title: 'Atualizações', description: 'Confira o que mudou no sistema da Agenda.', icon: <History />, onClick: onOpenUpdates },
+        { id: 'polls', title: 'Enquetes da turma', description: needsTurma ? 'Escolha uma turma para ver e responder enquetes.' : 'Acompanhe votações e participe das decisões.', icon: <Vote />, onClick: onOpenPolls, disabled: needsTurma },
+        { id: 'notices', title: 'Quadro de avisos', description: needsTurma ? 'Escolha uma turma para abrir os avisos.' : 'Consulte comunicados importantes da turma.', icon: <StickyNote />, onClick: onOpenNotices, disabled: needsTurma },
+        { id: 'suggestActivity', title: 'Sugerir atividade', description: needsTurma ? 'Escolha uma turma antes de enviar uma sugestão.' : 'Peça para incluir uma atividade na agenda.', icon: <Lightbulb />, onClick: onSuggestActivity, disabled: needsTurma },
+        { id: 'todayClasses', title: 'Aulas de hoje', description: needsTurma ? 'Escolha uma turma para consultar as aulas.' : 'Abra a localização das aulas de hoje.', icon: <CalendarClock />, href: turmaId ? teacherFinderTodayUrl(turmaId) : undefined, disabled: needsTurma },
       ],
     },
     {
       title: 'Participar e colaborar',
       description: 'Ajude a melhorar e ampliar a Agenda.',
       items: [
-        { title: 'Pedir agenda para minha turma', description: 'Solicite a criação de uma agenda para outra sala.', icon: <Plus />, onClick: onRequestClass },
-        { title: 'Comentar melhoria', description: 'Converse com a equipe sobre uma ideia para o sistema.', icon: <MessageSquarePlus />, onClick: onOpenFeedback },
-        { title: 'Minhas sugestões', description: 'Acompanhe o andamento das ideias que você enviou.', icon: <ListChecks />, onClick: onOpenMySuggestions },
-        { title: 'Sou representante', description: 'Acesse as ferramentas para representantes de turma.', icon: <KeyRound />, onClick: onOpenAdmin },
+        { id: 'requestClass', title: 'Pedir agenda para minha turma', description: 'Solicite a criação de uma agenda para outra sala.', icon: <Plus />, onClick: onRequestClass },
+        { id: 'feedback', title: 'Comentar melhoria', description: 'Converse com a equipe sobre uma ideia para o sistema.', icon: <MessageSquarePlus />, onClick: onOpenFeedback },
+        { id: 'mySuggestions', title: 'Minhas sugestões', description: 'Acompanhe o andamento das ideias que você enviou.', icon: <ListChecks />, onClick: onOpenMySuggestions },
+        { id: 'admin', title: 'Sou representante', description: 'Acesse as ferramentas para representantes de turma.', icon: <KeyRound />, onClick: onOpenAdmin },
       ],
     },
     {
       title: 'Conta e ajuda',
       description: 'Personalize sua experiência e encontre orientações.',
       items: [
-        { title: 'Configurações', description: 'Ajuste tema, tamanho do texto e acessibilidade.', icon: <Settings />, onClick: onOpenConfig },
-        { title: 'Perfis da comunidade', description: 'Edite seu perfil e conheça outras pessoas.', icon: <UserRound />, onClick: onOpenProfiles },
-        { title: 'Como funciona', description: 'Entenda os recursos e como usar a Agenda.', icon: <BookOpen />, onClick: onOpenDocs },
+        { id: 'settings', title: 'Configurações', description: 'Ajuste tema, tamanho do texto e acessibilidade.', icon: <Settings />, onClick: onOpenConfig },
+        { id: 'profiles', title: 'Perfis da comunidade', description: 'Edite seu perfil e conheça outras pessoas.', icon: <UserRound />, onClick: onOpenProfiles },
+        { id: 'help', title: 'Como funciona', description: 'Entenda os recursos e como usar a Agenda.', icon: <BookOpen />, onClick: onOpenDocs },
       ],
     },
     {
       title: 'Outros projetos',
       description: 'Acesse outras ferramentas da comunidade 2ºD Tech.',
       items: [
-        { title: 'Cadê o professor?', description: 'Pesquise professores, matérias e salas.', icon: <MapPin />, href: 'https://tech-2d.github.io/professores/' },
-        { title: 'Liga Germinare Pong', description: 'Acesse a liga de tênis de mesa.', icon: <TableTennisPaddle />, href: 'https://ligagerminare-pong.vercel.app/' },
+        { id: 'teachers', title: 'Cadê o professor?', description: 'Pesquise professores, matérias e salas.', icon: <MapPin />, href: 'https://tech-2d.github.io/professores/' },
+        { id: 'pong', title: 'Liga Germinare Pong', description: 'Acesse a liga de tênis de mesa.', icon: <TableTennisPaddle />, href: 'https://ligagerminare-pong.vercel.app/' },
       ],
     },
   ]
 
+}
+
+function MoreOptionsPage({ turmaId, onBack, sections, shortcuts, onToggleShortcut, onResetShortcuts }: {
+  turmaId: string | null
+  onBack: () => void
+  sections: MoreOptionSection[]
+  shortcuts: MenuShortcutId[]
+  onToggleShortcut: (id: MenuShortcutId) => void
+  onResetShortcuts: () => void
+}) {
   return (
     <main className="more-options-page" id="mais-opcoes">
       <button type="button" className="more-options-back" onClick={onBack}><ChevronLeft size={18} /> Voltar para a agenda</button>
@@ -759,15 +797,28 @@ function MoreOptionsPage({ turmaId, onBack, onOpenNotifications, onOpenUpdates, 
         </div>
         <span className="more-options-turma">{turmaId ?? 'Nenhuma turma selecionada'}</span>
       </header>
+      <section className="menu-customize-note" aria-labelledby="customize-menu-title">
+        <div><h2 id="customize-menu-title">Seu menu lateral</h2>
+          <p>Marque nos cartões os atalhos que quer no menu. A escolha é salva automaticamente neste navegador. “Ver mais opções” fica sempre disponível.</p>
+          <span role="status" aria-live="polite">{shortcuts.length} {shortcuts.length === 1 ? 'atalho selecionado' : 'atalhos selecionados'}</span>
+        </div>
+        <button type="button" className="secondary-button" onClick={onResetShortcuts}>Restaurar padrão</button>
+      </section>
       <div className="more-options-sections">
-        {options.map(section => (
-          <section className="more-options-section" key={section.title} aria-labelledby={`options-${section.title}`}>
+        {sections.map((section, sectionIndex) => (
+          <section className="more-options-section" key={section.title} aria-labelledby={`options-${sectionIndex}`}>
             <div className="more-options-section-heading">
-              <h2 id={`options-${section.title}`}>{section.title}</h2>
+              <h2 id={`options-${sectionIndex}`}>{section.title}</h2>
               <p>{section.description}</p>
             </div>
             <div className="more-options-grid">
-              {section.items.map(option => <MoreOptionCard key={option.title} {...option} />)}
+              {section.items.map(option => <div className={`more-option-item${shortcuts.includes(option.id) ? ' pinned' : ''}`} key={option.id}>
+                <MoreOptionCard {...option} />
+                <label className="more-option-pin">
+                  <input type="checkbox" checked={shortcuts.includes(option.id)} onChange={() => onToggleShortcut(option.id)} aria-label={`Mostrar ${option.title} no menu lateral`} />
+                  <span>{shortcuts.includes(option.id) ? 'No menu lateral' : 'Adicionar ao menu lateral'}</span>
+                </label>
+              </div>)}
             </div>
           </section>
         ))}
