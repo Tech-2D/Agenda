@@ -10,7 +10,11 @@ export function catalogWriteEndpoint() {
 
 export async function fetchCatalog(resource: string, className: string | undefined, signal: AbortSignal): Promise<Response> {
   const read = async (base: string, timeout: number) => {
-    const url = new URL(`${base}/${resource}`)
+    // O segundo argumento só importa quando VITE_PUBLIC_QUERY_API_URL é um
+    // caminho relativo (ex.: /api/catalog, via proxy do Vite em dev, para
+    // contornar o CORS do Worker em localhost); URLs absolutas o ignoram.
+    const origin = typeof window !== 'undefined' ? window.location?.origin : undefined
+    const url = new URL(`${base}/${resource}`, origin)
     if (className) url.searchParams.set('class', className)
     return fetch(url, { signal: AbortSignal.any([signal, AbortSignal.timeout(timeout)]) })
   }

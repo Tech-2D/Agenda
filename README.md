@@ -54,6 +54,14 @@ npm run dev
 
 O arquivo `.env.local` (baseado em `.env.example`) é opcional e serve só para sobrescrever a configuração pública do Firebase já embutida em `src/firebase.ts`.
 
+A leitura pública (agenda, horários, atualizações) passa por uma API própria em Cloudflare Workers, não mais por Firestore direto — veja `src/catalogTransport.ts`. Essa API só libera CORS para a origem de produção, então rodando via `npm run dev` a agenda não carrega nada por padrão. Para contornar isso em desenvolvimento, adicione ao `.env.local`:
+
+```
+VITE_PUBLIC_QUERY_API_URL=/api/catalog
+```
+
+Isso faz o navegador enxergar `/api/catalog` como mesma origem; o proxy configurado em `vite.config.ts` repassa a chamada pro Worker por fora do navegador, sem o bloqueio de CORS.
+
 ## Estrutura dos dados
 
 ### `activities/{activityId}`
