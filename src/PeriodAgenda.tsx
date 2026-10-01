@@ -7,8 +7,9 @@ import { AttachmentLinks } from './AttachmentLinks'
 import { ATTACHMENTS_ENABLED } from './attachments'
 import { ACTIVITY_TYPE_COLORS, ACTIVITY_TYPE_LABELS, type Activity, type AdminProfile } from './types'
 
-export function PeriodAgenda({ cursor, view, activitiesByDay, profile, turmaId, onAdd, onEdit, onOpenDay }: {
-  cursor: Date; view: 'day' | 'week'; activitiesByDay: Map<string, Activity[]>; profile: AdminProfile | null; turmaId: string
+export function PeriodAgenda({ cursor, view, activitiesByDay, profile, turmaId, showTurmaLabel = false, onAdd, onEdit, onOpenDay }: {
+  cursor: Date; view: 'day' | 'week'; activitiesByDay: Map<string, Activity[]>; profile: AdminProfile | null; turmaId: string | null
+  showTurmaLabel?: boolean
   onAdd: (day: Date) => void; onEdit: (activity: Activity) => void; onOpenDay: (day: Date) => void
 }) {
   return <div className={`period-agenda ${view}`}>
@@ -27,7 +28,7 @@ export function PeriodAgenda({ cursor, view, activitiesByDay, profile, turmaId, 
         <div className="period-tasks">
           {!activities.length && <p className="period-empty">Sem atividades</p>}
           {activities.map(activity => <article key={activity.id} className="period-task" style={{ borderLeftColor: ACTIVITY_TYPE_COLORS[activity.type] }}>
-            <div className="period-task-meta"><span>{activity.time || 'Sem horário'}</span><span>{ACTIVITY_TYPE_LABELS[activity.type]}{activity.turmaId === null ? ' · Geral' : ''}</span></div>
+            <div className="period-task-meta"><span>{activity.time || 'Sem horário'}</span><span>{ACTIVITY_TYPE_LABELS[activity.type]}{activity.turmaId === null ? ' · Geral' : showTurmaLabel ? ` · ${activity.turmaId}` : ''}</span></div>
             <h2>{activity.title}</h2>
             {activity.subject && <p className="activity-subject">{activity.subject}</p>}
             {activity.description && <p className="period-task-description">{activity.description}</p>}

@@ -33,6 +33,7 @@ import { FONT_SCALES, FONT_SCALE_LABELS, readStoredFontScale, readStoredHighCont
 import { loadOrClaimAdminProfile } from './adminAccess'
 import { DEFAULT_MENU_SHORTCUTS, readMenuShortcuts, storeMenuShortcuts, type MenuShortcutId } from './menuShortcuts'
 
+const CompareCalendar = lazy(() => import('./CompareCalendar').then(module => ({ default: module.CompareCalendar })))
 const ProfileDialog = lazy(() => import('./ProfileDialog').then(module => ({ default: module.ProfileDialog })))
 const ClassRequestDialog = lazy(() => import('./ClassRequestDialog').then(module => ({ default: module.ClassRequestDialog })))
 const PollsDialog = lazy(() => import('./PollsDialog').then(module => ({ default: module.PollsDialog })))
@@ -80,6 +81,7 @@ function App() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [menuShortcuts, setMenuShortcuts] = useState(readMenuShortcuts)
   const [moreOptionsOpen, setMoreOptionsOpen] = useState(window.location.hash === '#opcoes')
+  const [compareMode, setCompareMode] = useState(false)
   const [configOpen, setConfigOpen] = useState(false)
   const [profilesOpen, setProfilesOpen] = useState(false)
   const [suggestOpen, setSuggestOpen] = useState(false)
@@ -381,6 +383,12 @@ function App() {
           onToggleShortcut={toggleMenuShortcut}
           onResetShortcuts={resetMenuShortcuts}
         />
+      ) : compareMode ? (
+      <main id="inicio" className="main-content">
+        <Suspense fallback={<div className="state-card"><LoaderCircle className="spin" /><p>Carregando…</p></div>}>
+          <CompareCalendar classNames={classNames} currentTurmaId={turmaId} onBack={() => setCompareMode(false)} />
+        </Suspense>
+      </main>
       ) : (
       <main id="inicio" className="main-content">
         <div className="agenda-toolbar">
@@ -400,6 +408,9 @@ function App() {
                 </select>
               </label>
             )}
+            <button type="button" className="compare-link" onClick={() => setCompareMode(true)}>
+              <LayoutGrid size={14} aria-hidden="true" /> Comparar turmas
+            </button>
           </div>
 
           <div className="agenda-controls">

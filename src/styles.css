@@ -105,6 +105,13 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .agenda-heading h1 { margin: 0; color: var(--ink); font-size: 22px; line-height: 1.2; letter-spacing: -.03em; }
 .turma-select-inline select { height: 38px; padding: 0 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); color: var(--text); font-size: 12px; font-weight: 700; }
 
+.compare-link { display: inline-flex; align-items: center; gap: 6px; height: 38px; padding: 0 12px; border: 1px dashed var(--line); border-radius: 6px; background: transparent; color: var(--ink-soft); font-size: 12px; font-weight: 800; cursor: pointer; }
+.compare-link:hover { color: var(--ink); border-color: var(--accent); }
+.compare-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.compare-chip { flex: none; min-height: 36px; padding: 0 14px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); color: var(--ink-soft); font-size: 12px; font-weight: 800; cursor: pointer; transition: background .15s, color .15s, border-color .15s; }
+.compare-chip:hover:not(.active) { border-color: var(--accent); color: var(--ink); }
+.compare-chip.active { background: var(--accent); border-color: var(--accent); color: var(--accent-contrast); }
+
 .calendar-section { max-width: none; flex: 1; display: flex; flex-direction: column; min-height: 0; }
 .month-nav { display: flex; align-items: center; gap: 14px; }
 .month-nav > button { width: 32px; height: 32px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); color: var(--text); cursor: pointer; }
