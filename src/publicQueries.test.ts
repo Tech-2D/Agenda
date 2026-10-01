@@ -47,7 +47,7 @@ describe('public catalog polling', () => {
   })
 
   it('publishes identical content after recovery so connection warnings can clear', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(response()).mockRejectedValueOnce(new Error('offline')).mockResolvedValue(response()))
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(response()).mockRejectedValueOnce(new Error('offline')).mockRejectedValueOnce(new Error('offline')).mockResolvedValue(response()))
     const change = vi.fn()
     const error = vi.fn()
     stop = observeCatalog('agenda', change, error)
