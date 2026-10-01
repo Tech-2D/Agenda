@@ -4,6 +4,7 @@ import { ArrowRight, Calendar, CalendarDays, Check, DoorOpen, Edit3, Globe, Hist
 import { createUserWithEmailAndPassword, onAuthStateChanged, signInWithEmailAndPassword, signOut, type User } from 'firebase/auth'
 import { requestPasswordReset } from './passwordReset'
 import { StorageAdminPanel } from './StorageAdminPanel'
+import { RepresentativesPanel } from './RepresentativesPanel'
 import { ATTACHMENTS_ENABLED, deleteActivityWithAttachments, formatAttachmentSize, MAX_ATTACHMENTS, removeAttachment, uploadAttachment, validateAttachment } from './attachments'
 import { FirebaseError } from 'firebase/app'
 import { addDoc, collection, deleteDoc, doc, getDoc, onSnapshot, query, serverTimestamp, setDoc, updateDoc, where, writeBatch } from 'firebase/firestore'
@@ -1028,6 +1029,7 @@ export default function AdminDialog({ publicTurmaId, classNames, quickCreateDate
                   )}
                   {isSuperAdmin && adminTab === 'representatives' && (
                     <>
+                      <RepresentativesPanel key={user.uid} />
                       <div className="admin-list-heading"><strong>Pedidos para representar uma turma</strong></div>
                       <p className="representative-hint">Confira o e-mail e a turma antes de aprovar. Depois da aprovação, a pessoa poderá criar a conta e entrar diretamente.</p>
                       <div className="admin-list">

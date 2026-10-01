@@ -355,6 +355,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .access-notice { color: #086e74 !important; font-weight: 700; }
 .representative-hint { margin: -2px 0 14px; color: var(--ink-soft); font-size: 12px; line-height: 1.5; }
 .representative-row .admin-row-main strong { overflow-wrap: anywhere; }
+.representatives-panel { margin-bottom: 28px; min-width: 0; }
+.representatives-panel label { font-size: 12px; color: var(--ink-soft); }
+.representatives-panel [role="alert"] { color: var(--danger, #b42318); overflow-wrap: anywhere; }
 .primary-button, .secondary-button { min-height: 45px; display: inline-flex; align-items: center; justify-content: center; gap: 9px; border: 0; padding: 0 20px; cursor: pointer; font-size: 12px; font-weight: 800; border-radius: 6px; }
 .primary-button { color: var(--accent-contrast); background: var(--accent); }
 .primary-button:hover { background: var(--accent-hover); }
