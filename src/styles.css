@@ -891,11 +891,17 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .notice-form-actions .secondary-button { min-height: 45px; }
 
 .notices-admin { display: grid; gap: 14px; }
+.admin-row.compact.notice-row { grid-template-columns: minmax(0, 1fr) auto; align-items: start; }
+.notice-row > .row-actions { grid-column: 2; grid-row: 1; justify-self: end; }
+.notice-row .postit-tag { display: inline-flex; max-width: 100%; white-space: nowrap; }
+.notice-row .admin-row-main > span:not(.notice-row-meta) { white-space: pre-wrap; line-height: 1.5; }
 .notice-row.is-expired { opacity: .65; }
 .notice-row .admin-row-main { min-width: 0; overflow-wrap: anywhere; }
 .notice-row-meta { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 4px; }
 
 @media (max-width: 640px) {
+  .admin-row.compact.notice-row { grid-template-columns: minmax(0, 1fr); }
+  .notice-row > .row-actions { grid-column: 1; grid-row: 2; justify-self: end; }
   .postit { height: 112px; }
   .notice-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 12px; }
   .notice-form-actions .primary-button, .notice-form-actions .secondary-button { flex: 1; }
