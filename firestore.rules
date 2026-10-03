@@ -161,8 +161,9 @@ service cloud.firestore {
     }
 
     match /representativeRequests/{requestId} {
-      // O ID aleatório é o código que o solicitante guarda para consultar o status.
-      allow get: if true;
+      // O status público passa pela API e não contém o e-mail do solicitante.
+      allow get: if isSuperAdmin() || (isSignedIn() && request.auth.token.email is string
+        && resource.data.email == request.auth.token.email.lower());
       allow list: if isSuperAdmin();
       allow create: if request.resource.data.keys().hasOnly(['email', 'turmaId', 'status', 'createdAt'])
         && request.resource.data.keys().hasAll(['email', 'turmaId', 'status', 'createdAt'])
@@ -205,7 +206,8 @@ service cloud.firestore {
     // Atividades (tarefas, lições, trabalhos, eventos) de uma turma, ou eventos
     // gerais (turmaId nulo) visíveis em todas as turmas.
     match /activities/{activityId} {
-      allow read: if true;
+      // Documentos completos contêm autoria privada. Visitantes usam a projeção da API.
+      allow read: if resource.data.turmaId == null ? isAnyAdmin() : canManage(resource.data.turmaId);
 
       allow create: if isValidActivity(request.resource.data)
         && !request.resource.data.keys().hasAny(['attachments'])
@@ -321,7 +323,7 @@ service cloud.firestore {
     }
 
     match /polls/{pollId} {
-      allow get, list: if true;
+      allow get, list: if canManage(resource.data.turmaId);
       allow create: if isSignedIn()
         && canManage(request.resource.data.turmaId)
         && isValidPoll(request.resource.data);
@@ -332,7 +334,8 @@ service cloud.firestore {
       allow delete: if false;
 
       match /votes/{voterUid} {
-        allow get, list: if true;
+        allow get: if isSignedIn() && request.auth.uid == voterUid;
+        allow list: if canManage(get(/databases/$(database)/documents/polls/$(pollId)).data.turmaId);
         allow create: if isSignedIn()
           && request.auth.uid == voterUid
           && get(/databases/$(database)/documents/polls/$(pollId)).data.status == 'open'
@@ -476,7 +479,7 @@ service cloud.firestore {
     // Histórico imutável de novidades da Agenda. Só o super-admin publica;
     // visitantes leem sem login para ver a novidade antes de escolher a turma.
     match /agendaUpdates/{updateId} {
-      allow get, list: if true;
+      allow get, list: if isSuperAdmin();
       allow create: if isSuperAdmin()
         && request.resource.data.keys().hasOnly(['title', 'body', 'createdBy', 'publishedAt', 'sourceFeedbackId', 'sourceName', 'sourceMessage'])
         && request.resource.data.keys().hasAll(['title', 'body', 'createdBy', 'publishedAt'])
@@ -502,7 +505,7 @@ service cloud.firestore {
 
     // Quadro de avisos por turma: leitura pública (sem login). Somente os
     // representantes da própria turma ou o super-admin criam, editam e apagam.
-    // authorEmail é público de propósito (decisão do produto). O TTL do Firestore
+    // A autoria permanece privada; visitantes usam uma projeção sem e-mail. O TTL do Firestore
     // deve ser configurado no Console sobre o campo purgeAt.
     function isValidBoardNotice(data) {
       return data.keys().hasOnly(['turmaId', 'title', 'body', 'type', 'expiresAt', 'purgeAt', 'createdBy', 'authorEmail', 'createdAt', 'updatedAt'])
@@ -518,7 +521,7 @@ service cloud.firestore {
     }
 
     match /boardNotices/{noticeId} {
-      allow get, list: if true;
+      allow get, list: if canManage(resource.data.turmaId);
 
       allow create: if isSignedIn()
         && canManage(request.resource.data.turmaId)
