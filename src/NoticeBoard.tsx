@@ -117,8 +117,7 @@ function NoticePreviewCard({ api }: { api: PreviewApi }) {
       <strong className="notice-preview-title">{notice.title}</strong>
       <p>{notice.body}</p>
       <span className="preview-author">
-        {notice.authorEmail && <>Publicado por {notice.authorEmail}</>}
-        {expiresAt && <>{notice.authorEmail ? ' · ' : ''}Vale até {formatDay(expiresAt)}</>}
+        {expiresAt && <>Vale até {formatDay(expiresAt)}</>}
       </span>
     </div>,
     document.body,
@@ -304,7 +303,7 @@ export function NoticeBoardDialog({ turmaId, notices, loading, error, user, canM
 // ——— Aba do painel: lista completa, incluindo expirados ———
 
 export function NoticesAdminPanel({ turmaId, user }: { turmaId: string; user: User }) {
-  const { notices, loading, error } = useTurmaNotices(turmaId)
+  const { notices, loading, error } = useTurmaNotices(turmaId, true)
   const now = useNow()
   const [editing, setEditing] = useState<Notice | 'new' | null>(null)
   const [actionError, setActionError] = useState('')

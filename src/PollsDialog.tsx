@@ -5,7 +5,8 @@ import { createUserWithEmailAndPassword, onAuthStateChanged, signInWithEmailAndP
 import { requestPasswordReset } from './passwordReset'
 import { addDoc, collection, doc, onSnapshot, query, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore'
 import { auth, db } from './firebase'
-import { canVoteInClass, countPollVotes, preparePollOptions, type Poll, type PollVote, type PollVoterAccess } from './polls'
+import { canVoteInClass, preparePollOptions, type Poll, type PollVote, type PollVoterAccess } from './polls'
+import { observePublicInfo } from './publicInfo'
 import type { AdminProfile } from './types'
 
 type Props = {
@@ -78,9 +79,9 @@ export function PollsDialog({ turmaId, loadAdminProfile, onClose }: Props) {
 
   useEffect(() => {
     setLoading(true)
-    const pollsQuery = query(collection(db, 'polls'), where('turmaId', '==', turmaId))
-    return onSnapshot(pollsQuery, (snapshot) => {
-      setPolls(snapshot.docs.map((item) => ({ id: item.id, ...item.data() }) as Poll)
+    setPolls([])
+    return observePublicInfo<{ polls: (Omit<Poll, 'createdAt'> & { createdAt: string | null })[] }>({ action: 'polls', turma: turmaId }, data => {
+      setPolls(data.polls.map(item => ({ ...item, createdAt: item.createdAt ? { toDate: () => new Date(item.createdAt!) } : null }))
         .sort((a, b) => (b.createdAt?.toDate().getTime() ?? 0) - (a.createdAt?.toDate().getTime() ?? 0)))
       setLoading(false)
       setLoadError('')
@@ -299,19 +300,26 @@ export function PollsDialog({ turmaId, loadAdminProfile, onClose }: Props) {
 }
 
 function PollCard({ poll, account, canManage, approvedToVote }: { poll: Poll; account: User | null; canManage: boolean; approvedToVote: boolean }) {
-  const [votes, setVotes] = useState<PollVote[]>([])
+  const [counts, setCounts] = useState<number[]>(poll.options.map(() => 0))
+  const [myVote, setMyVote] = useState<PollVote | null>(null)
   const [votesError, setVotesError] = useState('')
   const [busy, setBusy] = useState(false)
   const [actionError, setActionError] = useState('')
 
-  useEffect(() => onSnapshot(collection(db, 'polls', poll.id, 'votes'), (snapshot) => {
-    setVotes(snapshot.docs.map((item) => ({ id: item.id, ...item.data() }) as PollVote))
+  useEffect(() => observePublicInfo<{ counts: number[] }>({ action: 'poll-results', id: poll.id }, data => {
+    setCounts(data.counts)
     setVotesError('')
   }, () => setVotesError('Não foi possível carregar os votos.')), [poll.id])
 
-  const counts = countPollVotes(poll.options.length, votes)
+  useEffect(() => {
+    setMyVote(null)
+    if (!account) return
+    return onSnapshot(doc(db, 'polls', poll.id, 'votes', account.uid), snapshot => {
+      setMyVote(snapshot.exists() ? { id: snapshot.id, ...snapshot.data() } as PollVote : null)
+    }, () => setVotesError('Não foi possível conferir seu voto.'))
+  }, [poll.id, account?.uid])
+
   const total = counts.reduce((sum, count) => sum + count, 0)
-  const myVote = votes.find((vote) => vote.id === account?.uid)
 
   async function vote(optionIndex: number) {
     if (!account || !approvedToVote || myVote || poll.status !== 'open') return

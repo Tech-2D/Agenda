@@ -5,6 +5,7 @@ import { createUserWithEmailAndPassword, onAuthStateChanged, signInWithEmailAndP
 import { requestPasswordReset } from './passwordReset'
 import { StorageAdminPanel } from './StorageAdminPanel'
 import { RepresentativesPanel } from './RepresentativesPanel'
+import { observePublicInfo } from './publicInfo'
 import { ATTACHMENTS_ENABLED, deleteActivityWithAttachments, formatAttachmentSize, MAX_ATTACHMENTS, removeAttachment, uploadAttachment, validateAttachment } from './attachments'
 import { FirebaseError } from 'firebase/app'
 import { addDoc, collection, deleteDoc, doc, getDoc, onSnapshot, query, serverTimestamp, setDoc, updateDoc, where, writeBatch } from 'firebase/firestore'
@@ -203,9 +204,10 @@ export default function AdminDialog({ publicTurmaId, classNames, quickCreateDate
       setRequestRecord(null)
       return
     }
-    return onSnapshot(doc(db, 'representativeRequests', requestId), (snapshot) => {
-      setRequestRecord(snapshot.exists() ? ({ id: snapshot.id, ...snapshot.data() } as RepresentativeRequest) : null)
-      setRequestError(snapshot.exists() ? '' : 'Solicitação não encontrada. Envie uma nova solicitação.')
+    setRequestRecord(null)
+    return observePublicInfo<{ request: { status: RepresentativeRequest['status']; turmaId: string } | null }>({ action: 'request-status', id: requestId }, data => {
+      setRequestRecord(data.request ? { id: requestId, email: '', ...data.request } : null)
+      setRequestError(data.request ? '' : 'Solicitação não encontrada. Envie uma nova solicitação.')
     }, () => setRequestError('Não foi possível consultar sua solicitação. Tente novamente mais tarde.'))
   }, [requestId])
 
@@ -376,12 +378,13 @@ export default function AdminDialog({ publicTurmaId, classNames, quickCreateDate
     setBusy(true)
     setRequestError('')
     try {
-      const fresh = await getDoc(doc(db, 'representativeRequests', requestRecord.id))
-      if (!fresh.exists() || fresh.data().status !== 'aprovada' || fresh.data().email !== requestRecord.email || fresh.data().turmaId !== requestRecord.turmaId) {
-        setRequestError('Esta solicitação ainda não está aprovada.')
+      const registrationEmail = normalizeRepresentativeEmail(requestEmail)
+      if (!isValidRepresentativeEmail(registrationEmail)) {
+        setRequestError('Informe o mesmo e-mail usado na solicitação.')
         return
       }
-      await createUserWithEmailAndPassword(auth, requestRecord.email, registerPassword)
+      // Account creation never grants representative access; the private invite check does.
+      await createUserWithEmailAndPassword(auth, registrationEmail, registerPassword)
       setRegisterPassword('')
     } catch (error) {
       if (error instanceof FirebaseError && error.code === 'auth/email-already-in-use') {
@@ -812,7 +815,7 @@ export default function AdminDialog({ publicTurmaId, classNames, quickCreateDate
             {requestRecord ? (
               <div className="request-status">
                 <span className={`status-badge status-${requestRecord.status}`}>{requestRecord.status}</span>
-                <strong>{requestRecord.email}</strong>
+                <strong>Sua solicitação</strong>
                 <p>Turma: {requestRecord.turmaId}</p>
                 <p className="request-code">Código da solicitação: <code>{requestRecord.id}</code></p>
                 {requestRecord.status === 'pendente' && <p>Seu pedido está em análise. Esta tela atualiza quando o administrador responder.</p>}
@@ -820,6 +823,8 @@ export default function AdminDialog({ publicTurmaId, classNames, quickCreateDate
                 {requestRecord.status === 'aprovada' && (
                   <form className="access-form" onSubmit={registerRepresentative}>
                     <p>E-mail aprovado. Crie uma senha para entrar diretamente na administração da sua turma.</p>
+                    <label htmlFor="approved-email">E-mail usado na solicitação</label>
+                    <input id="approved-email" type="email" value={requestEmail} onChange={event => setRequestEmail(event.target.value)} autoComplete="email" required />
                     <label htmlFor="representative-password">Criar senha</label>
                     <input id="representative-password" type="password" minLength={6} value={registerPassword} onChange={(event) => setRegisterPassword(event.target.value)} autoComplete="new-password" required />
                     <button className="primary-button" disabled={busy}>{busy ? <LoaderCircle className="spin" /> : 'Criar conta'}</button>
