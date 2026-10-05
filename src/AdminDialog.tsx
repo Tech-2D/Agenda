@@ -8,12 +8,13 @@ import { RepresentativesPanel } from './RepresentativesPanel'
 import { observePublicInfo } from './publicInfo'
 import { ATTACHMENTS_ENABLED, deleteActivityWithAttachments, formatAttachmentSize, MAX_ATTACHMENTS, removeAttachment, uploadAttachment, validateAttachment } from './attachments'
 import { FirebaseError } from 'firebase/app'
-import { addDoc, collection, deleteDoc, doc, getDoc, onSnapshot, query, serverTimestamp, setDoc, updateDoc, where, writeBatch } from 'firebase/firestore'
+import { addDoc, collection, deleteDoc, doc, onSnapshot, query, serverTimestamp, setDoc, updateDoc, where, writeBatch } from 'firebase/firestore'
 import { auth, db } from './firebase'
 import { CLASS_NAMES } from './classNames'
 import { normalizeClassName, isValidClassName, type ClassRequest } from './classRequests'
 import { SUBJECTS } from './subjects'
 import { REPEAT_DAYS, recurrenceLabel, validateCustomRepeat } from './recurrence'
+import { deleteRecurrence } from './deleteRecurrence'
 import { filterFeedback, isFeedbackCompleted, type FeedbackFilter } from './feedbackStatus'
 import { RetentionPanel } from './RetentionPanel'
 import { RepresentativesChat } from './RepresentativesChat'
@@ -223,7 +224,7 @@ export default function AdminDialog({ publicTurmaId, classNames, quickCreateDate
     if (!profile || !managedTurma || adminTab !== 'recurrences') return
     const recurrenceQuery = query(collection(db, 'recurringActivities'), where('turmaId', '==', managedTurma))
     return onSnapshot(recurrenceQuery, (snapshot) => {
-      setRecurrences(snapshot.docs.map((item) => ({ id: item.id, ...item.data() }) as RecurringActivity))
+      setRecurrences(snapshot.docs.filter(item => item.data().deleted !== true).map((item) => ({ id: item.id, ...item.data() }) as RecurringActivity))
     }, () => setNotice('Não foi possível carregar as repetições. Confira as regras do Firestore.'))
   }, [profile, managedTurma, adminTab])
 
@@ -617,6 +618,20 @@ export default function AdminDialog({ publicTurmaId, classNames, quickCreateDate
     }
   }
 
+  async function removeRecurrence(item: RecurringActivity) {
+    if (busy || !window.confirm(`Excluir a repetição "${item.title}"? As ocorrências de hoje em diante serão removidas. As anteriores permanecerão no histórico.`)) return
+    setBusy(true)
+    try {
+      await deleteRecurrence(item)
+      setNotice('Repetição excluída. As ocorrências anteriores foram preservadas.')
+    } catch {
+      setNotice('Não foi possível concluir a exclusão. Se a repetição foi pausada, ela continua na lista para você tentar excluir novamente.')
+    } finally {
+      await invalidateCatalog('agenda')
+      setBusy(false)
+    }
+  }
+
   async function removeActivity(activity: Activity) {
     if (!window.confirm(`Excluir "${activity.title}"?`)) return
     try {
@@ -984,11 +999,11 @@ export default function AdminDialog({ publicTurmaId, classNames, quickCreateDate
                               <div className="avatar" style={{ color: ACTIVITY_TYPE_COLORS[item.type] }}><Calendar /></div>
                               <div className="admin-row-main"><strong>{item.title}</strong><span>{ACTIVITY_TYPE_LABELS[item.type]}{item.subject ? ` · ${item.subject}` : ''} · {item.active ? 'Ativa' : 'Pausada'}</span></div>
                               <div className="admin-row-meta"><span>{recurrenceLabel(item)}</span><span>Desde {parseDateLabel(item.startDate)}</span><strong>{item.endDate ? `Até ${parseDateLabel(item.endDate)}` : 'Sem data final'}</strong></div>
-                              <div className="row-actions"><button type="button" className="recurrence-action" disabled={busy} onClick={() => toggleRecurrence(item)} aria-label={`${item.active ? 'Pausar' : 'Reativar'} ${item.title}`}>{item.active ? 'Pausar' : 'Reativar'}</button></div>
+                              <div className="row-actions"><button type="button" className="recurrence-action" disabled={busy} onClick={() => toggleRecurrence(item)} aria-label={`${item.active ? 'Pausar' : 'Reativar'} ${item.title}`}>{item.active ? 'Pausar' : 'Reativar'}</button><button type="button" className="danger" disabled={busy} onClick={() => removeRecurrence(item)} aria-label={`Excluir repetição ${item.title}`} title="Excluir repetição"><Trash2 /></button></div>
                             </article>
                           ))}
                       </div>
-                      <p className="config-hint">A automação prepara as próximas 8 semanas. Ao pausar, ela remove apenas ocorrências de hoje em diante; atividades anteriores permanecem no histórico. Para alterar só uma data, edite a ocorrência em Atividades.</p>
+                      <p className="config-hint">A automação prepara as próximas 8 semanas. Ao pausar, ela remove apenas ocorrências de hoje em diante; atividades anteriores permanecem no histórico. Ao excluir, a série sai desta lista e as ocorrências de hoje em diante são removidas. Para alterar só uma data, edite a ocorrência em Atividades.</p>
                     </>
                   )}
                   {adminTab === 'retention' && <RetentionPanel key={managedTurma} turmaId={managedTurma} userId={user.uid} activityDates={managedActivities.map((activity) => activity.date)} />}

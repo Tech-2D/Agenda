@@ -14,7 +14,7 @@ Depois de entrar como representante ou super-admin, abra um dia no calendário e
 
 ## Tarefas que se repetem
 
-Na área do representante, marque **Repetir toda semana** ao cadastrar uma atividade. A data escolhida vira a primeira ocorrência; o campo **Repetir até** é opcional. A aba **Repetições** mostra os agendamentos da turma e permite pausá-los ou reativá-los. Cada ocorrência pode ser editada individualmente em **Atividades**, mas o modelo semanal permanece igual.
+Na área do representante, marque **Repetir toda semana** ao cadastrar uma atividade. A data escolhida vira a primeira ocorrência; o campo **Repetir até** é opcional. A aba **Repetições** mostra os agendamentos da turma e permite pausá-los, reativá-los ou excluí-los. Excluir encerra a série e remove imediatamente as ocorrências de hoje em diante, preservando o histórico anterior. O modelo fica marcado como excluído, sem opção de reativar; se a limpeza falhar, ele permanece pausado na lista para uma nova tentativa. Cada ocorrência pode ser editada individualmente em **Atividades**, mas o modelo semanal permanece igual.
 
 A automação fica no repositório privado [`Tech-2D/agenda-recorrencias`](https://github.com/Tech-2D/agenda-recorrencias). Ela roda a cada seis horas, gera até oito semanas à frente e não duplica atividades. Quando um agendamento é pausado, a próxima execução remove suas ocorrências de hoje em diante, mantendo as anteriores. A automação depende do secret `FIREBASE_SERVICE_ACCOUNT` configurado nesse repositório e das regras atualizadas do Firestore.
 
