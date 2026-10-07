@@ -1,8 +1,10 @@
-export const THEMES = ['padrao', 'escuro', 'cyberpunk'] as const
+export const THEMES = ['padrao', 'rosa', 'roxo', 'escuro', 'cyberpunk'] as const
 export type Theme = (typeof THEMES)[number]
 
 export const THEME_LABELS: Record<Theme, string> = {
   padrao: 'Padrão',
+  rosa: 'Rosa claro',
+  roxo: 'Roxo claro',
   escuro: 'Escuro',
   cyberpunk: 'Cyberpunk',
 }
@@ -10,6 +12,8 @@ export const THEME_LABELS: Record<Theme, string> = {
 // Cor de pré-visualização do tema no seletor (não é a paleta inteira, só um aceno visual).
 export const THEME_PREVIEW: Record<Theme, string> = {
   padrao: '#0e35be',
+  rosa: '#b51e70',
+  roxo: '#7536b5',
   escuro: '#3b6dff',
   cyberpunk: 'linear-gradient(135deg, #ff2b54, #25e0ff)',
 }

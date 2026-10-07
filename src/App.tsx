@@ -945,6 +945,7 @@ function ConfigDialog({
                   type="button"
                   key={value}
                   className={`theme-swatch ${theme === value ? 'active' : ''}`}
+                  aria-pressed={theme === value}
                   onClick={() => onSetTheme(value)}
                 >
                   <span className="theme-dot" style={{ background: THEME_PREVIEW[value] }} />
