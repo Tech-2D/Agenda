@@ -2,7 +2,7 @@ import { type FormEvent, type ReactNode, useCallback, useEffect, useMemo, useRef
 import { createPortal } from 'react-dom'
 import { Clock, Info, LoaderCircle, Megaphone, Pencil, Plus, StickyNote, Trash2, TriangleAlert, X } from 'lucide-react'
 import type { User } from 'firebase/auth'
-import { addDoc, collection, deleteDoc, doc, serverTimestamp, updateDoc } from 'firebase/firestore'
+import { addDoc, collection, deleteDoc, doc, serverTimestamp, updateDoc } from './dataClient'
 import { db } from './firebase'
 import {
   NOTICE_BODY_MAX,

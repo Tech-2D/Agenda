@@ -1,5 +1,5 @@
 import { type FormEvent, useEffect, useRef, useState } from 'react'
-import { addDoc, collection, deleteDoc, doc, limit, onSnapshot, orderBy, query, serverTimestamp, type Timestamp } from 'firebase/firestore'
+import { addDoc, collection, deleteDoc, doc, limit, onSnapshot, orderBy, query, serverTimestamp, type Timestamp } from './dataClient'
 import { Send, Trash2 } from 'lucide-react'
 import { db } from './firebase'
 import { prepareChatMessage } from './chat'

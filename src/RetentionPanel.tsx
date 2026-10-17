@@ -1,5 +1,5 @@
 import { type FormEvent, useEffect, useState } from 'react'
-import { doc, onSnapshot, serverTimestamp, setDoc } from 'firebase/firestore'
+import { doc, onSnapshot, serverTimestamp, setDoc } from './dataClient'
 import { db } from './firebase'
 import { dateKey } from './calendar'
 import { countExpiredActivities, MAX_RETENTION_DAYS, MIN_RETENTION_DAYS } from './retention'

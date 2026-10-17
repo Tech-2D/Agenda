@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('./firebase', () => ({ auth: { currentUser: null } }))
+vi.mock('./dataBackend', () => ({ SQL_ENABLED: false })) // Explicitly exercise the legacy transport in this suite.
 import { observeCatalog } from './publicQueries'
 
 const response = (title = 'Tarefa', stale = false, generatedAt = '2026-09-30T10:00:00Z') => ({

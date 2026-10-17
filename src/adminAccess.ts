@@ -1,5 +1,5 @@
 import { type User } from 'firebase/auth'
-import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore'
+import { doc, getDoc, serverTimestamp, setDoc } from './dataClient'
 import { db } from './firebase'
 import { CLASS_NAMES } from './classNames'
 import { type AdminProfile } from './types'

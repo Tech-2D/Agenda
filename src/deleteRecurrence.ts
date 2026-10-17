@@ -1,4 +1,4 @@
-import { collection, doc, getDocs, query, updateDoc, where, writeBatch } from 'firebase/firestore'
+import { collection, doc, getDocs, query, updateDoc, where, writeBatch } from './dataClient'
 import { db } from './firebase'
 import type { RecurringActivity } from './types'
 

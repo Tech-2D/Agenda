@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { collection, onSnapshot } from 'firebase/firestore'
+import { collection, onSnapshot } from './dataClient'
 import { LoaderCircle, UserRound } from 'lucide-react'
 import { db } from './firebase'
 import { filterRepresentatives, type ApprovedRepresentative } from './representatives'

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { collection, onSnapshot, query, where } from 'firebase/firestore'
+import { collection, onSnapshot, query, where } from './dataClient'
 import { db } from './firebase'
 import type { Notice } from './notices'
 import { observePublicInfo } from './publicInfo'

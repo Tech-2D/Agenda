@@ -1,7 +1,7 @@
 import { beforeEach, expect, it, vi } from 'vitest'
 const mocks = vi.hoisted(() => ({ update: vi.fn(), list: vi.fn(), commit: vi.fn(), remove: vi.fn() }))
 vi.mock('./firebase', () => ({ db: {} }))
-vi.mock('firebase/firestore', () => ({
+vi.mock('./dataClient', () => ({
   doc: (_: unknown, collection: string, id: string) => ({ collection, id }),
   collection: vi.fn(), query: vi.fn(), where: vi.fn(),
   updateDoc: mocks.update, getDocs: mocks.list,

@@ -6,6 +6,8 @@ export function activitySaveError(error: unknown, attachmentsOnly = false): stri
     message = 'Falta de permissão: o acesso foi recusado. Isso não significa que você preencheu algo errado. Representantes só podem gerenciar atividades da própria turma. Atualize a página e entre novamente; se continuar, peça ao administrador para conferir seu acesso e as regras do sistema.'
   } else if (code === 'unauthenticated' || details.status === 401) {
     message = 'Sessão não autorizada: entre novamente na sua conta antes de salvar.'
+  } else if (code === 'aborted' || details.status === 409) {
+    message = 'Esta atividade foi alterada enquanto você editava. Reabra a atividade para conferir a versão mais recente antes de salvar novamente.'
   } else if (code === 'invalid-argument' || details.status === 400) {
     message = 'Dados inválidos: confira os campos e os arquivos selecionados. Se estiverem corretos, avise o administrador; pode haver uma incompatibilidade no sistema.'
   } else if (code === 'resource-exhausted' || details.status === 429) {

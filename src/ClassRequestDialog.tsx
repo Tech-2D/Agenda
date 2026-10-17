@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { addDoc, collection, serverTimestamp } from 'firebase/firestore'
+import { addDoc, collection, serverTimestamp } from './dataClient'
 import { Calendar, Check, LoaderCircle, X } from 'lucide-react'
 import { db } from './firebase'
 import { isValidClassName, normalizeClassName } from './classRequests'

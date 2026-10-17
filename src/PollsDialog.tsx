@@ -3,7 +3,7 @@ import { BarChart3, Check, LoaderCircle, LockKeyhole, Plus, UserCheck, Vote, X }
 import { FirebaseError } from 'firebase/app'
 import { createUserWithEmailAndPassword, onAuthStateChanged, signInWithEmailAndPassword, signOut, type User } from 'firebase/auth'
 import { requestPasswordReset } from './passwordReset'
-import { addDoc, collection, doc, onSnapshot, query, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore'
+import { addDoc, collection, doc, onSnapshot, query, serverTimestamp, setDoc, updateDoc, where } from './dataClient'
 import { auth, db } from './firebase'
 import { canVoteInClass, preparePollOptions, type Poll, type PollVote, type PollVoterAccess } from './polls'
 import { observePublicInfo } from './publicInfo'
