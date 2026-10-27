@@ -1,0 +1,200 @@
+import { useState, type ReactNode } from "react";
+import { calculate, fmt } from "../lib/grades";
+import { useInView } from "../lib/useInView";
+import { GradeInput, SITUATION, toGrade } from "./SubjectRow";
+
+type Tone = "blue" | "orange" | "green" | "red";
+const tones: Record<Tone, string> = {
+  blue: "bg-chip-blue text-chip-blue-ink",
+  orange: "bg-chip-orange text-chip-orange-ink",
+  green: "bg-chip-green text-chip-green-ink",
+  red: "bg-chip-red text-chip-red-ink",
+};
+
+/** Chip da fórmula; quando há um valor do simulador, ele aparece embaixo do nome. */
+function Chip({ tone, children, value }: { tone: Tone; children: ReactNode; value?: number | null }) {
+  return (
+    <span
+      className={`inline-flex flex-col items-center rounded-lg px-3 py-2 text-sm whitespace-nowrap transition-transform duration-200 hover:-translate-y-0.5 ${tones[tone]}`}
+    >
+      {children}
+      {value != null && (
+        <span key={fmt(value)} className="animate-pop text-base leading-tight font-semibold tabular-nums">
+          {fmt(value)}
+        </span>
+      )}
+    </span>
+  );
+}
+
+const Op = ({ children }: { children: ReactNode }) => <span className="px-1 text-lg text-ink">{children}</span>;
+
+function Fraction({ top, bottom }: { top: ReactNode; bottom: ReactNode }) {
+  return (
+    <div className="flex min-w-0 flex-col items-center">
+      <div className="flex flex-wrap items-center justify-center gap-1 border-b border-ink px-2 pb-3">{top}</div>
+      <span className="pt-2 text-sm">{bottom}</span>
+    </div>
+  );
+}
+
+function Card({ className = "", delay = 0, dim = false, children }: { className?: string; delay?: number; dim?: boolean; children: ReactNode }) {
+  const [ref, inView] = useInView<HTMLElement>();
+  return (
+    <section
+      ref={ref}
+      style={{ transitionDelay: inView ? `${delay}ms` : undefined }}
+      className={`reveal rounded-xl border bg-white p-3 transition-[opacity,transform,border-color,box-shadow] sm:p-4 ${inView ? "in" : ""} ${
+        dim ? "border-line [&.in]:opacity-55" : "border-line hover:border-brand/30 hover:shadow-md"
+      } ${className}`}
+    >
+      {children}
+    </section>
+  );
+}
+
+function Formula({ label, tone, value, fraction }: { label: string; tone: Tone; value?: number | null; fraction: ReactNode }) {
+  return (
+    <div className="flex flex-wrap items-center justify-center gap-3 py-2 sm:gap-4">
+      <Chip tone={tone} value={value}>
+        {label}
+      </Chip>
+      <Op>=</Op>
+      {fraction}
+    </div>
+  );
+}
+
+export function Formulas() {
+  const [sim, setSim] = useState({ m1: "", m2: "", rec: "" });
+  const m1 = toGrade(sim.m1);
+  const m2 = toGrade(sim.m2);
+  const rec = toGrade(sim.rec);
+  const r = calculate(m1, m2, rec);
+  const active = m1 !== null || m2 !== null;
+  const usedRec = r.recovered !== null;
+  const inFinal = r.needed !== null;
+  const sit = SITUATION[r.situation];
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-col items-center gap-4 rounded-xl bg-brand-soft p-4 text-center sm:p-5">
+        <div>
+          <p className="text-base font-semibold">Simule uma disciplina</p>
+          <p className="text-sm text-muted">Digite as notas e veja a fórmula sendo preenchida.</p>
+        </div>
+        <div className="flex flex-wrap items-end justify-center gap-3">
+          {(
+            [
+              ["m1", "1º Sem"],
+              ["m2", "2º Sem"],
+              ["rec", "Rec. Final"],
+            ] as const
+          ).map(([k, label]) => (
+            <label key={k} className="w-20">
+              <span className="mb-1 block text-[11px] font-medium text-muted">{label}</span>
+              <GradeInput label={`Simulação: ${label}`} value={sim[k]} onChange={(v) => setSim((s) => ({ ...s, [k]: v }))} />
+            </label>
+          ))}
+          {active && r.situation !== "sem-notas" && (
+            <span key={r.situation} className={`inline-flex h-11 animate-pop items-center gap-1.5 rounded-lg px-3 text-xs font-medium ${sit.chip}`}>
+              <sit.Icon size={14} aria-hidden /> {sit.text}
+            </span>
+          )}
+        </div>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card delay={0}>
+          <Formula
+            label="Média Anual"
+            tone="orange"
+            value={r.annual}
+            fraction={
+              <Fraction
+                top={
+                  <>
+                    <Chip tone={usedRec ? "red" : "blue"} value={usedRec ? r.recovered : m1}>
+                      {usedRec ? "Média Recuperada" : "Média 1º sem"}
+                    </Chip>
+                    <Op>+</Op>
+                    <Chip tone="blue" value={m2}>
+                      Média 2º sem
+                    </Chip>
+                    <Op>×</Op>
+                    <span>2</span>
+                  </>
+                }
+                bottom="3"
+              />
+            }
+          />
+          <p className="mt-2 text-sm">A média anual deve ser igual ou superior a 7 para garantir a aprovação.</p>
+        </Card>
+        <Card delay={90} dim={active && !inFinal}>
+          <Formula
+            label="Média Final"
+            tone="green"
+            value={r.final}
+            fraction={
+              <Fraction
+                top={
+                  <>
+                    <Chip tone="blue" value={inFinal ? rec : null}>
+                      Recuperação Final
+                    </Chip>
+                    <Op>+</Op>
+                    <Chip tone="orange" value={inFinal ? r.annual : null}>
+                      Média Anual
+                    </Chip>
+                  </>
+                }
+                bottom="2"
+              />
+            }
+          />
+          <p className="mt-2 text-sm">
+            A média final deve ser igual ou superior a 6 para garantir a aprovação.
+            {inFinal && r.final === null && (
+              <span className="mt-1 block animate-fade-up font-medium text-chip-orange-ink">
+                {r.needed! > 10 ? "Não é mais possível passar." : `Você precisa de ${fmt(r.needed)} na recuperação final.`}
+              </span>
+            )}
+          </p>
+        </Card>
+        <Card delay={180} dim={active && m2 !== null && !usedRec} className="md:col-span-2">
+          <Formula
+            label="Média Recuperada"
+            tone="red"
+            value={r.recovered}
+            fraction={
+              <Fraction
+                top={
+                  <>
+                    <Chip tone="blue" value={usedRec ? m1 : null}>
+                      Média 1º sem
+                    </Chip>
+                    <Op>+</Op>
+                    <Chip tone="blue" value={usedRec ? m2 : null}>
+                      Média 2º sem
+                    </Chip>
+                  </>
+                }
+                bottom="2"
+              />
+            }
+          />
+          <p className="mt-2 text-sm">
+            A média recuperada ocorre quando a nota do 2º semestre supera a do 1º, passando a compor a média anual. O
+            valor máximo da média recuperada é 7,00.
+            {usedRec && (
+              <span className="mt-1 block animate-fade-up font-medium text-chip-red-ink">
+                Aplicada: ela substitui o 1º semestre no cálculo da média anual.
+              </span>
+            )}
+          </p>
+        </Card>
+      </div>
+    </div>
+  );
+}
