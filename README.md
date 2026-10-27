@@ -8,6 +8,7 @@ A grade calculator for Instituto J&F Tech students. Pick your year, type your N1
 
 - **Year selection:** choose 1st, 2nd or 3rd year Tech. Each year has a fixed list of subjects.
 - **Grade-level input:** enter N1 and N2 for each semester. The semester averages, annual average, final average and status update as you type.
+- **Average-only input:** if you already know your semester averages, switch to "Média do semestre" and type them directly instead of N1 and N2. Both sets of grades are kept, so you can switch back anytime.
 - **Recovery unlock:** the final recovery field stays locked until the annual average drops below 7. It then shows the grade you need to pass.
 - **Clear statuses:** passed, passed in recovery (shown in its own color), in recovery, failed, and in progress.
 - **Overview:** your overall average, a status breakdown, filters and search.

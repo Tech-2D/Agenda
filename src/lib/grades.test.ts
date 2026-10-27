@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { calculate, calculateFromNotes, semesterAverage } from "./grades.ts";
+import { calculate, calculateFromAverages, calculateFromNotes, semesterAverage } from "./grades.ts";
 
 const notes = (s1n1: number | null, s1n2: number | null, s2n1: number | null, s2n2: number | null, rec: number | null = null) =>
   calculateFromNotes({ s1n1, s1n2, s2n1, s2n2, rec });
@@ -30,6 +30,15 @@ test("de notas até a recuperação final", () => {
   assert.equal(r.annual, 5.83);
   assert.equal(r.final, 6.42);
   assert.equal(r.situation, "aprovado-rec");
+});
+test("médias digitadas direto seguem o mesmo cálculo", () => {
+  const r = calculateFromAverages(9.5, 7.5, null);
+  assert.equal(r.m1, 9.5);
+  assert.equal(r.m2, 7.5);
+  assert.equal(r.annual, 8.17);
+  assert.equal(r.situation, "aprovado");
+  assert.equal(calculateFromAverages(5, 6, 7).final, calculate(5, 6, 7).final);
+  assert.equal(calculateFromAverages(null, null, null).situation, "sem-notas");
 });
 
 test("só 1º semestre: em andamento", () => {

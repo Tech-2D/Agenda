@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { ChevronDown, GraduationCap, LayoutGrid, Search } from "lucide-react";
-import { calculateFromNotes, type Situation } from "./lib/grades";
+import { calculateFromAverages, calculateFromNotes, type InputMode, type Situation } from "./lib/grades";
 import { useInView } from "./lib/useInView";
 import { SUBJECTS_BY_YEAR, type Year } from "./data/subjects";
 import { Formulas } from "./components/Formulas";
@@ -9,8 +9,9 @@ import { Summary } from "./components/Summary";
 import { GRID, SITUATION, SubjectRow, toGrade, type Grades } from "./components/SubjectRow";
 
 const YEAR_KEY = "aprovae:year";
+const MODE_KEY = "aprovae:mode";
 const gradesKey = (y: Year) => `aprovae:v4:grades:${y}`;
-const EMPTY: Grades = { s1n1: "", s1n2: "", s2n1: "", s2n2: "", rec: "" };
+const EMPTY: Grades = { s1n1: "", s1n2: "", s2n1: "", s2n2: "", s1avg: "", s2avg: "", rec: "" };
 
 function read<T>(key: string): T | null {
   try {
@@ -32,6 +33,11 @@ function write(key: string, value: unknown) {
 
 type Filter = "todas" | Situation;
 const FILTERS: Filter[] = ["todas", "aprovado", "aprovado-rec", "recuperacao", "reprovado", "andamento"];
+
+const MODES: { value: InputMode; label: string }[] = [
+  { value: "notas", label: "N1 e N2" },
+  { value: "media", label: "Média do semestre" },
+];
 
 const hasSubjects = (y: Year | null): y is Year => y !== null && SUBJECTS_BY_YEAR[y]?.length > 0;
 
@@ -57,9 +63,12 @@ function GradesView({ year, onChangeYear }: { year: Year; onChangeYear: () => vo
   const [grades, setGrades] = useState<Record<string, Grades>>(() => read(gradesKey(year)) ?? {});
   const [filter, setFilter] = useState<Filter>("todas");
   const [query, setQuery] = useState("");
+  // Vale para todas as disciplinas; as notas de cada modo ficam guardadas separadas.
+  const [mode, setMode] = useState<InputMode>(() => (read<InputMode>(MODE_KEY) === "media" ? "media" : "notas"));
   const [formulasRef, formulasIn] = useInView<HTMLDetailsElement>();
 
   useEffect(() => write(gradesKey(year), grades), [year, grades]);
+  useEffect(() => write(MODE_KEY, mode), [mode]);
 
   const update = (name: string, patch: Partial<Grades>) =>
     setGrades((g) => ({ ...g, [name]: { ...EMPTY, ...g[name], ...patch } }));
@@ -67,17 +76,21 @@ function GradesView({ year, onChangeYear }: { year: Year; onChangeYear: () => vo
   const rows = useMemo(
     () =>
       subjects.map((name) => {
-        const g = grades[name] ?? EMPTY;
-        const r = calculateFromNotes({
-          s1n1: toGrade(g.s1n1),
-          s1n2: toGrade(g.s1n2),
-          s2n1: toGrade(g.s2n1),
-          s2n2: toGrade(g.s2n2),
-          rec: toGrade(g.rec),
-        });
+        // Notas salvas antes do modo "media" não têm s1avg/s2avg.
+        const g = { ...EMPTY, ...grades[name] };
+        const r =
+          mode === "media"
+            ? calculateFromAverages(toGrade(g.s1avg), toGrade(g.s2avg), toGrade(g.rec))
+            : calculateFromNotes({
+                s1n1: toGrade(g.s1n1),
+                s1n2: toGrade(g.s1n2),
+                s2n1: toGrade(g.s2n1),
+                s2n2: toGrade(g.s2n2),
+                rec: toGrade(g.rec),
+              });
         return { name, g, r };
       }),
-    [subjects, grades],
+    [subjects, grades, mode],
   );
   const q = query.trim().toLowerCase();
   const visible = rows.filter(
@@ -109,9 +122,31 @@ function GradesView({ year, onChangeYear }: { year: Year; onChangeYear: () => vo
       </header>
 
       <main className="mx-auto max-w-7xl space-y-5 px-4 py-6 sm:py-8">
-        <div className="animate-fade-up">
-          <h1 className="text-xl font-semibold sm:text-2xl">Disciplinas do {year}º ano</h1>
-          <p className="text-sm text-muted">Digite a N1 e a N2 de cada semestre. Tudo fica salvo neste navegador.</p>
+        <div className="flex animate-fade-up flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h1 className="text-xl font-semibold sm:text-2xl">Disciplinas do {year}º ano</h1>
+            <p className="text-sm text-muted">
+              {mode === "media" ? "Digite a média de cada semestre." : "Digite a N1 e a N2 de cada semestre."} Tudo fica salvo neste
+              navegador.
+            </p>
+          </div>
+          <div className="flex shrink-0 rounded-full bg-white p-1 shadow-card" role="group" aria-label="Como lançar as notas">
+            {MODES.map((m) => {
+              const active = mode === m.value;
+              return (
+                <button
+                  key={m.value}
+                  onClick={() => setMode(m.value)}
+                  aria-pressed={active}
+                  className={`h-9 flex-1 cursor-pointer rounded-full px-3.5 text-xs font-medium whitespace-nowrap outline-none transition-[background-color,color,transform] duration-200 active:scale-95 focus-visible:ring-2 focus-visible:ring-brand sm:flex-none ${
+                    active ? "bg-brand text-white shadow-lift" : "text-ink hover:bg-brand-soft"
+                  }`}
+                >
+                  {m.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         <Summary results={rows.map((x) => x.r)} />
@@ -158,10 +193,10 @@ function GradesView({ year, onChangeYear }: { year: Year; onChangeYear: () => vo
           <div className={`hidden border-b border-line px-4 py-3 pl-5 text-xs font-semibold lg:grid ${GRID}`}>
             <span>Disciplinas</span>
             <span>
-              1º Semestre <span className="block font-normal text-muted">N1 · N2 · Média</span>
+              1º Semestre <span className="block font-normal text-muted">{mode === "media" ? "Média" : "N1 · N2 · Média"}</span>
             </span>
             <span>
-              2º Semestre <span className="block font-normal text-muted">N1 · N2 · Média</span>
+              2º Semestre <span className="block font-normal text-muted">{mode === "media" ? "Média" : "N1 · N2 · Média"}</span>
             </span>
             <span>Média Anual</span>
             <span>Rec. Final</span>
@@ -172,7 +207,7 @@ function GradesView({ year, onChangeYear }: { year: Year; onChangeYear: () => vo
           {/* A key muda com o filtro para a lista entrar de novo em cascata. */}
           <ul key={filter + q} className="space-y-3 lg:space-y-0 lg:divide-y lg:divide-line">
             {visible.map(({ name, g, r }, i) => (
-              <SubjectRow key={name} name={name} grades={g} result={r} index={i} onChange={(p) => update(name, p)} />
+              <SubjectRow key={name} name={name} mode={mode} grades={g} result={r} index={i} onChange={(p) => update(name, p)} />
             ))}
           </ul>
 

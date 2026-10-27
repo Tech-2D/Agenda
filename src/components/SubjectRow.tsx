@@ -1,12 +1,14 @@
 import { useRef, useState } from "react";
 import { AlertTriangle, CheckCircle2, Clock, Lock, ShieldCheck, XCircle } from "lucide-react";
-import { fmt, parseGrade, type NotesResult, type Situation } from "../lib/grades";
+import { fmt, parseGrade, type InputMode, type NotesResult, type Situation } from "../lib/grades";
 
 export interface Grades {
   s1n1: string;
   s1n2: string;
   s2n1: string;
   s2n2: string;
+  s1avg: string;
+  s2avg: string;
   rec: string;
 }
 
@@ -107,18 +109,29 @@ const Value = ({ n, min }: { n: number | null; min: number }) => (
 interface SemesterProps {
   title: string;
   subject: string;
+  mode: InputMode;
   n1: string;
   n2: string;
+  avgInput: string;
   avg: number | null;
   onN1: (v: string) => void;
   onN2: (v: string) => void;
+  onAvg: (v: string) => void;
   className?: string;
 }
 
-/** N1, N2 e a média do semestre: caixa própria no celular, célula da tabela no desktop. */
-function Semester({ title, subject, n1, n2, avg, onN1, onN2, className = "" }: SemesterProps) {
+/** N1, N2 e a média do semestre (ou só a média, no modo "media"): caixa própria no celular, célula da tabela no desktop. */
+function Semester({ title, subject, mode, n1, n2, avgInput, avg, onN1, onN2, onAvg, className = "" }: SemesterProps) {
   const avgCls = avg !== null && avg < 7 ? "text-chip-red-ink" : avg === null ? "text-muted" : "text-ink";
   const short = title.replace("semestre", "sem.");
+  if (mode === "media") {
+    return (
+      <div className={`min-w-0 rounded-xl bg-page p-2 lg:bg-transparent lg:p-0 ${className}`}>
+        <div className="mb-1.5 px-0.5 text-[11px] font-semibold whitespace-nowrap text-muted lg:hidden">{short}</div>
+        <GradeInput label={`Média do ${title} de ${subject}`} placeholder="Média" value={avgInput} onChange={onAvg} className="w-full lg:w-[9rem]" />
+      </div>
+    );
+  }
   return (
     <div className={`min-w-0 rounded-xl bg-page p-2 lg:bg-transparent lg:p-0 ${className}`}>
       <div className="mb-1.5 flex items-center justify-between gap-1 px-0.5 whitespace-nowrap lg:hidden">
@@ -144,6 +157,7 @@ function Semester({ title, subject, n1, n2, avg, onN1, onN2, className = "" }: S
 
 interface Props {
   name: string;
+  mode: InputMode;
   grades: Grades;
   result: NotesResult;
   index: number;
@@ -156,7 +170,7 @@ interface Props {
  *   a recuperação embaixo e um rodapé de status;
  * - desktop (lg): linha da tabela, reordenada com lg:order-*.
  */
-export function SubjectRow({ name, grades: g, result: r, index, onChange }: Props) {
+export function SubjectRow({ name, mode, grades: g, result: r, index, onChange }: Props) {
   const sit = SITUATION[r.situation];
   const showRec = r.situation === "recuperacao" || r.situation === "reprovado" || r.final !== null;
   const lowAnnual = r.annual !== null && r.annual < 7;
@@ -215,21 +229,27 @@ export function SubjectRow({ name, grades: g, result: r, index, onChange }: Prop
         <Semester
           title="1º semestre"
           subject={name}
+          mode={mode}
           n1={g.s1n1}
           n2={g.s1n2}
+          avgInput={g.s1avg}
           avg={r.m1}
           onN1={(v) => onChange({ s1n1: v })}
           onN2={(v) => onChange({ s1n2: v })}
+          onAvg={(v) => onChange({ s1avg: v })}
           className="lg:order-2"
         />
         <Semester
           title="2º semestre"
           subject={name}
+          mode={mode}
           n1={g.s2n1}
           n2={g.s2n2}
+          avgInput={g.s2avg}
           avg={r.m2}
           onN1={(v) => onChange({ s2n1: v })}
           onN2={(v) => onChange({ s2n2: v })}
+          onAvg={(v) => onChange({ s2avg: v })}
           className="lg:order-3"
         />
       </div>

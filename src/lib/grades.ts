@@ -46,6 +46,9 @@ export function semesterAverage(n1: number | null, n2: number | null): number | 
   return n1 === null || n2 === null ? null : round2((n1 + n2) / 2);
 }
 
+/** Como as notas são lançadas: N1 e N2 de cada semestre, ou a média do semestre já pronta. */
+export type InputMode = "notas" | "media";
+
 export interface Notes {
   s1n1: number | null;
   s1n2: number | null;
@@ -68,6 +71,11 @@ export function calculateFromNotes(n: Notes): NotesResult {
   const anyNote = [n.s1n1, n.s1n2, n.s2n1, n.s2n2].some((v) => v !== null);
   if (result.situation === "sem-notas" && anyNote) result.situation = "andamento";
   return { ...result, m1, m2 };
+}
+
+/** Calcula a partir das médias semestrais digitadas direto, sem N1/N2. */
+export function calculateFromAverages(m1: number | null, m2: number | null, rec: number | null): NotesResult {
+  return { ...calculate(m1, m2, rec), m1, m2 };
 }
 
 export const fmt =(n: number | null) => (n === null ? "-" : n.toFixed(2).replace(".", ","));
