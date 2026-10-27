@@ -1,17 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDown, GraduationCap, LayoutGrid, Search } from "lucide-react";
-import { calculateFromAverages, calculateFromNotes, type InputMode, type Situation } from "./lib/grades";
+import { ChevronDown, ExternalLink, GraduationCap, LayoutGrid, Search } from "lucide-react";
+import { calculateFromAverages, calculateFromNotes, DEFAULT_N1_WEIGHT, type InputMode, type Situation } from "./lib/grades";
 import { useInView } from "./lib/useInView";
 import { SUBJECTS_BY_YEAR, type Year } from "./data/subjects";
 import { Formulas } from "./components/Formulas";
 import { YearPicker } from "./components/YearPicker";
 import { Summary } from "./components/Summary";
 import { GRID, SITUATION, SubjectRow, toGrade, type Grades } from "./components/SubjectRow";
+import { SubjectDetail } from "./components/SubjectDetail";
 
 const YEAR_KEY = "aprovae:year";
 const MODE_KEY = "aprovae:mode";
+const REPORT_CARD_URL = "https://alunos.igerminare.org.br/aluno/minhas-notas/4";
 const gradesKey = (y: Year) => `aprovae:v4:grades:${y}`;
-const EMPTY: Grades = { s1n1: "", s1n2: "", s2n1: "", s2n2: "", s1avg: "", s2avg: "", rec: "" };
+const EMPTY: Grades = { s1n1: "", s1n2: "", s2n1: "", s2n2: "", s1avg: "", s2avg: "", rec: "", s1Weight: DEFAULT_N1_WEIGHT, s2Weight: DEFAULT_N1_WEIGHT };
 
 function read<T>(key: string): T | null {
   try {
@@ -70,13 +72,26 @@ function GradesView({ year, onChangeYear }: { year: Year; onChangeYear: () => vo
   useEffect(() => write(gradesKey(year), grades), [year, grades]);
   useEffect(() => write(MODE_KEY, mode), [mode]);
 
+  // Disciplina aberta na tela de detalhe. Entra no histórico para o "voltar" do celular fechar a tela.
+  const [open, setOpen] = useState<string | null>(null);
+  useEffect(() => {
+    const onPop = () => setOpen(null);
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+  const openSubject = (name: string) => {
+    history.pushState({ subject: name }, "");
+    setOpen(name);
+  };
+  const closeSubject = () => history.back();
+
   const update = (name: string, patch: Partial<Grades>) =>
     setGrades((g) => ({ ...g, [name]: { ...EMPTY, ...g[name], ...patch } }));
 
   const rows = useMemo(
     () =>
       subjects.map((name) => {
-        // Notas salvas antes do modo "media" não têm s1avg/s2avg.
+        // Notas salvas antes do modo "media" e dos pesos não têm s1avg/s2avg nem os pesos.
         const g = { ...EMPTY, ...grades[name] };
         const r =
           mode === "media"
@@ -87,11 +102,14 @@ function GradesView({ year, onChangeYear }: { year: Year; onChangeYear: () => vo
                 s2n1: toGrade(g.s2n1),
                 s2n2: toGrade(g.s2n2),
                 rec: toGrade(g.rec),
+                s1Weight: g.s1Weight,
+                s2Weight: g.s2Weight,
               });
         return { name, g, r };
       }),
     [subjects, grades, mode],
   );
+  const detail = rows.find((x) => x.name === open);
   const q = query.trim().toLowerCase();
   const visible = rows.filter(
     ({ name, r }) => (filter === "todas" || r.situation === filter) && (!q || name.toLowerCase().includes(q)),
@@ -104,10 +122,19 @@ function GradesView({ year, onChangeYear }: { year: Year; onChangeYear: () => vo
           <div className="flex items-center gap-2 text-lg font-semibold">
             <GraduationCap aria-hidden size={28} /> <span className="hidden min-[400px]:inline">Aprovaê</span>
           </div>
-          <nav className="flex items-center text-sm">
+          <nav className="flex items-center gap-4 text-sm sm:gap-6">
             <span className="flex items-center gap-2 border-b-2 border-white pb-1 font-medium">
               <LayoutGrid size={18} aria-hidden /> Disciplinas
             </span>
+            <a
+              href={REPORT_CARD_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 border-b-2 border-transparent pb-1 text-white/80 outline-none transition-colors hover:border-white/50 hover:text-white focus-visible:border-white focus-visible:text-white"
+            >
+              Boletim <ExternalLink size={14} aria-hidden />
+              <span className="sr-only">(abre o boletim na Odette em nova aba)</span>
+            </a>
           </nav>
           <button
             onClick={onChangeYear}
@@ -207,7 +234,16 @@ function GradesView({ year, onChangeYear }: { year: Year; onChangeYear: () => vo
           {/* A key muda com o filtro para a lista entrar de novo em cascata. */}
           <ul key={filter + q} className="space-y-3 lg:space-y-0 lg:divide-y lg:divide-line">
             {visible.map(({ name, g, r }, i) => (
-              <SubjectRow key={name} name={name} mode={mode} grades={g} result={r} index={i} onChange={(p) => update(name, p)} />
+              <SubjectRow
+                key={name}
+                name={name}
+                mode={mode}
+                grades={g}
+                result={r}
+                index={i}
+                onChange={(p) => update(name, p)}
+                onOpen={() => openSubject(name)}
+              />
             ))}
           </ul>
 
@@ -232,6 +268,17 @@ function GradesView({ year, onChangeYear }: { year: Year; onChangeYear: () => vo
           </div>
         </details>
       </main>
+
+      {detail && (
+        <SubjectDetail
+          name={detail.name}
+          mode={mode}
+          grades={detail.g}
+          result={detail.r}
+          onChange={(p) => update(detail.name, p)}
+          onClose={closeSubject}
+        />
+      )}
     </div>
   );
 }

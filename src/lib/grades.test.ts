@@ -9,6 +9,16 @@ test("média do semestre = (N1 + N2)/2", () => {
   assert.equal(semesterAverage(10, 9), 9.5);
   assert.equal(semesterAverage(10, null), null);
 });
+test("média do semestre com peso: N1 30% e N2 70%", () => {
+  assert.equal(semesterAverage(6, 9, 30), 8.1);
+  assert.equal(semesterAverage(6, 9, 50), 7.5);
+});
+test("cada semestre tem o seu peso", () => {
+  const r = calculateFromNotes({ s1n1: 6, s1n2: 9, s2n1: 6, s2n2: 9, rec: null, s1Weight: 30, s2Weight: 50 });
+  assert.equal(r.m1, 8.1);
+  assert.equal(r.m2, 7.5);
+  assert.equal(r.annual, 7.7); // (8,1 + 15)/3
+});
 test("notas → médias semestrais → anual", () => {
   const r = notes(10, 9, 7, 8); // 9,5 e 7,5 → (9,5 + 15)/3
   assert.equal(r.m1, 9.5);

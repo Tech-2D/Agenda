@@ -9,6 +9,8 @@ A grade calculator for Instituto J&F Tech students. Pick your year, type your N1
 - **Year selection:** choose 1st, 2nd or 3rd year Tech. Each year has a fixed list of subjects.
 - **Grade-level input:** enter N1 and N2 for each semester. The semester averages, annual average, final average and status update as you type.
 - **Average-only input:** if you already know your semester averages, switch to "Média do semestre" and type them directly instead of N1 and N2. Both sets of grades are kept, so you can switch back anytime.
+- **N1/N2 weights:** some teachers weigh N1 and N2 differently (for example 30% and 70%). Click a subject's name to open its own screen, pick the semester, and drag the bar to set the N1 weight from 10% to 90% in steps of 5. Each semester has its own weight; the default is 50/50.
+- **Report card link:** the header links straight to the report card on the school portal (Odette).
 - **Recovery unlock:** the final recovery field stays locked until the annual average drops below 7. It then shows the grade you need to pass.
 - **Clear statuses:** passed, passed in recovery (shown in its own color), in recovery, failed, and in progress.
 - **Overview:** your overall average, a status breakdown, filters and search.
@@ -21,7 +23,7 @@ A grade calculator for Instituto J&F Tech students. Pick your year, type your N1
 
 | Measure | Formula | Pass mark |
 | --- | --- | --- |
-| Semester average | `(N1 + N2) / 2`, for each semester | – |
+| Semester average | `(N1 + N2) / 2` by default, or `N1 × w + N2 × (1 − w)` with the subject's N1 weight `w` | – |
 | Annual average | `(1st semester + 2nd semester × 2) / 3` | ≥ 7 |
 | Final average | `(final recovery + annual average) / 2` | ≥ 6 |
 | Recovered average | `(1st semester + 2nd semester) / 2`, capped at 7.00 | – |

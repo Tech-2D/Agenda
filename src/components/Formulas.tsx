@@ -159,7 +159,10 @@ export function Formulas() {
               />
             ))}
           </div>
-          <p className="mt-2 text-sm">A média de cada semestre é a média simples entre a N1 e a N2.</p>
+          <p className="mt-2 text-sm">
+            Por padrão, a média de cada semestre é a média simples entre a N1 e a N2. Se o professor usa pesos diferentes
+            (por exemplo, N1 30% e N2 70%), toque no nome da disciplina e arraste o peso de cada semestre.
+          </p>
         </Card>
         <Card delay={60}>
           <Formula

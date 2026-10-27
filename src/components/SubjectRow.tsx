@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
-import { AlertTriangle, CheckCircle2, Clock, Lock, ShieldCheck, XCircle } from "lucide-react";
-import { fmt, parseGrade, type InputMode, type NotesResult, type Situation } from "../lib/grades";
+import { AlertTriangle, CheckCircle2, ChevronRight, Clock, Lock, Scale, ShieldCheck, XCircle } from "lucide-react";
+import { DEFAULT_N1_WEIGHT, fmt, parseGrade, type InputMode, type NotesResult, type Situation } from "../lib/grades";
 
 export interface Grades {
   s1n1: string;
@@ -10,6 +10,9 @@ export interface Grades {
   s1avg: string;
   s2avg: string;
   rec: string;
+  /** Peso da N1 em % em cada semestre; a N2 fica com o resto. */
+  s1Weight: number;
+  s2Weight: number;
 }
 
 export const GRID =
@@ -162,6 +165,8 @@ interface Props {
   result: NotesResult;
   index: number;
   onChange: (patch: Partial<Grades>) => void;
+  /** Abre a tela da disciplina. */
+  onOpen: () => void;
 }
 
 /*
@@ -170,10 +175,11 @@ interface Props {
  *   a recuperação embaixo e um rodapé de status;
  * - desktop (lg): linha da tabela, reordenada com lg:order-*.
  */
-export function SubjectRow({ name, mode, grades: g, result: r, index, onChange }: Props) {
+export function SubjectRow({ name, mode, grades: g, result: r, index, onChange, onOpen }: Props) {
   const sit = SITUATION[r.situation];
   const showRec = r.situation === "recuperacao" || r.situation === "reprovado" || r.final !== null;
   const lowAnnual = r.annual !== null && r.annual < 7;
+  const customWeight = mode === "notas" && (g.s1Weight !== DEFAULT_N1_WEIGHT || g.s2Weight !== DEFAULT_N1_WEIGHT);
 
   const footer =
     r.final !== null
@@ -205,8 +211,37 @@ export function SubjectRow({ name, mode, grades: g, result: r, index, onChange }
       />
 
       <div className="col-span-2 flex min-w-0 flex-col items-start gap-2 lg:order-1 lg:col-span-1">
-        <h3 className="text-[15px] leading-snug font-semibold lg:text-sm lg:font-medium">{name}</h3>
-        {r.situation !== "sem-notas" && <div className="lg:hidden">{chip}</div>}
+        <h3 className="text-[15px] leading-snug font-semibold lg:text-sm lg:font-medium">
+          <button
+            onClick={onOpen}
+            className="group/name -mx-1 -my-0.5 cursor-pointer rounded-md px-1 py-0.5 text-left outline-none transition-colors hover:text-brand focus-visible:ring-2 focus-visible:ring-brand"
+          >
+            {name}
+            <ChevronRight
+              size={16}
+              aria-hidden
+              className="ml-0.5 inline align-[-3px] text-muted transition-transform group-hover/name:translate-x-0.5 group-hover/name:text-brand"
+            />
+          </button>
+        </h3>
+        {(r.situation !== "sem-notas" || customWeight) && (
+          <div className="flex flex-wrap items-center gap-2">
+            {r.situation !== "sem-notas" && <div className="lg:hidden">{chip}</div>}
+            {/* Só aparece quando o peso foi mudado; o ajuste em si fica na tela da disciplina. */}
+            {customWeight && (
+              <button
+                onClick={onOpen}
+                title="Peso da N1 e da N2: toque para ajustar"
+                className="inline-flex h-7 animate-pop cursor-pointer items-center gap-1 rounded-lg bg-brand-soft px-2 text-[11px] font-medium text-brand tabular-nums outline-none hover:bg-brand/15 focus-visible:ring-2 focus-visible:ring-brand"
+              >
+                <Scale size={13} aria-hidden />
+                {g.s1Weight === g.s2Weight
+                  ? `N1 ${g.s1Weight}% · N2 ${100 - g.s1Weight}%`
+                  : `1º ${g.s1Weight}/${100 - g.s1Weight} · 2º ${g.s2Weight}/${100 - g.s2Weight}`}
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Média anual: destaque no canto do card no celular, célula comum na tabela. */}

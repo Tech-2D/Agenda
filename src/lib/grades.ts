@@ -41,9 +41,14 @@ export function calculate(m1: number | null, m2: number | null, rec: number | nu
   return { recovered, annual, needed, final, situation: final >= FINAL_PASS ? "aprovado-rec" : "reprovado" };
 }
 
-/** Média do semestre = (N1 + N2) / 2. Só existe quando as duas notas foram lançadas. */
-export function semesterAverage(n1: number | null, n2: number | null): number | null {
-  return n1 === null || n2 === null ? null : round2((n1 + n2) / 2);
+export const DEFAULT_N1_WEIGHT = 50;
+
+/**
+ * Média do semestre = N1 × peso + N2 × (100 − peso), com o peso da N1 em %.
+ * No padrão (50%) é a média simples. Só existe quando as duas notas foram lançadas.
+ */
+export function semesterAverage(n1: number | null, n2: number | null, n1Weight = DEFAULT_N1_WEIGHT): number | null {
+  return n1 === null || n2 === null ? null : round2((n1 * n1Weight + n2 * (100 - n1Weight)) / 100);
 }
 
 /** Como as notas são lançadas: N1 e N2 de cada semestre, ou a média do semestre já pronta. */
@@ -55,6 +60,9 @@ export interface Notes {
   s2n1: number | null;
   s2n2: number | null;
   rec: number | null;
+  /** Peso da N1 em % em cada semestre (a N2 fica com o resto). */
+  s1Weight?: number;
+  s2Weight?: number;
 }
 
 export interface NotesResult extends Result {
@@ -64,8 +72,8 @@ export interface NotesResult extends Result {
 
 /** Calcula tudo a partir das notas N1/N2 de cada semestre. */
 export function calculateFromNotes(n: Notes): NotesResult {
-  const m1 = semesterAverage(n.s1n1, n.s1n2);
-  const m2 = semesterAverage(n.s2n1, n.s2n2);
+  const m1 = semesterAverage(n.s1n1, n.s1n2, n.s1Weight);
+  const m2 = semesterAverage(n.s2n1, n.s2n2, n.s2Weight);
   const result = calculate(m1, m2, n.rec);
   // Com alguma nota lançada mas nenhum semestre completo, o ano está em andamento.
   const anyNote = [n.s1n1, n.s1n2, n.s2n1, n.s2n2].some((v) => v !== null);
