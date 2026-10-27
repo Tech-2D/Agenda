@@ -41,7 +41,36 @@ export function calculate(m1: number | null, m2: number | null, rec: number | nu
   return { recovered, annual, needed, final, situation: final >= FINAL_PASS ? "aprovado-rec" : "reprovado" };
 }
 
-export const fmt = (n: number | null) => (n === null ? "-" : n.toFixed(2).replace(".", ","));
+/** Média do semestre = (N1 + N2) / 2. Só existe quando as duas notas foram lançadas. */
+export function semesterAverage(n1: number | null, n2: number | null): number | null {
+  return n1 === null || n2 === null ? null : round2((n1 + n2) / 2);
+}
+
+export interface Notes {
+  s1n1: number | null;
+  s1n2: number | null;
+  s2n1: number | null;
+  s2n2: number | null;
+  rec: number | null;
+}
+
+export interface NotesResult extends Result {
+  m1: number | null;
+  m2: number | null;
+}
+
+/** Calcula tudo a partir das notas N1/N2 de cada semestre. */
+export function calculateFromNotes(n: Notes): NotesResult {
+  const m1 = semesterAverage(n.s1n1, n.s1n2);
+  const m2 = semesterAverage(n.s2n1, n.s2n2);
+  const result = calculate(m1, m2, n.rec);
+  // Com alguma nota lançada mas nenhum semestre completo, o ano está em andamento.
+  const anyNote = [n.s1n1, n.s1n2, n.s2n1, n.s2n2].some((v) => v !== null);
+  if (result.situation === "sem-notas" && anyNote) result.situation = "andamento";
+  return { ...result, m1, m2 };
+}
+
+export const fmt =(n: number | null) => (n === null ? "-" : n.toFixed(2).replace(".", ","));
 
 export function parseGrade(raw: string): number | null {
   const n = parseFloat(raw.replace(",", "."));

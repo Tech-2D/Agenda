@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { calculate, fmt } from "../lib/grades";
+import { calculateFromNotes, fmt } from "../lib/grades";
 import { useInView } from "../lib/useInView";
 import { GradeInput, SITUATION, toGrade } from "./SubjectRow";
 
@@ -66,12 +66,17 @@ function Formula({ label, tone, value, fraction }: { label: string; tone: Tone; 
 }
 
 export function Formulas() {
-  const [sim, setSim] = useState({ m1: "", m2: "", rec: "" });
-  const m1 = toGrade(sim.m1);
-  const m2 = toGrade(sim.m2);
-  const rec = toGrade(sim.rec);
-  const r = calculate(m1, m2, rec);
-  const active = m1 !== null || m2 !== null;
+  const [sim, setSim] = useState({ s1n1: "", s1n2: "", s2n1: "", s2n2: "", rec: "" });
+  const n = {
+    s1n1: toGrade(sim.s1n1),
+    s1n2: toGrade(sim.s1n2),
+    s2n1: toGrade(sim.s2n1),
+    s2n2: toGrade(sim.s2n2),
+    rec: toGrade(sim.rec),
+  };
+  const r = calculateFromNotes(n);
+  const { m1, m2, rec } = { m1: r.m1, m2: r.m2, rec: n.rec };
+  const active = r.situation !== "sem-notas";
   const usedRec = r.recovered !== null;
   const inFinal = r.needed !== null;
   const sit = SITUATION[r.situation];
@@ -86,17 +91,34 @@ export function Formulas() {
         <div className="flex flex-wrap items-end justify-center gap-3">
           {(
             [
-              ["m1", "1º Sem"],
-              ["m2", "2º Sem"],
-              ["rec", "Rec. Final"],
+              ["1º semestre", "s1n1", "s1n2"],
+              ["2º semestre", "s2n1", "s2n2"],
             ] as const
-          ).map(([k, label]) => (
-            <label key={k} className="w-20">
-              <span className="mb-1 block text-[11px] font-medium text-muted">{label}</span>
-              <GradeInput label={`Simulação: ${label}`} value={sim[k]} onChange={(v) => setSim((s) => ({ ...s, [k]: v }))} />
-            </label>
+          ).map(([title, k1, k2]) => (
+            <fieldset key={title} className="rounded-lg bg-white/70 p-2">
+              <legend className="sr-only">{title}</legend>
+              <span aria-hidden className="mb-1 block text-[11px] font-medium text-muted">
+                {title}
+              </span>
+              <div className="flex gap-1.5">
+                {([k1, k2] as const).map((k, i) => (
+                  <GradeInput
+                    key={k}
+                    label={`Simulação: N${i + 1} do ${title}`}
+                    placeholder={`N${i + 1}`}
+                    value={sim[k]}
+                    onChange={(v) => setSim((s) => ({ ...s, [k]: v }))}
+                    className="w-16"
+                  />
+                ))}
+              </div>
+            </fieldset>
           ))}
-          {active && r.situation !== "sem-notas" && (
+          <label className="rounded-lg bg-white/70 p-2">
+            <span className="mb-1 block text-[11px] font-medium text-muted">Rec. Final</span>
+            <GradeInput label="Simulação: Recuperação final" value={sim.rec} onChange={(v) => setSim((s) => ({ ...s, rec: v }))} className="w-16" />
+          </label>
+          {active && (
             <span key={r.situation} className={`inline-flex h-11 animate-pop items-center gap-1.5 rounded-lg px-3 text-xs font-medium ${sit.chip}`}>
               <sit.Icon size={14} aria-hidden /> {sit.text}
             </span>
@@ -105,7 +127,41 @@ export function Formulas() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
-        <Card delay={0}>
+        <Card delay={0} className="md:col-span-2">
+          <div className="grid gap-2 md:grid-cols-2">
+            {(
+              [
+                ["Média 1º sem", m1, n.s1n1, n.s1n2],
+                ["Média 2º sem", m2, n.s2n1, n.s2n2],
+              ] as const
+            ).map(([label, avg, n1, n2]) => (
+              <Formula
+                key={label}
+                label={label}
+                tone="blue"
+                value={avg}
+                fraction={
+                  <Fraction
+                    top={
+                      <>
+                        <Chip tone="blue" value={n1}>
+                          N1
+                        </Chip>
+                        <Op>+</Op>
+                        <Chip tone="blue" value={n2}>
+                          N2
+                        </Chip>
+                      </>
+                    }
+                    bottom="2"
+                  />
+                }
+              />
+            ))}
+          </div>
+          <p className="mt-2 text-sm">A média de cada semestre é a média simples entre a N1 e a N2.</p>
+        </Card>
+        <Card delay={60}>
           <Formula
             label="Média Anual"
             tone="orange"

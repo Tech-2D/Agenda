@@ -1,13 +1,13 @@
 # Aprovaê
 
-A grade calculator for Instituto J&F Tech students. Pick your year, type your semester averages, and see right away whether you passed, need the final recovery exam, or failed. The page is styled after the school's own grades portal.
+A grade calculator for Instituto J&F Tech students. Pick your year, type your N1 and N2 grades for each semester, and see right away whether you passed, need the final recovery exam, or failed. The page is styled after the school's own grades portal.
 
 **Live:** https://dvarakaki.github.io/aprovae-web/
 
 ## Features
 
 - **Year selection:** choose 1st, 2nd or 3rd year Tech. Each year has a fixed list of subjects.
-- **Instant results:** every subject shows its annual average, final average and status as you type.
+- **Grade-level input:** enter N1 and N2 for each semester. The semester averages, annual average, final average and status update as you type.
 - **Recovery unlock:** the final recovery field stays locked until the annual average drops below 7. It then shows the grade you need to pass.
 - **Clear statuses:** passed, passed in recovery (shown in its own color), in recovery, failed, and in progress.
 - **Overview:** your overall average, a status breakdown, filters and search.
@@ -20,9 +20,12 @@ A grade calculator for Instituto J&F Tech students. Pick your year, type your se
 
 | Measure | Formula | Pass mark |
 | --- | --- | --- |
+| Semester average | `(N1 + N2) / 2`, for each semester | – |
 | Annual average | `(1st semester + 2nd semester × 2) / 3` | ≥ 7 |
 | Final average | `(final recovery + annual average) / 2` | ≥ 6 |
 | Recovered average | `(1st semester + 2nd semester) / 2`, capped at 7.00 | – |
+
+A semester average only exists once both N1 and N2 are entered. While only the 1st semester is complete, the annual average equals the 1st semester average.
 
 The recovered average applies when the 2nd semester grade is higher than the 1st. It then replaces the 1st semester grade in the annual average, but only when that raises the grade. Results are rounded to two decimals.
 

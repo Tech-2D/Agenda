@@ -1,14 +1,17 @@
-import { useRef, useState, type ReactNode } from "react";
+import { useRef, useState } from "react";
 import { AlertTriangle, CheckCircle2, Clock, Lock, ShieldCheck, XCircle } from "lucide-react";
-import { fmt, parseGrade, type Result, type Situation } from "../lib/grades";
+import { fmt, parseGrade, type NotesResult, type Situation } from "../lib/grades";
 
 export interface Grades {
-  m1: string;
-  m2: string;
+  s1n1: string;
+  s1n2: string;
+  s2n1: string;
+  s2n2: string;
   rec: string;
 }
 
-export const GRID = "lg:grid-cols-[minmax(0,2.6fr)_repeat(5,minmax(0,1fr))_minmax(0,1.35fr)] lg:items-center lg:gap-4";
+export const GRID =
+  "lg:grid-cols-[minmax(0,2fr)_minmax(0,2fr)_minmax(0,2fr)_minmax(0,0.8fr)_minmax(0,1fr)_minmax(0,0.8fr)_minmax(0,1.3fr)] lg:items-center lg:gap-4";
 
 export const SITUATION: Record<Situation, { text: string; chip: string; bar: string; Icon: typeof Clock }> = {
   aprovado: { text: "Aprovado", chip: "bg-chip-green text-chip-green-ink", bar: "bg-chip-green-ink", Icon: CheckCircle2 },
@@ -21,19 +24,20 @@ export const SITUATION: Record<Situation, { text: string; chip: string; bar: str
 
 export const toGrade = (v: string) => (v === "" ? null : parseGrade(v));
 
-function Cell({ label, children, className = "" }: { label: string; children: ReactNode; className?: string }) {
-  return (
-    <div className={`min-w-0 ${className}`}>
-      <span className="mb-1 block text-[11px] font-medium text-muted lg:hidden">{label}</span>
-      {children}
-    </div>
-  );
-}
-
 // Até dois dígitos inteiros e duas casas decimais, com vírgula ou ponto.
 const GRADE_FORMAT = /^\d{0,2}([.,]\d{0,2})?$/;
 
-export function GradeInput({ value, onChange, label }: { value: string; onChange: (v: string) => void; label: string }) {
+interface GradeInputProps {
+  value: string;
+  onChange: (v: string) => void;
+  label: string;
+  placeholder?: string;
+  className?: string;
+  /** Rótulo pequeno no canto do campo, para saber qual nota é mesmo depois de preenchida (só no celular). */
+  tag?: string;
+}
+
+export function GradeInput({ value, onChange, label, placeholder = "-", className = "w-full lg:max-w-24", tag }: GradeInputProps) {
   const [error, setError] = useState(false);
   const timer = useRef<number>(undefined);
 
@@ -46,12 +50,12 @@ export function GradeInput({ value, onChange, label }: { value: string; onChange
   };
 
   return (
-    <span className="relative block w-full lg:max-w-24">
+    <span className={`relative block ${className}`}>
       <input
         aria-label={label}
         aria-invalid={error}
         inputMode="decimal"
-        placeholder="-"
+        placeholder={placeholder}
         value={value}
         onChange={(e) => {
           const next = e.target.value.replace(/\s/g, "");
@@ -65,12 +69,17 @@ export function GradeInput({ value, onChange, label }: { value: string; onChange
           const n = toGrade(value);
           if (n !== null) onChange(n.toFixed(2).replace(".", ","));
         }}
-        className={`h-11 w-full rounded-lg border bg-white px-2 text-center text-sm tabular-nums outline-none transition-[border-color,box-shadow,transform] duration-200 focus:scale-105 ${
+        className={`h-11 w-full rounded-lg border bg-white px-1 text-center text-sm tabular-nums outline-none transition-[border-color,box-shadow,transform] duration-200 placeholder:text-muted/60 focus:scale-105 ${
           error
             ? "animate-shake border-chip-red-ink ring-4 ring-chip-red-ink/15"
             : "border-line hover:border-brand/40 focus:border-brand focus:ring-4 focus:ring-brand/15"
         }`}
       />
+      {tag && value !== "" && (
+        <span aria-hidden className="pointer-events-none absolute top-1 left-1.5 text-[9px] leading-none font-semibold text-muted lg:hidden">
+          {tag}
+        </span>
+      )}
       {error && (
         <span
           role="alert"
@@ -95,17 +104,56 @@ const Value = ({ n, min }: { n: number | null; min: number }) => (
   </span>
 );
 
+interface SemesterProps {
+  title: string;
+  subject: string;
+  n1: string;
+  n2: string;
+  avg: number | null;
+  onN1: (v: string) => void;
+  onN2: (v: string) => void;
+  className?: string;
+}
+
+/** N1, N2 e a média do semestre: caixa própria no celular, célula da tabela no desktop. */
+function Semester({ title, subject, n1, n2, avg, onN1, onN2, className = "" }: SemesterProps) {
+  const avgCls = avg !== null && avg < 7 ? "text-chip-red-ink" : avg === null ? "text-muted" : "text-ink";
+  const short = title.replace("semestre", "sem.");
+  return (
+    <div className={`min-w-0 rounded-xl bg-page p-2 lg:bg-transparent lg:p-0 ${className}`}>
+      <div className="mb-1.5 flex items-center justify-between gap-1 px-0.5 whitespace-nowrap lg:hidden">
+        <span className="text-[11px] font-semibold text-muted">{short}</span>
+        <span key={fmt(avg)} className={`animate-pop text-sm font-bold tabular-nums ${avgCls}`}>
+          {fmt(avg)}
+        </span>
+      </div>
+      <div className="grid grid-cols-2 gap-1.5 lg:flex lg:items-center lg:gap-1.5">
+        <GradeInput label={`N1 do ${title} de ${subject}`} tag="N1" placeholder="N1" value={n1} onChange={onN1} className="min-w-0 lg:w-[4.25rem]" />
+        <GradeInput label={`N2 do ${title} de ${subject}`} tag="N2" placeholder="N2" value={n2} onChange={onN2} className="min-w-0 lg:w-[4.25rem]" />
+        <span
+          key={fmt(avg)}
+          className={`hidden animate-pop text-sm font-semibold tabular-nums lg:ml-1 lg:inline ${avgCls}`}
+          aria-label={`Média do ${title}`}
+        >
+          {fmt(avg)}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 interface Props {
   name: string;
   grades: Grades;
-  result: Result;
+  result: NotesResult;
   index: number;
   onChange: (patch: Partial<Grades>) => void;
 }
 
 /*
  * Um único conjunto de campos com dois layouts:
- * - celular: card com nome + média anual em destaque, os três campos lado a lado e um rodapé de status;
+ * - celular: card com nome + média anual em destaque, os dois semestres lado a lado,
+ *   a recuperação embaixo e um rodapé de status;
  * - desktop (lg): linha da tabela, reordenada com lg:order-*.
  */
 export function SubjectRow({ name, grades: g, result: r, index, onChange }: Props) {
@@ -163,14 +211,33 @@ export function SubjectRow({ name, grades: g, result: r, index, onChange }: Prop
         )}
       </div>
 
-      <div className="col-span-3 grid grid-cols-3 gap-2 rounded-xl bg-page p-2 lg:contents">
-        <Cell label="1º Sem" className="lg:order-2">
-          <GradeInput label={`Média 1º semestre de ${name}`} value={g.m1} onChange={(v) => onChange({ m1: v })} />
-        </Cell>
-        <Cell label="2º Sem" className="lg:order-3">
-          <GradeInput label={`Média 2º semestre de ${name}`} value={g.m2} onChange={(v) => onChange({ m2: v })} />
-        </Cell>
-        <Cell label="Recuperação" className="lg:order-5">
+      <div className="col-span-3 grid grid-cols-2 gap-2 lg:contents">
+        <Semester
+          title="1º semestre"
+          subject={name}
+          n1={g.s1n1}
+          n2={g.s1n2}
+          avg={r.m1}
+          onN1={(v) => onChange({ s1n1: v })}
+          onN2={(v) => onChange({ s1n2: v })}
+          className="lg:order-2"
+        />
+        <Semester
+          title="2º semestre"
+          subject={name}
+          n1={g.s2n1}
+          n2={g.s2n2}
+          avg={r.m2}
+          onN1={(v) => onChange({ s2n1: v })}
+          onN2={(v) => onChange({ s2n2: v })}
+          className="lg:order-3"
+        />
+      </div>
+
+      {/* Recuperação final: libera só quando a média anual fica abaixo de 7. */}
+      <div className="col-span-3 flex items-center justify-between gap-3 rounded-xl bg-page p-2 pl-3 lg:order-5 lg:col-span-1 lg:block lg:bg-transparent lg:p-0">
+        <span className="text-xs font-semibold text-muted lg:hidden">Recuperação final</span>
+        <div className="w-28 lg:w-auto">
           {showRec ? (
             <div className="animate-pop">
               <GradeInput label={`Recuperação final de ${name}`} value={g.rec} onChange={(v) => onChange({ rec: v })} />
@@ -189,7 +256,7 @@ export function SubjectRow({ name, grades: g, result: r, index, onChange }: Prop
               <span className="sr-only">Recuperação bloqueada: libera quando a média anual ficar abaixo de 7</span>
             </span>
           )}
-        </Cell>
+        </div>
       </div>
 
       {/* Rodapé de status só no celular. */}

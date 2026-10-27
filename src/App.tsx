@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { ChevronDown, GraduationCap, LayoutGrid, Search } from "lucide-react";
-import { calculate, type Situation } from "./lib/grades";
+import { calculateFromNotes, type Situation } from "./lib/grades";
 import { useInView } from "./lib/useInView";
 import { SUBJECTS_BY_YEAR, type Year } from "./data/subjects";
 import { Formulas } from "./components/Formulas";
@@ -9,8 +9,8 @@ import { Summary } from "./components/Summary";
 import { GRID, SITUATION, SubjectRow, toGrade, type Grades } from "./components/SubjectRow";
 
 const YEAR_KEY = "aprovae:year";
-const gradesKey = (y: Year) => `aprovae:v3:grades:${y}`;
-const EMPTY: Grades = { m1: "", m2: "", rec: "" };
+const gradesKey = (y: Year) => `aprovae:v4:grades:${y}`;
+const EMPTY: Grades = { s1n1: "", s1n2: "", s2n1: "", s2n2: "", rec: "" };
 
 function read<T>(key: string): T | null {
   try {
@@ -68,7 +68,14 @@ function GradesView({ year, onChangeYear }: { year: Year; onChangeYear: () => vo
     () =>
       subjects.map((name) => {
         const g = grades[name] ?? EMPTY;
-        return { name, g, r: calculate(toGrade(g.m1), toGrade(g.m2), toGrade(g.rec)) };
+        const r = calculateFromNotes({
+          s1n1: toGrade(g.s1n1),
+          s1n2: toGrade(g.s1n2),
+          s2n1: toGrade(g.s2n1),
+          s2n2: toGrade(g.s2n2),
+          rec: toGrade(g.rec),
+        });
+        return { name, g, r };
       }),
     [subjects, grades],
   );
@@ -80,7 +87,7 @@ function GradesView({ year, onChangeYear }: { year: Year; onChangeYear: () => vo
   return (
     <div className="min-h-dvh">
       <header className="sticky top-0 z-20 animate-slide-down bg-brand text-white shadow-md">
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-3 px-4">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-4">
           <div className="flex items-center gap-2 text-lg font-semibold">
             <GraduationCap aria-hidden size={28} /> <span className="hidden min-[400px]:inline">Aprovaê</span>
           </div>
@@ -101,10 +108,10 @@ function GradesView({ year, onChangeYear }: { year: Year; onChangeYear: () => vo
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl space-y-5 px-4 py-6 sm:py-8">
+      <main className="mx-auto max-w-7xl space-y-5 px-4 py-6 sm:py-8">
         <div className="animate-fade-up">
           <h1 className="text-xl font-semibold sm:text-2xl">Disciplinas do {year}º ano</h1>
-          <p className="text-sm text-muted">Digite suas médias. Tudo fica salvo neste navegador.</p>
+          <p className="text-sm text-muted">Digite a N1 e a N2 de cada semestre. Tudo fica salvo neste navegador.</p>
         </div>
 
         <Summary results={rows.map((x) => x.r)} />
@@ -150,8 +157,12 @@ function GradesView({ year, onChangeYear }: { year: Year; onChangeYear: () => vo
         <section className="lg:overflow-hidden lg:rounded-2xl lg:bg-white lg:shadow-card">
           <div className={`hidden border-b border-line px-4 py-3 pl-5 text-xs font-semibold lg:grid ${GRID}`}>
             <span>Disciplinas</span>
-            <span>Média 1º Sem</span>
-            <span>Média 2º Sem</span>
+            <span>
+              1º Semestre <span className="block font-normal text-muted">N1 · N2 · Média</span>
+            </span>
+            <span>
+              2º Semestre <span className="block font-normal text-muted">N1 · N2 · Média</span>
+            </span>
             <span>Média Anual</span>
             <span>Rec. Final</span>
             <span>Média Final</span>
