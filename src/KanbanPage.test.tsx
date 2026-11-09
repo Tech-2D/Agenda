@@ -1,6 +1,6 @@
 import { expect, it, vi } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { BoardForm, ColumnForm, TaskForm } from './KanbanPage'
+import { BoardForm, ColumnForm, TaskForm } from './KanbanForms'
 import { createBoard, type KanbanTask } from './kanban'
 vi.mock('./firebase',()=>({auth:{currentUser:null},db:{}}))
 const noop=async()=>{}
@@ -29,4 +29,8 @@ it('task editing includes custom columns, deadlines, priorities, labels and chec
 it('disables forms while saving or resolving concurrent edits',()=>{
   const html=renderToStaticMarkup(<BoardForm disabled={true} onSave={noop} onDelete={noop}/> )
   expect(html).toContain('<fieldset disabled="">')
+})
+it('does not offer board deletion to a participant',()=>{
+  const html=renderToStaticMarkup(<BoardForm board={createBoard('Grupo','simple')} canDelete={false} disabled={false} onSave={noop} onDelete={noop}/> )
+  expect(html).toContain('Salvar quadro');expect(html).not.toContain('Excluir quadro')
 })

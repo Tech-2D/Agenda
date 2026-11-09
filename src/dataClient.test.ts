@@ -54,6 +54,18 @@ it('a response belonging to the previous account is discarded',async()=>{
   complete(Response.json({document:{path:'admins/owner',id:'owner',data:{role:'superadmin'},version:'1'}}))
   await expect(pending).rejects.toMatchObject({code:'cancelled'})
 })
+it('shared edits pin the opened version even when a background read sees newer data',async()=>{
+  const row=(version:string)=>Response.json({document:{path:'sharedKanban/board',id:'board',data:{board:{name:'Grupo'}},version}})
+  const fetch=vi.fn().mockResolvedValueOnce(row('5')).mockResolvedValueOnce(row('6')).mockResolvedValue(Response.json({committed:true}))
+  vi.stubGlobal('fetch',fetch)
+  const {getDoc,doc,documentVersion,updateDocAtVersion}=await import('./dataClient')
+  const ref=doc({} as never,'sharedKanban','board')
+  await getDoc(ref);const opened=documentVersion(ref)!
+  await getDoc(ref)
+  expect(documentVersion(ref)).toBe('6')
+  await updateDocAtVersion(ref,{board:{name:'Minha edição'}},opened)
+  expect(JSON.parse(fetch.mock.calls[2][1].body).commit.writes[0].version).toBe('5')
+})
 it('timestamp hydration and optimistic versions survive an edit without exposing internal keys',async()=>{
   const fetch=vi.fn().mockResolvedValueOnce(Response.json({document:{path:'activities/id',id:'id',data:{date:'2026-10-20',createdAt:'2026-10-17T10:00:00Z'},version:'5'}})).mockResolvedValue(Response.json({committed:true}))
   vi.stubGlobal('fetch',fetch)

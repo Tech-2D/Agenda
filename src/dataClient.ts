@@ -102,6 +102,14 @@ export const addDoc = choose(native.addDoc,async(ref:Ref,data:unknown)=>{
 export const setDoc = choose(native.setDoc,(ref:Ref,data:unknown,options?:{merge?:boolean})=>commit([write('set',ref,data,options)]))
 export const updateDoc = choose(native.updateDoc,(ref:Ref,data:unknown)=>commit([write('update',ref,data)]))
 export const deleteDoc = choose(native.deleteDoc,(ref:Ref)=>commit([write('delete',ref)]))
+// Shared editors pin the version they opened, even if background reads see a newer one.
+export function documentVersion(ref: native.DocumentReference): string | null {
+  return versions.get(key(asRef(ref).path)) || null
+}
+export async function updateDocAtVersion(ref: native.DocumentReference, data: unknown, version: string) {
+  if (!SQL_ENABLED || !/^[1-9]\d*$/.test(version)) throw new FirebaseError('failed-precondition','Recarregue o quadro antes de salvar.')
+  await commit([{op:'update',path:asRef(ref).path,data:encode(data),version}])
+}
 export const writeBatch = choose(native.writeBatch,()=>{
   const writes:Write[]=[]
   const batch={

@@ -82,7 +82,7 @@ function App() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [menuShortcuts, setMenuShortcuts] = useState(readMenuShortcuts)
   const [moreOptionsOpen, setMoreOptionsOpen] = useState(window.location.hash === '#opcoes')
-  const [kanbanOpen, setKanbanOpen] = useState(window.location.hash === '#kanban')
+  const [kanbanOpen, setKanbanOpen] = useState(window.location.hash.split('?')[0] === '#kanban')
   const [compareMode, setCompareMode] = useState(false)
   const [configOpen, setConfigOpen] = useState(false)
   const [profilesOpen, setProfilesOpen] = useState(false)
@@ -182,7 +182,7 @@ function App() {
   useEffect(() => {
     const syncOptionsPage = () => {
       setMoreOptionsOpen(window.location.hash === '#opcoes')
-      setKanbanOpen(window.location.hash === '#kanban')
+      setKanbanOpen(window.location.hash.split('?')[0] === '#kanban')
     }
     window.addEventListener('hashchange', syncOptionsPage)
     window.addEventListener('popstate', syncOptionsPage)

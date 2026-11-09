@@ -31,6 +31,7 @@ describe('Kanban pessoal',()=>{
     const a=board(),[c1,c2]=a.columns
     a.tasks=[task(c1.id,'a'),task(c2.id,'b'),task(c2.id,'c')]
     expect(moveTask(a,'a',c2.id,'c').tasks.map(t=>t.id)).toEqual(['b','a','c'])
+    expect(moveTask(a,'a',c2.id,'c',true).tasks.map(t=>t.id)).toEqual(['b','c','a'])
     expect(moveTask(a,'a',c2.id).tasks.map(t=>t.id)).toEqual(['b','c','a'])
     expect(moveTask(a,'a',c1.id,'a')).toBe(a)
   })

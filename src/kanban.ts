@@ -24,12 +24,12 @@ export function reorder<T extends {id:string}>(items: T[], source: string, targe
   result.splice(to,0,item)
   return result
 }
-export function moveTask(board: KanbanBoard, taskId: string, columnId: string, beforeId?: string): KanbanBoard {
+export function moveTask(board: KanbanBoard, taskId: string, columnId: string, beforeId?: string, after = false): KanbanBoard {
   const task = board.tasks.find(t=>t.id===taskId)
   if (!task || !board.columns.some(c=>c.id===columnId) || beforeId === taskId) return board
   const tasks = board.tasks.filter(t=>t.id!==taskId)
   const index = beforeId ? tasks.findIndex(t=>t.id===beforeId && t.columnId===columnId) : -1
-  tasks.splice(index < 0 ? tasks.length : index,0,{...task,columnId})
+  tasks.splice(index < 0 ? tasks.length : index + (after ? 1 : 0),0,{...task,columnId})
   return {...board,tasks}
 }
 export function removeColumn(board: KanbanBoard, columnId: string): KanbanBoard {
