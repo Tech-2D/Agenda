@@ -19,3 +19,9 @@ Leitura e gravação exigem UID igual ao ID do documento, inclusive antes de con
 Trocar de conta desmonta o workspace anterior e invalida respostas pendentes. Edições usam versões e recibos idempotentes da API SQL. Em conflito ou resultado de gravação incerto, a tela impede novas gravações e pede recarga explícita antes de continuar. Não há atualização periódica que sobrescreva silenciosamente um formulário aberto em outra aba.
 
 Exclusões de quadros/tarefas exigem confirmação; não existe endpoint de exclusão completa do workspace. A auditoria SQL existente é mantida.
+
+## Publicação e conferência — 08/11/2026
+
+Agenda publicada na main (`9d27277`) e políticas SQL na main de professores (`2320fbc`), com Actions concluídos. Worker SQL publicado com o perfil Tech-2D confirmado; versão `192b66fd-932b-416e-b8df-60ff3d66de32`.
+
+119 testes da Agenda e 61 da API passaram antes da publicação. `scripts/verify-kanban.js` conferiu em produção, sem gravações: leitura autenticada do próprio workspace permitida; leitura anônima, leitura de outro UID e listagem da coleção negadas. Nenhuma tarefa ou senha foi alterada nessa conferência. A validação visual pelo navegador não foi concluída nesta sessão; o build e os testes dos formulários passaram.
