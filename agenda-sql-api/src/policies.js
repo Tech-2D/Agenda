@@ -2,6 +2,7 @@
 // Unknown collections, fields, operations and unscoped private queries fail closed.
 import { validActivity } from './data.js'
 import { canWriteKanban } from './kanban-policy.js'
+import { canReadShared, canQueryShared, canWriteShared } from './shared-kanban-policy.js'
 export const denied = () => Object.assign(new Error('Você não tem permissão para esta operação.'), { status: 403, code: 'permission-denied' })
 export const invalid = () => Object.assign(new Error('Confira os dados informados.'), { status: 400, code: 'invalid-argument' })
 const text = (v, max, min = 1) => typeof v === 'string' && v.length >= min && v.length <= max
@@ -17,6 +18,8 @@ const activityKeys = ['title','description','type','subject','date','time','turm
 const activity = v => validActivity({...fields(v, activityKeys),subject:v.subject ?? null,time:v.time ?? null})
 const credit = d => bool(d.publicCreditAllowed) && text(d.publicCreditName, 60, d.publicCreditAllowed ? 1 : 0) && !d.publicCreditName.includes('@')
 export const ROOT_COLLECTIONS = new Set(['personalKanban','admins','activities','recurringActivities','activityRetention','agendaClassRequests','agendaClasses','representativeRequests','representativeInvites','representativeChat','polls','pollVoterAccess','suggestions','feedback','announcement','agendaUpdates','boardNotices','schedules','notebookNotes','userProfiles','purgedActivities','_agendaDigestPreferences','_agendaDigestDeliveries','_agendaUploads','_passwordResetLimits','_r2UploadLimits','_profilePhotoLimits'])
+const SHARED_KANBAN = new Set(['sharedKanban','kanbanMemberships','kanbanRequests'])
+for(const name of SHARED_KANBAN)ROOT_COLLECTIONS.add(name)
 export function parsePath(path, collection = false) {
   const parts = typeof path === 'string' ? path.split('/') : []
   if (!parts.length || parts.length !== (collection ? 1 : 2) && parts.length !== (collection ? 3 : 4)
@@ -41,6 +44,7 @@ export async function authorizeQuery(c, q) {
   const p = parsePath(q.path, true), name = p[0]
   if (c.service) { if (!serviceRead(c, name)) throw denied(); return }
   const eq = (field, value) => value !== undefined && q.filters.some(f => f.field === field && f.op === '==' && same(f.value, value))
+  if (SHARED_KANBAN.has(name)) {if(await canQueryShared(c,name,q))return;throw denied()}
   if (p.length === 3) {
     if (name === 'feedback' && q.limit <= 100 && await converse(c, p[1])) return
     if (name === 'polls' && manage(c, (await c.get('polls/' + p[1]))?.turmaId)) return
@@ -59,6 +63,7 @@ export async function authorizeQuery(c, q) {
 export async function authorizeRead(c, path, data) {
   const p = parsePath(path), [name, id] = p
   if (c.service) return serviceRead(c, name)
+  if (SHARED_KANBAN.has(name)) return canReadShared(c,name,id,data)
   if (p.length === 4) return name === 'feedback' ? Boolean(await converse(c, id)) : owns(c, p[3])
   if (['agendaClasses','schedules','notebookNotes','announcement'].includes(name)) return true
   if (['userProfiles','personalKanban'].includes(name)) return owns(c,id)
@@ -90,6 +95,7 @@ export async function authorizeWrite(c, path, before, after) {
     return name === 'activities' && (remove || update && changed(old, d, ['attachments','updatedAt']) && Array.isArray(d.attachments) && d.attachments.length <= 5 && d.updatedAt === now)
   }
   if (name === 'personalKanban') return canWriteKanban(c,id,before,after)
+  if (SHARED_KANBAN.has(name)) return canWriteShared(c,name,id,before,after)
   if (child === 'messages') return create && await converse(c, id) && only(d, ['text','senderId','createdAt']) && text(d.text, 2000) && d.senderId === uid && d.createdAt === now
   if (child === 'votes') {
     const poll = await c.get('polls/' + id), access = uid ? await c.get('pollVoterAccess/' + uid) : null
