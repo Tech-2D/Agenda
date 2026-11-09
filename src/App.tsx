@@ -39,6 +39,7 @@ const ClassRequestDialog = lazy(() => import('./ClassRequestDialog').then(module
 const PollsDialog = lazy(() => import('./PollsDialog').then(module => ({ default: module.PollsDialog })))
 const NoticeBoardDialog = lazy(() => import('./NoticeBoard').then(module => ({ default: module.NoticeBoardDialog })))
 const AdminDialog = lazy(() => import('./AdminDialog'))
+const KanbanPage = lazy(() => import('./KanbanPage'))
 
 const RECENT_WINDOW_MS = 14 * 24 * 60 * 60 * 1000
 
@@ -81,6 +82,7 @@ function App() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [menuShortcuts, setMenuShortcuts] = useState(readMenuShortcuts)
   const [moreOptionsOpen, setMoreOptionsOpen] = useState(window.location.hash === '#opcoes')
+  const [kanbanOpen, setKanbanOpen] = useState(window.location.hash === '#kanban')
   const [compareMode, setCompareMode] = useState(false)
   const [configOpen, setConfigOpen] = useState(false)
   const [profilesOpen, setProfilesOpen] = useState(false)
@@ -178,7 +180,10 @@ function App() {
   const showAnnouncement = Boolean(turmaId) && announcementUpdatedMs > 0 && announcementUpdatedMs > announcementSeenAt
 
   useEffect(() => {
-    const syncOptionsPage = () => setMoreOptionsOpen(window.location.hash === '#opcoes')
+    const syncOptionsPage = () => {
+      setMoreOptionsOpen(window.location.hash === '#opcoes')
+      setKanbanOpen(window.location.hash === '#kanban')
+    }
     window.addEventListener('hashchange', syncOptionsPage)
     window.addEventListener('popstate', syncOptionsPage)
     return () => {
@@ -283,6 +288,7 @@ function App() {
 
   const openMoreOptions = () => {
     window.history.pushState(null, '', `${window.location.pathname}${window.location.search}#opcoes`)
+    setKanbanOpen(false)
     setMoreOptionsOpen(true)
     setMenuOpen(false)
     window.scrollTo(0, 0)
@@ -340,6 +346,11 @@ function App() {
     onOpenConfig: menuAction(() => setConfigOpen(true)),
     onOpenProfiles: menuAction(() => setProfilesOpen(true)),
     onOpenDocs: menuAction(() => setDocsOpen(true)),
+    onOpenKanban: menuAction(() => {
+      window.history.pushState(null, '', '#kanban')
+      setKanbanOpen(true)
+      window.scrollTo(0, 0)
+    }),
   })
 
   function toggleMenuShortcut(id: MenuShortcutId) {
@@ -374,7 +385,11 @@ function App() {
         </button>
       </header>
 
-      {moreOptionsOpen ? (
+      {kanbanOpen ? (
+        <DialogLoadBoundary><Suspense fallback={<div className="state-card" role="status"><LoaderCircle className="spin" /><p>Carregando seu Kanban…</p></div>}>
+          <KanbanPage onBack={() => { setKanbanOpen(false); window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}`) }} />
+        </Suspense></DialogLoadBoundary>
+      ) : moreOptionsOpen ? (
         <MoreOptionsPage
           turmaId={turmaId}
           onBack={closeMoreOptions}
@@ -536,7 +551,7 @@ function App() {
         <DayDetail day={selectedDay} activities={activitiesByDay.get(dateKey(selectedDay)) ?? []} profile={calendarProfile} canAdd={canCreateForSelectedClass(calendarProfile, turmaId)} onEditActivity={openCalendarEdit} onAddActivity={() => openAdminForDay(selectedDay)} onClose={() => setSelectedDay(null)} />
       )}
 
-      {!turmaId && !classRequestOpen && <TurmaPickerModal classNames={classNames} onChoose={chooseTurma} onRequest={() => setClassRequestOpen(true)} />}
+      {!turmaId && !classRequestOpen && !kanbanOpen && <TurmaPickerModal classNames={classNames} onChoose={chooseTurma} onRequest={() => setClassRequestOpen(true)} />}
 
       {menuOpen && (
         <SideMenu
@@ -765,7 +780,7 @@ type MoreOption = {
 
 type MoreOptionSection = { title: string; description: string; items: MoreOption[] }
 
-function menuOptionSections({ turmaId, onOpenNotifications, onOpenUpdates, onOpenPolls, onOpenNotices, onSuggestActivity, onRequestClass, onOpenFeedback, onOpenMySuggestions, onOpenAdmin, onOpenConfig, onOpenProfiles, onOpenDocs }: {
+function menuOptionSections({ turmaId, onOpenNotifications, onOpenUpdates, onOpenPolls, onOpenNotices, onSuggestActivity, onRequestClass, onOpenFeedback, onOpenMySuggestions, onOpenAdmin, onOpenConfig, onOpenProfiles, onOpenDocs, onOpenKanban }: {
   turmaId: string | null
   onOpenNotifications: () => void
   onOpenUpdates: () => void
@@ -779,6 +794,7 @@ function menuOptionSections({ turmaId, onOpenNotifications, onOpenUpdates, onOpe
   onOpenConfig: () => void
   onOpenProfiles: () => void
   onOpenDocs: () => void
+  onOpenKanban: () => void
 }): MoreOptionSection[] {
   const needsTurma = !turmaId
   return [
@@ -808,6 +824,7 @@ function menuOptionSections({ turmaId, onOpenNotifications, onOpenUpdates, onOpe
       title: 'Conta e ajuda',
       description: 'Personalize sua experiência e encontre orientações.',
       items: [
+        { id: 'kanban', title: 'Meu Kanban', description: 'Entre com sua conta para organizar tarefas em quadros privados e personalizáveis.', icon: <LayoutGrid />, onClick: onOpenKanban },
         { id: 'settings', title: 'Configurações', description: 'Ajuste tema, tamanho do texto e acessibilidade.', icon: <Settings />, onClick: onOpenConfig },
         { id: 'profiles', title: 'Perfis da comunidade', description: 'Edite seu perfil e conheça outras pessoas.', icon: <UserRound />, onClick: onOpenProfiles },
         { id: 'help', title: 'Como funciona', description: 'Entenda os recursos e como usar a Agenda.', icon: <BookOpen />, onClick: onOpenDocs },
