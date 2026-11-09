@@ -1,6 +1,7 @@
 // All application requests pass through these rules, including batches.
 // Unknown collections, fields, operations and unscoped private queries fail closed.
 import { validActivity } from './data.js'
+import { canWriteKanban } from './kanban-policy.js'
 export const denied = () => Object.assign(new Error('Você não tem permissão para esta operação.'), { status: 403, code: 'permission-denied' })
 export const invalid = () => Object.assign(new Error('Confira os dados informados.'), { status: 400, code: 'invalid-argument' })
 const text = (v, max, min = 1) => typeof v === 'string' && v.length >= min && v.length <= max
@@ -15,7 +16,7 @@ const fields = (v, keys) => Object.fromEntries(keys.map(k => [k, v[k]]))
 const activityKeys = ['title','description','type','subject','date','time','turmaId']
 const activity = v => validActivity({...fields(v, activityKeys),subject:v.subject ?? null,time:v.time ?? null})
 const credit = d => bool(d.publicCreditAllowed) && text(d.publicCreditName, 60, d.publicCreditAllowed ? 1 : 0) && !d.publicCreditName.includes('@')
-export const ROOT_COLLECTIONS = new Set(['admins','activities','recurringActivities','activityRetention','agendaClassRequests','agendaClasses','representativeRequests','representativeInvites','representativeChat','polls','pollVoterAccess','suggestions','feedback','announcement','agendaUpdates','boardNotices','schedules','notebookNotes','userProfiles','purgedActivities','_agendaDigestPreferences','_agendaDigestDeliveries','_agendaUploads','_passwordResetLimits','_r2UploadLimits','_profilePhotoLimits'])
+export const ROOT_COLLECTIONS = new Set(['personalKanban','admins','activities','recurringActivities','activityRetention','agendaClassRequests','agendaClasses','representativeRequests','representativeInvites','representativeChat','polls','pollVoterAccess','suggestions','feedback','announcement','agendaUpdates','boardNotices','schedules','notebookNotes','userProfiles','purgedActivities','_agendaDigestPreferences','_agendaDigestDeliveries','_agendaUploads','_passwordResetLimits','_r2UploadLimits','_profilePhotoLimits'])
 export function parsePath(path, collection = false) {
   const parts = typeof path === 'string' ? path.split('/') : []
   if (!parts.length || parts.length !== (collection ? 1 : 2) && parts.length !== (collection ? 3 : 4)
@@ -30,6 +31,10 @@ export const isProfessor = c => ['admin','superadmin'].includes(c.profile?.role)
 const known = async (c, turma) => typeof turma === 'string' && (['2° TECH D','2° TECH E','2° TECH F','2° TECH G','2° TECH H','2° TECH I','3° TECH AD H','3° TECH AD I','3° TECH DS E','3° TECH DS F','3° TECH DS G'].includes(turma) || (await c.get('agendaClasses/' + turma))?.active === true)
 const converse = async (c, id) => c.user && (isSuper(c) || (await c.get('feedback/' + id))?.createdBy === c.user.uid)
 const owns = (c, id) => Boolean(c.user && id === c.user.uid)
+export function authorizePrivatePath(c,path) {
+  const [name,id]=parsePath(path)
+  if (name==='personalKanban' && (c.service || !owns(c,id))) throw denied()
+}
 
 // Scope is checked BEFORE executing the SQL query. A filter is not a permission.
 export async function authorizeQuery(c, q) {
@@ -56,7 +61,7 @@ export async function authorizeRead(c, path, data) {
   if (c.service) return serviceRead(c, name)
   if (p.length === 4) return name === 'feedback' ? Boolean(await converse(c, id)) : owns(c, p[3])
   if (['agendaClasses','schedules','notebookNotes','announcement'].includes(name)) return true
-  if (name === 'userProfiles') return owns(c,id)
+  if (['userProfiles','personalKanban'].includes(name)) return owns(c,id)
   if (name === 'suggestions') return /^[a-zA-Z0-9]{20}$/.test(id) // Existing per-ID tracking capability, not listing.
   if (name === 'admins') return owns(c, id)
   if (name === 'representativeInvites') return isSuper(c) || Boolean(c.user?.email && id === c.user.email.toLowerCase())
@@ -84,6 +89,7 @@ export async function authorizeWrite(c, path, before, after) {
     if (SERVICE_WRITE.has(name)) return true // Trusted backend endpoints authenticate users and validate their own schemas.
     return name === 'activities' && (remove || update && changed(old, d, ['attachments','updatedAt']) && Array.isArray(d.attachments) && d.attachments.length <= 5 && d.updatedAt === now)
   }
+  if (name === 'personalKanban') return canWriteKanban(c,id,before,after)
   if (child === 'messages') return create && await converse(c, id) && only(d, ['text','senderId','createdAt']) && text(d.text, 2000) && d.senderId === uid && d.createdAt === now
   if (child === 'votes') {
     const poll = await c.get('polls/' + id), access = uid ? await c.get('pollVoterAccess/' + uid) : null

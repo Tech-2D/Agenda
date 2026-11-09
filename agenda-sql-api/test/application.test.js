@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises'
 import { PGlite } from '@electric-sql/pglite'
 import { context, putDocument, readDocument, queryDocuments, commitDocuments, resolveValues } from '../src/document-store.js'
 import { authorizeWrite } from '../src/policies.js'
+import { validKanban } from '../src/kanban-policy.js'
 import { createHandler } from '../src/worker.js'
 
 const engine = new PGlite()
@@ -119,4 +120,51 @@ test('own profile subscription may read its record; public listing remains in th
   assert.equal((await readDocument(db,c,'userProfiles/representative')).data.displayName,'Representative')
   await assert.rejects(()=>readDocument(db,awaitContext(other),'userProfiles/representative'),{status:403})
   await assert.rejects(()=>queryDocuments(db,c,{path:'userProfiles'}),{status:403})
+})
+
+const learner={user:{uid:'kanban-student',email:'kanban-student@example.com'}}
+const workspace=()=>({ownerId:learner.user.uid,schemaVersion:1,createdAt:stamp,updatedAt:stamp,boards:[{id:'board',name:'Estudos',color:'purple',compact:false,columns:[{id:'todo',name:'Revisar',color:'pink',done:false},{id:'done',name:'Pronto',color:'green',done:true}],tasks:[{id:'task',columnId:'todo',title:'Estudar',description:'Conteúdo privado',priority:'high',dueDate:'2026-11-09',labels:['Pessoal'],checklist:[{id:'step',text:'Ler',done:false}]}]}]})
+test('ordinary authenticated students create, load and edit their own private workspace in SQL',async()=>{
+  assert.equal((await context(db,learner)).profile ?? null,null)
+  assert.equal(await readDocument(db,await context(db,learner),'personalKanban/'+learner.user.uid),null)
+  await commit(learner,[{op:'set',path:'personalKanban/'+learner.user.uid,data:workspace()}])
+  const row=await readDocument(db,await context(db,learner),'personalKanban/'+learner.user.uid)
+  assert.equal(row.data.boards[0].tasks[0].description,'Conteúdo privado')
+  const boards=structuredClone(row.data.boards);boards[0].tasks[0].columnId='done'
+  await commit(learner,[{op:'update',path:row.path,version:row.version,data:{boards,updatedAt:stamp}}])
+  assert.equal((await readDocument(db,await context(db,learner),row.path)).data.boards[0].tasks[0].columnId,'done')
+  await assert.rejects(()=>commit(learner,[{op:'update',path:row.path,version:row.version,data:{boards,updatedAt:stamp}}]),{status:409})
+})
+test('private kanbans reject anonymous, other students, representatives, superadmins and backend services',async()=>{
+  const path='personalKanban/'+learner.user.uid
+  for(const identity of [{},rep,other,admin,{service:'web'}]) {
+    await assert.rejects(()=>readDocument(db,awaitContext(identity),path),{status:403})
+    await assert.rejects(()=>commit(identity,[{op:'update',path,data:{boards:[],updatedAt:stamp}}]),{status:403})
+    await assert.rejects(()=>queryDocuments(db,awaitContext(identity),{path:'personalKanban',filters:[{field:'ownerId',op:'==',value:learner.user.uid}]}),{status:403})
+  }
+  const c=await context(db,learner)
+  await assert.rejects(()=>queryDocuments(db,c,{path:'personalKanban'}),{status:403})
+})
+test('workspace ownership, timestamps, schema and task column references cannot be forged',async()=>{
+  const path='personalKanban/'+learner.user.uid
+  const row=await readDocument(db,await context(db,learner),path)
+  for(const data of [{ownerId:admin.user.uid},{createdAt:'2000-01-01T00:00:00Z'},{role:'superadmin'},{schemaVersion:2}]) {
+    await assert.rejects(()=>commit(learner,[{op:'update',path,data:{...data,updatedAt:stamp}}]),{status:403})
+  }
+  const boards=structuredClone(row.data.boards);boards[0].tasks[0].columnId='missing'
+  await assert.rejects(()=>commit(learner,[{op:'update',path,data:{boards,updatedAt:stamp}}]),{status:403})
+  await assert.rejects(()=>commit(learner,[{op:'set',path:'personalKanban/other',data:workspace()}]),{status:403})
+  await assert.rejects(()=>commit(learner,[{op:'delete',path}]),{status:403})
+})
+test('malformed or excessive kanban content fails closed without exposing personal data',()=>{
+  const make=()=>({...workspace(),createdAt:'2026-11-08T12:00:00Z',updatedAt:'2026-11-08T12:00:00Z'})
+  assert.equal(validKanban(make()),true)
+  for(const alter of [
+    d=>{d.boards=[null]},d=>{d.boards[0].columns=[null]},d=>{d.boards[0].tasks=[null]},
+    d=>{d.boards[0].tasks[0].checklist=[null]},d=>{d.boards[0].tasks[0].title='   '},
+    d=>{d.boards[0].tasks[0].dueDate='2026-02-30'},d=>{d.boards[0].tasks[0].priority='root'},
+    d=>{d.boards[0].tasks[0].labels=Array(7).fill('x')},d=>{d.boards[0].tasks[0].checklist=Array(21).fill({id:'a',text:'x',done:false})},
+    d=>{d.boards[0].columns[0].color='url(https://example.com)'},d=>{d.boards.push(structuredClone(d.boards[0]))},
+    d=>{d.boards[0].tasks=Array.from({length:201},(_,i)=>({...d.boards[0].tasks[0],id:String(i)}))},
+  ]) {const d=make();alter(d);assert.equal(validKanban(d),false)}
 })

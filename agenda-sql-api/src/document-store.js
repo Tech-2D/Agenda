@@ -1,4 +1,4 @@
-import { authorizeQuery, authorizeRead, authorizeWrite, parsePath, denied, invalid } from './policies.js'
+import { authorizeQuery, authorizeRead, authorizeWrite, authorizePrivatePath, parsePath, denied, invalid } from './policies.js'
 import { CATALOG_COLLECTIONS } from './projections.js'
 
 export const conflict = () => Object.assign(new Error('Os dados mudaram. Reabra e tente novamente.'), { status: 409, code: 'aborted' })
@@ -28,6 +28,7 @@ export async function context(db, identity = {}) {
 }
 export async function readDocument(db, c, path) {
   parsePath(path)
+  authorizePrivatePath(c,path)
   const row = (await db.query('SELECT * FROM tech2d.app_documents WHERE path=$1', [path])).rows[0]
   if (!await authorizeRead(c,path,row?.data)) throw denied()
   return exposed(c,row)
@@ -137,6 +138,8 @@ export async function commitDocuments(db,identity,input) {
       await db.query('COMMIT'); return { committed: true, replay: true }
     }
     const c = await context(db,identity)
+    // Reject cross-account personal paths before checking existence or versions.
+    for (const w of input.writes) authorizePrivatePath(c,w.path)
     for (const read of input.reads || []) {
       if (!read || Object.keys(read).some(k => !['path','version'].includes(k))) throw invalid()
       const row = await readDocument(db,c,read.path)
