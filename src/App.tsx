@@ -117,6 +117,23 @@ function App() {
   const [highContrast, setHighContrastState] = useState(readStoredHighContrast)
   const [reduceMotion, setReduceMotionState] = useState(readStoredReduceMotion)
 
+  useEffect(() => {
+    function syncPreferences(event: StorageEvent) {
+      if (event.key === null || event.key === 'tech-2d:preferredClass' || event.key === 'agenda:turma') {
+        setTurmaId(readPreferredTurma())
+      }
+      if (event.key === null || ['agenda:theme', 'agenda:neon', 'agenda:fontScale', 'agenda:highContrast', 'agenda:reduceMotion'].includes(event.key)) {
+        setThemeState(readStoredTheme())
+        setNeonState(readStoredNeon())
+        setFontScaleState(readStoredFontScale())
+        setHighContrastState(readStoredHighContrast())
+        setReduceMotionState(readStoredReduceMotion())
+      }
+    }
+    window.addEventListener('storage', syncPreferences)
+    return () => window.removeEventListener('storage', syncPreferences)
+  }, [])
+
   function setTheme(value: Theme) {
     setThemeState(value)
     storeTheme(value)
@@ -995,6 +1012,7 @@ function ConfigDialog({
           <WeeklyDigestSettings />
           <div className="config-section">
             <h3>Tema</h3>
+            <p className="config-hint">As preferências de aparência e acessibilidade valem também no Cadê o professor? neste navegador.</p>
             <div className="theme-options">
               {THEMES.map((value) => (
                 <button
@@ -1009,7 +1027,7 @@ function ConfigDialog({
                 </button>
               ))}
             </div>
-            {theme === 'cyberpunk' && (
+            {(theme === 'cyberpunk' || theme === 'neon') && (
               <div className="neon-options" aria-label="Cor de destaque neon">
                 {NEON_COLORS.map((value) => (
                   <button
@@ -1019,6 +1037,7 @@ function ConfigDialog({
                     style={{ background: NEON_COLOR_SWATCHES[value] }}
                     onClick={() => onSetNeon(value)}
                     aria-label={NEON_COLOR_LABELS[value]}
+                    aria-pressed={neon === value}
                     title={NEON_COLOR_LABELS[value]}
                   />
                 ))}

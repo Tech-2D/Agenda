@@ -1,4 +1,4 @@
-export const THEMES = ['padrao', 'rosa', 'roxo', 'escuro', 'cyberpunk'] as const
+export const THEMES = ['padrao', 'rosa', 'roxo', 'escuro', 'cyberpunk', 'neon'] as const
 export type Theme = (typeof THEMES)[number]
 
 export const THEME_LABELS: Record<Theme, string> = {
@@ -7,6 +7,7 @@ export const THEME_LABELS: Record<Theme, string> = {
   roxo: 'Roxo claro',
   escuro: 'Escuro',
   cyberpunk: 'Cyberpunk',
+  neon: 'Claro com neon',
 }
 
 // Cor de pré-visualização do tema no seletor (não é a paleta inteira, só um aceno visual).
@@ -16,6 +17,7 @@ export const THEME_PREVIEW: Record<Theme, string> = {
   roxo: '#7536b5',
   escuro: '#3b6dff',
   cyberpunk: 'linear-gradient(135deg, #ff2b54, #25e0ff)',
+  neon: 'linear-gradient(135deg, #e3faff, #25e0ff)',
 }
 
 export const NEON_COLORS = ['vermelho', 'roxo', 'verde', 'azul', 'rosa'] as const
@@ -42,7 +44,7 @@ const NEON_KEY = 'agenda:neon'
 
 export function readStoredTheme(): Theme {
   try {
-    const value = window.localStorage.getItem(THEME_KEY)
+    const value = window.localStorage.getItem(THEME_KEY) ?? window.localStorage.getItem('professores:theme')
     return (THEMES as readonly string[]).includes(value ?? '') ? (value as Theme) : 'padrao'
   } catch {
     return 'padrao'
@@ -51,7 +53,7 @@ export function readStoredTheme(): Theme {
 
 export function readStoredNeon(): NeonColor {
   try {
-    const value = window.localStorage.getItem(NEON_KEY)
+    const value = window.localStorage.getItem(NEON_KEY) ?? window.localStorage.getItem('professores:neon')
     return (NEON_COLORS as readonly string[]).includes(value ?? '') ? (value as NeonColor) : 'azul'
   } catch {
     return 'azul'

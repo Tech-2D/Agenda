@@ -65,6 +65,27 @@
   --shadow: 0 2px 10px rgba(0, 0, 0, .45);
 }
 
+:root[data-theme="neon"] {
+  color-scheme: light;
+  --neon: #25e0ff;
+  --neon-ink: #075b83;
+  --bg: #f4fbff;
+  --surface-alt: #eaf8fc;
+  --text: #183a4d;
+  --ink: var(--neon-ink);
+  --accent: var(--neon-ink);
+  --accent-hover: var(--neon-ink);
+  --mint: #e3faff;
+  --line: #cde5eb;
+}
+:root[data-theme="neon"][data-neon="vermelho"] { --neon: #ff2b54; --neon-ink: #a71d3b; --mint: #fff0f3; }
+:root[data-theme="neon"][data-neon="roxo"] { --neon: #b430ff; --neon-ink: #7130a9; --mint: #f7efff; }
+:root[data-theme="neon"][data-neon="verde"] { --neon: #39ff8f; --neon-ink: #086b43; --mint: #eafff1; }
+:root[data-theme="neon"][data-neon="rosa"] { --neon: #ff2ec4; --neon-ink: #a41b7c; --mint: #fff0fa; }
+[data-theme="neon"] .topbar { background: var(--paper); border-bottom: 2px solid var(--neon); }
+[data-theme="neon"] :is(.topbar .brand, .menu-trigger) { color: var(--ink); }
+[data-theme="neon"] .brand-mark { background: var(--mint); color: var(--ink); }
+
 :root[data-theme="cyberpunk"] {
   --neon: #25e0ff;
   --bg: #08060f;
@@ -90,7 +111,7 @@
 html[data-font-scale="grande"] { font-size: 112.5%; }
 html[data-font-scale="maior"] { font-size: 125%; }
 
-:root[data-theme="padrao"][data-contrast="alto"] {
+:root:is([data-theme="padrao"], [data-theme="neon"])[data-contrast="alto"] {
   --bg: #ffffff; --paper: #ffffff; --surface-alt: #e8e8e8;
   --text: #000000; --ink: #000000; --ink-soft: #1a1a1a; --line: #000000;
   --accent: #0000cc; --accent-hover: #0000aa; --accent-contrast: #ffffff; --mint: #cce0ff;
