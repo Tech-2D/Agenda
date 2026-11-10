@@ -1,5 +1,5 @@
 :root {
-  --bar-bg: #0e35be;
+  --app-bg: #fbfcff;
 }
 
 :root[data-theme="rosa"] {
@@ -11,7 +11,6 @@
   --ink: #a41a65;
   --ink-soft: #7b5c70;
   --line: #eed2e2;
-  --bar-bg: #b51e70;
   --accent: #b51e70;
   --accent-text: #ffffff;
 }
@@ -25,7 +24,6 @@
   --ink: #66309f;
   --ink-soft: #70617f;
   --line: #dfd2ee;
-  --bar-bg: #7536b5;
   --accent: #7536b5;
   --accent-text: #ffffff;
 }
@@ -39,7 +37,6 @@
   --ink: #dfe6ff;
   --ink-soft: #aeb8cc;
   --line: #424c61;
-  --bar-bg: #243b84;
   --accent: #a8baff;
   --accent-text: #10172b;
 }
@@ -54,7 +51,6 @@
   --ink: var(--neon);
   --ink-soft: #c2b3e8;
   --line: #624784;
-  --bar-bg: #130d24;
   --accent: var(--neon);
   --accent-text: #0a0612;
 }
@@ -63,7 +59,7 @@
 :root[data-theme="cyberpunk"][data-neon="roxo"] { --neon: #b430ff; --ink: #c173ff; }
 :root[data-theme="cyberpunk"][data-neon="verde"] { --neon: #39ff8f; }
 :root[data-theme="cyberpunk"][data-neon="rosa"] { --neon: #ff2ec4; --ink: #ff62cf; }
-:root[data-theme="neon"] { --bar-bg: #ffffff; }
+:root[data-theme="neon"] { --app-bg: #f6fcff; }
 
 :root[data-contrast="alto"] {
   --app-bg: #ffffff;
@@ -73,7 +69,6 @@
   --ink: #000000;
   --ink-soft: #222222;
   --line: #454545;
-  --bar-bg: #141414;
   --accent: #0000b3;
   --accent-text: #ffffff;
   --neon-ink: #000000;
@@ -88,7 +83,6 @@
   --ink: #ffffff;
   --ink-soft: #eeeeee;
   --line: #d5d5d5;
-  --bar-bg: #000000;
   --accent: #8ec5ff;
   --accent-text: #000000;
 }
@@ -99,10 +93,6 @@
   color: var(--text);
 }
 :is([data-theme="rosa"], [data-theme="roxo"], [data-theme="escuro"], [data-theme="cyberpunk"], [data-contrast="alto"]) {
-  & .app-shell { background: var(--app-bg); }
-  & .topbar { background: var(--bar-bg); border-bottom: 2px solid var(--accent); }
-  & .brand, & .menu-trigger { color: #ffffff; }
-  & .brand-mark { background: var(--paper); color: var(--ink); }
   & :is(.side-menu, .side-menu .dialog-header, .dialog-header, .search-section .search-box, .view-switcher,
     .timetable-scroll, .schedule-card, .state-card, .admin-row, .admin-empty, .import-panel, .profile-dialog,
     .secondary-button, .icon-button, .theme-swatch, .row-actions button, input, select, textarea) {
@@ -137,7 +127,6 @@
   & :is(.theme-swatch.active, .schedule-card.happening) { border-color: var(--accent); }
   & .lesson-block.happening { box-shadow: inset 0 0 0 1px var(--accent); }
 }
-[data-theme="cyberpunk"] .brand, [data-theme="cyberpunk"] .menu-trigger { color: var(--ink); }
 [data-theme="cyberpunk"] .lesson-block { border-left-color: var(--neon) !important; }
 [data-theme="cyberpunk"] .neon-swatch.active { box-shadow: 0 0 0 2px var(--ink); }
 :is([data-theme="escuro"], [data-theme="cyberpunk"]) .form-error { color: #ffadad !important; }

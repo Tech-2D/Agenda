@@ -10,7 +10,6 @@ import {
   KeyRound,
   LoaderCircle,
   LogOut,
-  MapPin,
   Menu,
   Plus,
   Search,
@@ -133,8 +132,8 @@ function App() {
     root.dataset.fontScale = fontScale
     root.dataset.contrast = highContrast ? 'alto' : 'normal'
     root.dataset.motion = reduceMotion ? 'reduzido' : 'normal'
-    const color = getComputedStyle(root).getPropertyValue('--bar-bg').trim()
-    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', color || (theme === 'neon' ? '#f4fbff' : '#0e35be'))
+    const color = getComputedStyle(root).getPropertyValue('--app-bg').trim()
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', color)
   }, [theme, neon, fontScale, highContrast, reduceMotion])
 
   function selectTheme(value: Theme) {
@@ -244,22 +243,16 @@ function App() {
 
   return (
     <div className="app-shell">
-      <header className="topbar">
-        <a className="brand" href="#inicio" aria-label="Cadê o professor? — início">
-          <span className="brand-mark"><MapPin size={21} strokeWidth={2.3} /></span>
-          <span>Cadê o professor?</span>
-        </a>
-        <button
-          type="button"
-          className="menu-trigger"
-          aria-label="Abrir menu"
-          aria-haspopup="dialog"
-          aria-expanded={menuOpen}
-          onClick={() => setMenuOpen(true)}
-        >
-          <Menu size={22} strokeWidth={2.3} aria-hidden="true" />
-        </button>
-      </header>
+      <button
+        type="button"
+        className="menu-trigger"
+        aria-label="Abrir menu"
+        aria-haspopup="dialog"
+        aria-expanded={menuOpen}
+        onClick={() => setMenuOpen(true)}
+      >
+        <Menu size={22} strokeWidth={2.3} aria-hidden="true" />
+      </button>
 
       <main id="inicio" className="main-content">
         <div className="page-heading">
