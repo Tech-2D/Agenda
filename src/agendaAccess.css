@@ -1,0 +1,56 @@
+.agenda-access .storage-admin-stats {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 145px), 1fr));
+}
+.agenda-access-range {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 700;
+}
+.agenda-access-range select {
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--paper);
+  color: var(--text);
+  font: inherit;
+}
+.agenda-access-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.agenda-access-table caption {
+  padding: 8px 0;
+  text-align: left;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 800;
+}
+.agenda-access-table th, .agenda-access-table td {
+  padding: 9px 4px;
+  border-bottom: 1px solid var(--line);
+  text-align: right;
+}
+.agenda-access-table th:first-child { text-align: left; }
+.agenda-access-total { width: 20%; color: var(--ink); font-weight: 800; }
+.agenda-access-total span {
+  display: block;
+  height: 3px;
+  margin: 4px 0 0 auto;
+  border-radius: 2px;
+  background: var(--accent);
+}
+.agenda-access-notice {
+  display: block;
+  margin: 0 auto;
+  padding: 16px 20px;
+  max-width: 780px;
+  color: var(--ink-soft);
+  font-size: 12px;
+  line-height: 1.6;
+  text-align: center;
+}

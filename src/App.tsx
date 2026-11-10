@@ -34,6 +34,9 @@ import { FONT_SCALES, FONT_SCALE_LABELS, readStoredFontScale, readStoredHighCont
 import { loadOrClaimAdminProfile } from './adminAccess'
 import { DEFAULT_MENU_SHORTCUTS, readMenuShortcuts, storeMenuShortcuts, type MenuShortcutId } from './menuShortcuts'
 import { SyncStatus } from './SyncStatus'
+import { recordAgendaAccess } from './agendaAccess'
+import { SQL_ENABLED } from './dataBackend'
+import './agendaAccess.css'
 import { ActivityDetails } from './ActivityDetails'
 import { readActivityLink } from './activityLinks'
 
@@ -120,8 +123,17 @@ function App() {
   }
 
   useEffect(() => {
+    let previousUid: string | null | undefined
     return observeCalendarSession({
-      subscribeAccount: change => onAuthStateChanged(auth, account => { setCalendarUser(account); change(account?.uid ?? null) }),
+      subscribeAccount: change => onAuthStateChanged(auth, account => {
+        const uid = account?.uid ?? null
+        setCalendarUser(account)
+        change(uid)
+        if (previousUid === undefined || (uid !== null && uid !== previousUid)) {
+          void recordAgendaAccess(account)
+        }
+        previousUid = uid
+      }),
       subscribeProfile: (uid, change, error) => onSnapshot(doc(db, 'admins', uid), snapshot => change(snapshot.data() as AdminProfile ?? null), error),
       publish: setCalendarProfile,
       reset: () => { setQuickCreateDate(null); setQuickEditActivity(null) },
@@ -542,6 +554,8 @@ function App() {
         </section>
       </main>
       )}
+
+      {SQL_ENABLED && <footer className="agenda-access-notice">Para medir o uso da Agenda, registramos o ID da conta ao entrar ou um código diário derivado do IP em visitas anônimas. Os registros são removidos após 90 dias.</footer>}
 
       <DialogLoadBoundary>
       <Suspense fallback={<div className="modal-backdrop" role="status" aria-live="polite"><div className="state-card"><LoaderCircle className="spin" /><p>Carregando…</p></div></div>}>
