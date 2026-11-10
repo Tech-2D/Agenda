@@ -739,7 +739,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .theme-swatch.active { border-color: var(--accent); box-shadow: 0 0 0 2px var(--mint); }
 .theme-dot { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; }
 
-.docs-dialog .config-content { max-width: 640px; }
 .docs-type-legend { display: flex; flex-wrap: wrap; gap: 10px; }
 .docs-type-item { display: flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 20px; background: var(--surface-alt); color: var(--text); font-size: 12px; font-weight: 700; }
 .neon-options { display: flex; gap: 10px; margin-top: 14px; }

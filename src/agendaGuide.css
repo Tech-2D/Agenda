@@ -1,0 +1,42 @@
+.admin-dialog.agenda-guide { width: min(760px, 100%); }
+.agenda-guide-content { display: grid; gap: 18px; }
+.agenda-guide-start {
+  padding: clamp(14px, 4vw, 24px);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--accent);
+  border-radius: 10px;
+  background: var(--surface-alt);
+}
+.agenda-guide-start-heading { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; color: var(--ink); }
+.agenda-guide-start-heading h3 { margin: 0; font-size: 1rem; }
+.agenda-guide-badge {
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--paper);
+  color: var(--ink);
+  font-size: .6875rem;
+  font-weight: 800;
+}
+.agenda-guide-start ol { margin: 14px 0; padding-inline-start: 25px; line-height: 1.6; font-size: .875rem; }
+.agenda-guide-start li + li { margin-top: 7px; }
+.agenda-guide-start li::marker { color: var(--ink); font-weight: 800; }
+.agenda-guide-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.agenda-guide-card { display: flex; flex-direction: column; align-items: start; padding: 16px; border: 1px solid var(--line); border-radius: 8px; }
+.agenda-guide-card > svg { color: var(--ink); }
+.agenda-guide-card h3 { margin: 8px 0 5px; color: var(--text); font-size: .9375rem; }
+.agenda-guide-card p, .agenda-guide-data p { margin: 5px 0; color: var(--ink-soft); font-size: .8125rem; line-height: 1.6; }
+.agenda-guide-card .text-button { margin-top: auto; padding: 8px 0 0; min-height: 36px; text-align: start; }
+.agenda-guide-data { border-top: 1px solid var(--line); padding-top: 12px; }
+.agenda-guide-data summary { color: var(--ink); font-size: .8125rem; font-weight: 700; cursor: pointer; }
+.agenda-settings-intro { margin: 0; color: var(--ink-soft); font-size: .8125rem; line-height: 1.6; }
+.agenda-settings-links { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.agenda-settings-links .secondary-button { flex: 0 1 auto; min-height: 40px; padding-inline: 12px; }
+.agenda-settings-digest > summary { color: var(--ink); cursor: pointer; font-size: .875rem; font-weight: 800; }
+.agenda-settings-digest > summary small { margin-inline-start: 6px; color: var(--ink-soft); font-size: .6875rem; font-weight: 600; }
+.agenda-settings-digest .digest-settings { border-bottom: 0; padding: 16px 0 0; }
+.agenda-settings-digest .digest-settings > h3 { display: none; }
+.turma-picker .agenda-first-visit-guide { display: block; margin: 0 auto 14px; }
+@media (max-width: 530px) {
+  .agenda-guide-grid { grid-template-columns: minmax(0, 1fr); }
+}

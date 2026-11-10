@@ -1,6 +1,6 @@
 import { Component, type FormEvent, type ReactNode, useCallback, useEffect, useMemo, useRef, useState, lazy, Suspense } from 'react'
 import { createPortal } from 'react-dom'
-import { Calendar, CalendarClock, Check, ChevronLeft, ChevronRight, DoorOpen, ExternalLink, History, LayoutGrid, Lightbulb, LoaderCircle, Menu, Plus, Settings, StickyNote, Vote, X } from 'lucide-react'
+import { BookOpen, Calendar, CalendarClock, Check, ChevronLeft, ChevronRight, DoorOpen, ExternalLink, History, LayoutGrid, Lightbulb, LoaderCircle, Menu, Plus, StickyNote, Vote, X } from 'lucide-react'
 import { createUserWithEmailAndPassword, onAuthStateChanged, signInWithEmailAndPassword, type User } from 'firebase/auth'
 import { signOut } from './sessionActions'
 import { requestPasswordReset } from './passwordReset'
@@ -38,9 +38,10 @@ import { menuOptionSections, type MoreOption, type MoreOptionSection } from './m
 import './integratedMenu.css'
 import { SyncStatus } from './SyncStatus'
 import { recordAgendaAccess } from './agendaAccess'
-import { SQL_ENABLED } from './dataBackend'
 import './agendaAccess.css'
 import { ActivityDetails } from './ActivityDetails'
+import { AgendaGuide, type GuideFeature } from './AgendaGuide'
+import './agendaGuide.css'
 import { readActivityLink } from './activityLinks'
 
 const CompareCalendar = lazy(() => import('./CompareCalendar').then(module => ({ default: module.CompareCalendar })))
@@ -214,8 +215,9 @@ function App() {
   const unseenSystemUpdate = updatesReady && !updatesError
     ? latestUnseenUpdate(systemUpdates, seenSystemUpdateId)
     : null
-  const menuDialogOpen = linkedMenuDialog || notificationsOpen || updatesOpen || pollsOpen || noticesOpen
+  const activeMenuDialog = notificationsOpen || updatesOpen || pollsOpen || noticesOpen
     || suggestOpen || classRequestOpen || feedbackOpen || mySuggestionsOpen || configOpen || profilesOpen || docsOpen
+  const menuDialogOpen = linkedMenuDialog || activeMenuDialog
   const showSystemUpdate = unseenSystemUpdate && !adminOpen && !menuDialogOpen && !linkedActivityId
 
   const announcementUpdatedMs = announcement?.updatedAt?.toDate().getTime() ?? 0
@@ -442,6 +444,16 @@ function App() {
     },
   })
 
+  function openGuideFeature(feature: GuideFeature) {
+    setDocsOpen(false)
+    menuSections.flatMap(section => section.items).find(option => option.id === feature)?.onClick?.()
+  }
+
+  function openCalendarFromGuide() {
+    setDocsOpen(false)
+    if (moreOptionsOpen) closeMoreOptions()
+  }
+
   function toggleMenuShortcut(id: MenuShortcutId) {
     const next = menuShortcuts.includes(id) ? menuShortcuts.filter(item => item !== id) : [...menuShortcuts, id]
     setMenuShortcuts(next)
@@ -487,6 +499,7 @@ function App() {
           shortcuts={menuShortcuts}
           onToggleShortcut={toggleMenuShortcut}
           onResetShortcuts={resetMenuShortcuts}
+          onOpenGuide={() => setDocsOpen(true)}
         />
       ) : compareMode ? (
       <main id="inicio" className="main-content">
@@ -515,6 +528,9 @@ function App() {
             )}
             <button type="button" className="compare-link" onClick={() => setCompareMode(true)}>
               <LayoutGrid size={14} aria-hidden="true" /> Comparar turmas
+            </button>
+            <button type="button" className="compare-link" onClick={() => setDocsOpen(true)}>
+              <BookOpen size={14} aria-hidden="true" /> Comece por aqui
             </button>
           </div>
 
@@ -643,7 +659,7 @@ function App() {
 
       {linkedActivityId && <ActivityLinkDialog key={linkedActivityId} id={linkedActivityId} onClose={closeLinkedActivity} onViewCalendar={viewLinkedActivity} />}
 
-      {!turmaId && !classRequestOpen && !kanbanOpen && !linkedActivityId && <TurmaPickerModal classNames={classNames} onChoose={chooseTurma} onRequest={() => setClassRequestOpen(true)} />}
+      {!turmaId && !kanbanOpen && !linkedActivityId && !activeMenuDialog && !adminOpen && <TurmaPickerModal classNames={classNames} onChoose={chooseTurma} onRequest={() => setClassRequestOpen(true)} onHelp={() => setDocsOpen(true)} />}
 
       {menuOpen && (
         <IntegratedMenu
@@ -657,7 +673,7 @@ function App() {
         />
       )}
 
-      {docsOpen && <DocsDialog onClose={() => setDocsOpen(false)} />}
+      {docsOpen && <AgendaGuide hasClass={Boolean(turmaId)} onClose={() => setDocsOpen(false)} onCalendar={openCalendarFromGuide} onFeature={openGuideFeature} />}
       {profilesOpen && <ProfileDialog onClose={() => setProfilesOpen(false)} />}
 
       {updatesOpen && <SystemUpdatesDialog onClose={() => setUpdatesOpen(false)} />}
@@ -706,6 +722,7 @@ function App() {
           onSetHighContrast={setHighContrast}
           reduceMotion={reduceMotion}
           onSetReduceMotion={setReduceMotion}
+          onOpenMenuSettings={() => { setConfigOpen(false); openMoreOptions() }}
           onClose={() => setConfigOpen(false)}
         />
       )}
@@ -776,13 +793,14 @@ function VLibrasWidget() {
   )
 }
 
-function MoreOptionsPage({ turmaId, onBack, sections, shortcuts, onToggleShortcut, onResetShortcuts }: {
+function MoreOptionsPage({ turmaId, onBack, sections, shortcuts, onToggleShortcut, onResetShortcuts, onOpenGuide }: {
   turmaId: string | null
   onBack: () => void
   sections: MoreOptionSection[]
   shortcuts: MenuShortcutId[]
   onToggleShortcut: (id: MenuShortcutId) => void
   onResetShortcuts: () => void
+  onOpenGuide: () => void
 }) {
   return (
     <main className="more-options-page" id="mais-opcoes">
@@ -791,7 +809,8 @@ function MoreOptionsPage({ turmaId, onBack, sections, shortcuts, onToggleShortcu
         <div>
           <span className="more-options-eyebrow">AGENDA DA TURMA</span>
           <h1>Mais opções</h1>
-          <p>Encontre cada ferramenta por assunto, sem deixar o menu principal carregado.</p>
+          <p>Abra um recurso pelos cartões abaixo. Marque os seus favoritos para encontrá-los no menu lateral.</p>
+          <button type="button" className="more-options-back" onClick={onOpenGuide}><BookOpen size={16} /> Comece por aqui</button>
         </div>
         <span className="more-options-turma">{turmaId ?? 'Nenhuma turma selecionada'}</span>
       </header>
@@ -849,6 +868,7 @@ function ConfigDialog({
   onSetHighContrast,
   reduceMotion,
   onSetReduceMotion,
+  onOpenMenuSettings,
   onClose,
 }: {
   theme: Theme
@@ -861,8 +881,10 @@ function ConfigDialog({
   onSetHighContrast: (value: boolean) => void
   reduceMotion: boolean
   onSetReduceMotion: (value: boolean) => void
+  onOpenMenuSettings: () => void
   onClose: () => void
 }) {
+  const [digestOpened, setDigestOpened] = useState(false)
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => event.key === 'Escape' && onClose()
     window.addEventListener('keydown', onKeyDown)
@@ -877,11 +899,11 @@ function ConfigDialog({
           <button className="icon-button" onClick={onClose} aria-label="Fechar"><X /></button>
         </div>
         <div className="config-content">
-          <WeeklyDigestSettings />
+          <p className="agenda-settings-intro">As mudanças de aparência e acessibilidade são aplicadas na hora e compartilhadas com o Cadê o professor? neste navegador.</p>
           <div className="config-section">
-            <h3>Tema</h3>
-            <p className="config-hint">As preferências de aparência e acessibilidade valem também no Cadê o professor? neste navegador.</p>
-            <div className="theme-options">
+            <h3>Aparência</h3>
+            <p className="config-hint">Escolha o tema que fica mais confortável para você.</p>
+            <div className="theme-options" role="group" aria-label="Tema">
               {THEMES.map((value) => (
                 <button
                   type="button"
@@ -896,7 +918,7 @@ function ConfigDialog({
               ))}
             </div>
             {(theme === 'cyberpunk' || theme === 'neon') && (
-              <div className="neon-options" aria-label="Cor de destaque neon">
+              <div className="neon-options" role="group" aria-label="Cor de destaque neon">
                 {NEON_COLORS.map((value) => (
                   <button
                     type="button"
@@ -915,12 +937,13 @@ function ConfigDialog({
           <div className="config-section">
             <h3>Acessibilidade</h3>
             <p className="config-hint">Tamanho da fonte</p>
-            <div className="theme-options">
+            <div className="theme-options" role="group" aria-label="Tamanho da fonte">
               {FONT_SCALES.map((value) => (
                 <button
                   type="button"
                   key={value}
                   className={`theme-swatch ${fontScale === value ? 'active' : ''}`}
+                  aria-pressed={fontScale === value}
                   onClick={() => onSetFontScale(value)}
                 >
                   {FONT_SCALE_LABELS[value]}
@@ -937,95 +960,23 @@ function ConfigDialog({
             </label>
             <p className="config-hint">VLibras (tradutor de Libras) já está disponível no botão flutuante no canto da tela.</p>
           </div>
-          <div className="config-section muted">
-            <h3>Apoie o projeto</h3>
-            <p>Em breve: chave Pix para quem quiser pagar um café.</p>
+          <div className="config-section">
+            <h3>Atalhos do menu</h3>
+            <p className="config-hint">Escolha quais ferramentas ficam no menu lateral. Para mudar a ordem, use <b>Organizar atalhos</b> no próprio menu.</p>
+            <div className="agenda-settings-links"><button type="button" className="secondary-button" onClick={onOpenMenuSettings}><LayoutGrid size={16} /> Personalizar atalhos</button></div>
           </div>
+          <details className="config-section agenda-settings-digest" onToggle={event => { if (event.currentTarget.open) setDigestOpened(true) }}>
+            <summary>Resumo semanal por e-mail <small>Com conta</small></summary>
+            {digestOpened && <WeeklyDigestSettings />}
+          </details>
         </div>
       </section>
     </div>
   )
 }
 
-function DocsDialog({ onClose }: { onClose: () => void }) {
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => event.key === 'Escape' && onClose()
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [onClose])
 
-  return (
-    <div className="modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
-      <section className="admin-dialog docs-dialog" role="dialog" aria-modal="true" aria-labelledby="docs-title">
-        <div className="dialog-header">
-          <div><p className="eyebrow dark">AJUDA</p><h2 id="docs-title">Como funciona a Agenda</h2></div>
-          <button className="icon-button" onClick={onClose} aria-label="Fechar"><X /></button>
-        </div>
-        <div className="config-content">
-          <div className="config-section">
-            <h3>O que é</h3>
-            <p>Um calendário mensal com as tarefas, lições, trabalhos e eventos da sua turma. A leitura é pública — não precisa de login para consultar.</p>
-          </div>
-
-          <div className="config-section">
-            <h3>Tipos de atividade</h3>
-            <div className="docs-type-legend">
-              {ACTIVITY_TYPES.map((type) => (
-                <span key={type} className="docs-type-item">
-                  <span className="chip-dot" style={{ background: ACTIVITY_TYPE_COLORS[type] }} />
-                  {ACTIVITY_TYPE_LABELS[type]}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          <div className="config-section">
-            <h3>Matéria</h3>
-            <p>Cada atividade pode ter uma matéria associada (opcional). Use o filtro "Todas as matérias" ao lado do seletor de turma para ver só a matéria que te interessa.</p>
-          </div>
-
-          <div className="config-section">
-            <h3>Sua turma</h3>
-            <p>Na primeira visita, você escolhe sua turma e o navegador lembra essa escolha. Dá pra trocar quando quiser pelo seletor no topo da página — outras turmas continuam acessíveis, só a sua fica salva como padrão.</p>
-          </div>
-
-          <div className="config-section">
-            <h3>Sugerir uma atividade</h3>
-            <p>Qualquer aluno pode sugerir uma atividade pelo botão "Sugerir atividade", sem precisar de login. O representante da turma avalia: se aprovar, a atividade já entra na agenda automaticamente. Você acompanha o status (pendente/aprovada/rejeitada) em "Minhas sugestões", no menu.</p>
-          </div>
-
-          <div className="config-section">
-            <h3>Área administrativa</h3>
-            <p>Cada turma tem um ou mais representantes, que fazem login para criar, editar e excluir atividades e avaliar sugestões. Um representante só gerencia a própria turma; o super-admin gerencia todas e também lê os comentários enviados em "Comentar melhoria". O card de cada atividade mostra o e-mail de quem publicou, pra facilitar contato.</p>
-          </div>
-
-          <div className="config-section">
-            <h3>Eventos gerais</h3>
-            <p>Além das atividades de cada turma, qualquer representante (ou o super-admin) pode criar um <strong>evento geral</strong> — aparece com o selo "Geral" no calendário de todas as turmas ao mesmo tempo. Só quem criou (ou o super-admin) pode editar ou excluir depois.</p>
-          </div>
-
-          <div className="config-section">
-            <h3>Personalização</h3>
-            <p>Em Configurações (menu) dá pra trocar o tema (Padrão, Escuro ou Cyberpunk com cor neon à sua escolha), ajustar tamanho da fonte, ativar alto contraste e reduzir animações. O site também conta com o VLibras (tradutor de Libras), sempre disponível no canto da tela.</p>
-          </div>
-
-          <div className="config-section">
-            <h3>Seus dados</h3>
-            <p>O navegador guarda preferências como a turma selecionada, o tema e os ajustes de acessibilidade.</p>
-            {SQL_ENABLED && <p>Para medir o uso da Agenda, registramos o ID da conta em acessos com login. Em visitas anônimas, registramos um código diário derivado do IP, sem guardar o endereço em si. Os registros são removidos após 90 dias.</p>}
-          </div>
-
-          <div className="config-section muted">
-            <h3>Encontrou um problema?</h3>
-            <p>Manda pra gente em "Comentar melhoria", no menu.</p>
-          </div>
-        </div>
-      </section>
-    </div>
-  )
-}
-
-function TurmaPickerModal({ classNames, onChoose, onRequest }: { classNames: string[]; onChoose: (turmaId: string) => void; onRequest: () => void }) {
+function TurmaPickerModal({ classNames, onChoose, onRequest, onHelp }: { classNames: string[]; onChoose: (turmaId: string) => void; onRequest: () => void; onHelp: () => void }) {
   const [search, setSearch] = useState('')
   const options = classNames.filter((name) => name.toLowerCase().includes(search.trim().toLowerCase()))
   return (
@@ -1033,7 +984,8 @@ function TurmaPickerModal({ classNames, onChoose, onRequest }: { classNames: str
       <section className="turma-picker" role="dialog" aria-modal="true" aria-labelledby="turma-picker-title">
         <div className="login-symbol"><Calendar /></div>
         <h3 id="turma-picker-title">Qual é a sua turma?</h3>
-        <p>O app vai lembrar essa escolha no seu navegador. Você pode trocar de turma quando quiser pelo seletor no topo da página.</p>
+        <p>Escolha uma turma para consultar as atividades sem login. Você pode trocar de turma no topo da página.</p>
+        <button type="button" className="text-button agenda-first-visit-guide" onClick={onHelp}>O que posso fazer na Agenda?</button>
         <input
           aria-label="Buscar turma"
           placeholder="Buscar turma"
