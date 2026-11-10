@@ -1,6 +1,6 @@
-import { Component, type FormEvent, type ReactNode, useEffect, useMemo, useRef, useState, lazy, Suspense } from 'react'
+import { Component, type FormEvent, type ReactNode, useCallback, useEffect, useMemo, useRef, useState, lazy, Suspense } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowDown, ArrowUp, GripVertical, Bell, BookOpen, Calendar, CalendarClock, Check, ChevronLeft, ChevronRight, DoorOpen, ExternalLink, History, LayoutGrid, KeyRound, Lightbulb, ListChecks, LoaderCircle, MapPin, Menu, MessageSquarePlus, Plus, Settings, StickyNote, UserRound, Vote, X } from 'lucide-react'
+import { Calendar, CalendarClock, Check, ChevronLeft, ChevronRight, DoorOpen, ExternalLink, History, LayoutGrid, Lightbulb, LoaderCircle, Menu, Plus, Settings, StickyNote, Vote, X } from 'lucide-react'
 import { createUserWithEmailAndPassword, onAuthStateChanged, signInWithEmailAndPassword, type User } from 'firebase/auth'
 import { signOut } from './sessionActions'
 import { requestPasswordReset } from './passwordReset'
@@ -32,7 +32,10 @@ import { latestUnseenUpdate, markSystemUpdateSeen, readSeenSystemUpdateId, type 
 import { NEON_COLORS, NEON_COLOR_LABELS, NEON_COLOR_SWATCHES, THEME_LABELS, THEME_PREVIEW, THEMES, readStoredNeon, readStoredTheme, storeNeon, storeTheme, type NeonColor, type Theme } from './theme'
 import { FONT_SCALES, FONT_SCALE_LABELS, readStoredFontScale, readStoredHighContrast, readStoredReduceMotion, storeFontScale, storeHighContrast, storeReduceMotion, type FontScale } from './accessibility'
 import { loadOrClaimAdminProfile } from './adminAccess'
-import { DEFAULT_MENU_SHORTCUTS, readMenuShortcuts, storeMenuShortcuts, type MenuShortcutId } from './menuShortcuts'
+import { DEFAULT_MENU_SHORTCUTS, MENU_SHORTCUTS_KEY, readAgendaMenuDialog, readMenuShortcuts, storeMenuShortcuts, type MenuShortcutId } from './menuShortcuts'
+import { IntegratedMenu } from './IntegratedMenu'
+import { menuOptionSections, type MoreOption, type MoreOptionSection } from './menuCatalog'
+import './integratedMenu.css'
 import { SyncStatus } from './SyncStatus'
 import { recordAgendaAccess } from './agendaAccess'
 import { SQL_ENABLED } from './dataBackend'
@@ -90,6 +93,7 @@ function App() {
   const [calendarProfile, setCalendarProfile] = useState<AdminProfile | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
   const [menuShortcuts, setMenuShortcuts] = useState(readMenuShortcuts)
+  const [linkedMenuDialog, setLinkedMenuDialog] = useState(() => readAgendaMenuDialog(window.location.hash))
   const [moreOptionsOpen, setMoreOptionsOpen] = useState(window.location.hash === '#opcoes')
   const [kanbanOpen, setKanbanOpen] = useState(window.location.hash.split('?')[0] === '#kanban')
   const [compareMode, setCompareMode] = useState(false)
@@ -122,6 +126,7 @@ function App() {
       if (event.key === null || event.key === 'tech-2d:preferredClass' || event.key === 'agenda:turma') {
         setTurmaId(readPreferredTurma())
       }
+      if (event.key === null || event.key === MENU_SHORTCUTS_KEY) setMenuShortcuts(readMenuShortcuts())
       if (event.key === null || ['agenda:theme', 'agenda:neon', 'agenda:fontScale', 'agenda:highContrast', 'agenda:reduceMotion'].includes(event.key)) {
         setThemeState(readStoredTheme())
         setNeonState(readStoredNeon())
@@ -209,7 +214,9 @@ function App() {
   const unseenSystemUpdate = updatesReady && !updatesError
     ? latestUnseenUpdate(systemUpdates, seenSystemUpdateId)
     : null
-  const showSystemUpdate = unseenSystemUpdate && !adminOpen && !updatesOpen && !linkedActivityId
+  const menuDialogOpen = linkedMenuDialog || notificationsOpen || updatesOpen || pollsOpen || noticesOpen
+    || suggestOpen || classRequestOpen || feedbackOpen || mySuggestionsOpen || configOpen || profilesOpen || docsOpen
+  const showSystemUpdate = unseenSystemUpdate && !adminOpen && !menuDialogOpen && !linkedActivityId
 
   const announcementUpdatedMs = announcement?.updatedAt?.toDate().getTime() ?? 0
   const showAnnouncement = Boolean(turmaId) && announcementUpdatedMs > 0 && announcementUpdatedMs > announcementSeenAt
@@ -218,6 +225,7 @@ function App() {
     const syncOptionsPage = () => {
       setMoreOptionsOpen(window.location.hash === '#opcoes')
       setKanbanOpen(window.location.hash.split('?')[0] === '#kanban')
+      setLinkedMenuDialog(readAgendaMenuDialog(window.location.hash))
       const linkedId = readActivityLink(window.location.hash)
       setLinkedActivityId(linkedId)
       if (linkedId) { setSelectedDay(null); setDayPreview(null); setAdminOpen(false); setMenuOpen(false) }
@@ -229,6 +237,31 @@ function App() {
       window.removeEventListener('popstate', syncOptionsPage)
     }
   }, [])
+
+  const openMenuDialog = useCallback((id: NonNullable<ReturnType<typeof readAgendaMenuDialog>>) => {
+    if (id === 'notifications') {
+      setNotificationsOpen(true)
+      if (turmaId) setNotificationsSeenAt(markNotificationsSeenNow(turmaId))
+      return
+    }
+    const open = {
+      updates: setUpdatesOpen, polls: setPollsOpen, notices: setNoticesOpen, suggestActivity: setSuggestOpen,
+      requestClass: setClassRequestOpen, feedback: setFeedbackOpen, mySuggestions: setMySuggestionsOpen,
+      settings: setConfigOpen, profiles: setProfilesOpen, help: setDocsOpen,
+    }
+    open[id](true)
+  }, [turmaId])
+
+  useEffect(() => {
+    if (!linkedMenuDialog) return
+    if (!turmaId && ['polls', 'notices', 'suggestActivity', 'notifications'].includes(linkedMenuDialog)) return
+    setAdminOpen(false)
+    setMenuOpen(false)
+    setSelectedDay(null)
+    openMenuDialog(linkedMenuDialog)
+    setLinkedMenuDialog(null)
+    window.history.replaceState(null, '', window.location.pathname + window.location.search)
+  }, [linkedMenuDialog, openMenuDialog, turmaId])
 
   function chooseTurma(value: string) {
     setTurmaId(value)
@@ -386,24 +419,27 @@ function App() {
     action()
   }
   const menuSections = menuOptionSections({
-    turmaId,
-    onOpenNotifications: menuAction(() => { setNotificationsOpen(true); if (turmaId) setNotificationsSeenAt(markNotificationsSeenNow(turmaId)) }),
-    onOpenUpdates: menuAction(() => setUpdatesOpen(true)),
-    onOpenPolls: menuAction(() => setPollsOpen(true)),
-    onOpenNotices: menuAction(() => setNoticesOpen(true)),
-    onSuggestActivity: menuAction(() => setSuggestOpen(true)),
-    onRequestClass: menuAction(() => setClassRequestOpen(true)),
-    onOpenFeedback: menuAction(() => setFeedbackOpen(true)),
-    onOpenMySuggestions: menuAction(() => setMySuggestionsOpen(true)),
-    onOpenAdmin: menuAction(openAdmin),
-    onOpenConfig: menuAction(() => setConfigOpen(true)),
-    onOpenProfiles: menuAction(() => setProfilesOpen(true)),
-    onOpenDocs: menuAction(() => setDocsOpen(true)),
-    onOpenKanban: menuAction(() => {
-      window.history.pushState(null, '', '#kanban')
-      setKanbanOpen(true)
-      window.scrollTo(0, 0)
-    }),
+    hasTurma: Boolean(turmaId),
+    todayClassesUrl: turmaId ? teacherFinderTodayUrl(turmaId) : undefined,
+    actions: {
+      notifications: menuAction(() => openMenuDialog('notifications')),
+      updates: menuAction(() => openMenuDialog('updates')),
+      polls: menuAction(() => openMenuDialog('polls')),
+      notices: menuAction(() => openMenuDialog('notices')),
+      suggestActivity: menuAction(() => openMenuDialog('suggestActivity')),
+      requestClass: menuAction(() => openMenuDialog('requestClass')),
+      feedback: menuAction(() => openMenuDialog('feedback')),
+      mySuggestions: menuAction(() => openMenuDialog('mySuggestions')),
+      admin: menuAction(openAdmin),
+      settings: menuAction(() => openMenuDialog('settings')),
+      profiles: menuAction(() => openMenuDialog('profiles')),
+      help: menuAction(() => openMenuDialog('help')),
+      kanban: menuAction(() => {
+        window.history.pushState(null, '', '#kanban')
+        setKanbanOpen(true)
+        window.scrollTo(0, 0)
+      }),
+    },
   })
 
   function toggleMenuShortcut(id: MenuShortcutId) {
@@ -610,7 +646,7 @@ function App() {
       {!turmaId && !classRequestOpen && !kanbanOpen && !linkedActivityId && <TurmaPickerModal classNames={classNames} onChoose={chooseTurma} onRequest={() => setClassRequestOpen(true)} />}
 
       {menuOpen && (
-        <SideMenu
+        <IntegratedMenu
           onClose={() => setMenuOpen(false)}
           options={menuSections.flatMap(section => section.items)}
           shortcuts={menuShortcuts}
@@ -648,7 +684,7 @@ function App() {
 
       {notificationsOpen && <NotificationsDialog activities={recentActivities} onClose={() => setNotificationsOpen(false)} />}
 
-      {showAnnouncement && announcement && updatesReady && !showSystemUpdate && !linkedActivityId && (
+      {showAnnouncement && announcement && updatesReady && !showSystemUpdate && !linkedActivityId && !menuDialogOpen && (
         <AnnouncementModal
           message={announcement.message}
           onClose={() => {
@@ -740,164 +776,6 @@ function VLibrasWidget() {
   )
 }
 
-function SideMenu({ onClose, options, shortcuts, onOpenMoreOptions, onReorder, unseenNotifications, latestUpdateIsNew }: {
-  onClose: () => void
-  options: MoreOption[]
-  shortcuts: MenuShortcutId[]
-  onOpenMoreOptions: () => void
-  onReorder: (ids: MenuShortcutId[]) => void
-  unseenNotifications: number
-  latestUpdateIsNew: boolean
-}) {
-  const [organizing, setOrganizing] = useState(false)
-  const [draggedId, setDraggedId] = useState<MenuShortcutId | null>(null)
-  const [dropTarget, setDropTarget] = useState<MenuShortcutId | null>(null)
-  const [orderStatus, setOrderStatus] = useState('')
-
-  function moveShortcut(id: MenuShortcutId, targetId: MenuShortcutId) {
-    const from = shortcuts.indexOf(id)
-    const to = shortcuts.indexOf(targetId)
-    if (from < 0 || to < 0 || from === to) return
-    const next = [...shortcuts]
-    next.splice(from, 1)
-    next.splice(to, 0, id)
-    onReorder(next)
-    setOrderStatus(`${options.find(item => item.id === id)?.title ?? 'Atalho'} na posição ${to + 1}. Ordem salva.`)
-  }
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => event.key === 'Escape' && onClose()
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [onClose])
-
-  return (
-    <div className="drawer-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
-      <aside className="side-menu" role="dialog" aria-modal="true" aria-labelledby="menu-title">
-        <div className="dialog-header">
-          <h2 id="menu-title">Menu</h2>
-          <button className="icon-button" onClick={onClose} aria-label="Fechar"><X /></button>
-        </div>
-        {shortcuts.length > 1 && <div className="side-menu-organize">
-          <button type="button" className="secondary-button" aria-pressed={organizing} onClick={() => { setOrganizing(!organizing); setDraggedId(null); setDropTarget(null) }}>
-            {organizing ? <Check size={16} /> : <GripVertical size={16} />}{organizing ? 'Concluir organização' : 'Organizar atalhos'}
-          </button>
-          {organizing && <p>Arraste pela alça ou use as setas. A ordem é salva automaticamente.</p>}
-        </div>}
-        <span className="sr-only" role="status" aria-live="polite">{orderStatus}</span>
-        <nav className="side-menu-list" aria-label="Atalhos principais">
-          {shortcuts.map((id, index) => {
-            const option = options.find(item => item.id === id)
-            if (!option) return null
-            const content = <><span className="side-menu-shortcut-icon" aria-hidden="true">{option.icon}</span><span>{option.title}</span>
-              {id === 'notifications' && unseenNotifications > 0 && <span className="notif-count">{unseenNotifications}</span>}
-              {id === 'updates' && latestUpdateIsNew && <span className="notif-count">Novo</span>}
-              {option.href && <ExternalLink size={14} className="external-icon" aria-hidden="true" />}
-            </>
-            if (organizing) return <div key={id} className={`side-menu-sort-row${draggedId === id ? ' dragging' : ''}${dropTarget === id ? ' drop-target' : ''}`}
-              onDragOver={event => { if (draggedId && draggedId !== id) { event.preventDefault(); event.dataTransfer.dropEffect = 'move'; setDropTarget(id) } }}
-              onDrop={event => { event.preventDefault(); if (draggedId) moveShortcut(draggedId, id); setDraggedId(null); setDropTarget(null) }}>
-              <button type="button" className="side-menu-drag-handle" draggable aria-label={`Arrastar ${option.title}`} title="Arraste para mudar a posição"
-                onDragStart={event => { event.dataTransfer.setData('text/plain', id); event.dataTransfer.effectAllowed = 'move'; setDraggedId(id) }}
-                onDragEnd={() => { setDraggedId(null); setDropTarget(null) }}><GripVertical size={18} /></button>
-              <span className="side-menu-sort-label">{content}</span>
-              <div className="side-menu-sort-actions">
-                <button type="button" aria-label={`Mover ${option.title} para cima`} disabled={index === 0} onClick={() => moveShortcut(id, shortcuts[index - 1])}><ArrowUp size={16} /></button>
-                <button type="button" aria-label={`Mover ${option.title} para baixo`} disabled={index === shortcuts.length - 1} onClick={() => moveShortcut(id, shortcuts[index + 1])}><ArrowDown size={16} /></button>
-              </div>
-            </div>
-            return option.href
-              ? <a key={id} className="side-menu-external" href={option.href} target="_blank" rel="noopener noreferrer" onClick={onClose}>{content}</a>
-              : <button type="button" key={id} onClick={option.onClick} disabled={option.disabled} title={option.disabled ? option.description : undefined}>{content}</button>
-          })}
-          {shortcuts.length === 0 && <p className="side-menu-empty">Escolha seus atalhos em “Ver mais opções”.</p>}
-        </nav>
-        <div className="side-menu-more">
-          <p>Precisa de outra ferramenta?</p>
-          <button type="button" className="side-menu-more-button" onClick={onOpenMoreOptions}>
-            <span className="side-menu-more-icon"><LayoutGrid size={19} /></span>
-            <span className="side-menu-more-copy"><strong>Ver mais opções</strong><small>Todos os recursos, por categoria</small></span>
-            <ChevronRight size={18} aria-hidden="true" />
-          </button>
-        </div>
-      </aside>
-    </div>
-  )
-}
-
-type MoreOption = {
-  id: MenuShortcutId
-  title: string
-  description: string
-  icon: ReactNode
-  onClick?: () => void
-  href?: string
-  disabled?: boolean
-}
-
-type MoreOptionSection = { title: string; description: string; items: MoreOption[] }
-
-function menuOptionSections({ turmaId, onOpenNotifications, onOpenUpdates, onOpenPolls, onOpenNotices, onSuggestActivity, onRequestClass, onOpenFeedback, onOpenMySuggestions, onOpenAdmin, onOpenConfig, onOpenProfiles, onOpenDocs, onOpenKanban }: {
-  turmaId: string | null
-  onOpenNotifications: () => void
-  onOpenUpdates: () => void
-  onOpenPolls: () => void
-  onOpenNotices: () => void
-  onSuggestActivity: () => void
-  onRequestClass: () => void
-  onOpenFeedback: () => void
-  onOpenMySuggestions: () => void
-  onOpenAdmin: () => void
-  onOpenConfig: () => void
-  onOpenProfiles: () => void
-  onOpenDocs: () => void
-  onOpenKanban: () => void
-}): MoreOptionSection[] {
-  const needsTurma = !turmaId
-  return [
-    {
-      title: 'Acompanhar a turma',
-      description: 'Avisos e atividades da turma selecionada.',
-      items: [
-        { id: 'notifications', title: 'Notificações', description: 'Veja atividades adicionadas ou alteradas recentemente.', icon: <Bell />, onClick: onOpenNotifications },
-        { id: 'updates', title: 'Atualizações', description: 'Confira o que mudou no sistema da Agenda.', icon: <History />, onClick: onOpenUpdates },
-        { id: 'polls', title: 'Enquetes da turma', description: needsTurma ? 'Escolha uma turma para ver e responder enquetes.' : 'Acompanhe votações e participe das decisões.', icon: <Vote />, onClick: onOpenPolls, disabled: needsTurma },
-        { id: 'notices', title: 'Quadro de avisos', description: needsTurma ? 'Escolha uma turma para abrir os avisos.' : 'Consulte comunicados importantes da turma.', icon: <StickyNote />, onClick: onOpenNotices, disabled: needsTurma },
-        { id: 'suggestActivity', title: 'Sugerir atividade', description: needsTurma ? 'Escolha uma turma antes de enviar uma sugestão.' : 'Peça para incluir uma atividade na agenda.', icon: <Lightbulb />, onClick: onSuggestActivity, disabled: needsTurma },
-        { id: 'todayClasses', title: 'Aulas de hoje', description: needsTurma ? 'Escolha uma turma para consultar as aulas.' : 'Abra a localização das aulas de hoje.', icon: <CalendarClock />, href: turmaId ? teacherFinderTodayUrl(turmaId) : undefined, disabled: needsTurma },
-      ],
-    },
-    {
-      title: 'Participar e colaborar',
-      description: 'Ajude a melhorar e ampliar a Agenda.',
-      items: [
-        { id: 'requestClass', title: 'Pedir agenda para minha turma', description: 'Solicite a criação de uma agenda para outra sala.', icon: <Plus />, onClick: onRequestClass },
-        { id: 'feedback', title: 'Comentar melhoria', description: 'Converse com a equipe sobre uma ideia para o sistema.', icon: <MessageSquarePlus />, onClick: onOpenFeedback },
-        { id: 'mySuggestions', title: 'Minhas sugestões', description: 'Acompanhe o andamento das ideias que você enviou.', icon: <ListChecks />, onClick: onOpenMySuggestions },
-        { id: 'admin', title: 'Sou representante', description: 'Acesse as ferramentas para representantes de turma.', icon: <KeyRound />, onClick: onOpenAdmin },
-      ],
-    },
-    {
-      title: 'Conta e ajuda',
-      description: 'Personalize sua experiência e encontre orientações.',
-      items: [
-        { id: 'kanban', title: 'Meu Kanban', description: 'Entre com sua conta para organizar tarefas em quadros privados e personalizáveis.', icon: <LayoutGrid />, onClick: onOpenKanban },
-        { id: 'settings', title: 'Configurações', description: 'Ajuste tema, tamanho do texto e acessibilidade.', icon: <Settings />, onClick: onOpenConfig },
-        { id: 'profiles', title: 'Perfis da comunidade', description: 'Edite seu perfil e conheça outras pessoas.', icon: <UserRound />, onClick: onOpenProfiles },
-        { id: 'help', title: 'Como funciona', description: 'Entenda os recursos e como usar a Agenda.', icon: <BookOpen />, onClick: onOpenDocs },
-      ],
-    },
-    {
-      title: 'Outros projetos',
-      description: 'Acesse outras ferramentas da comunidade 2ºD Tech.',
-      items: [
-        { id: 'teachers', title: 'Cadê o professor?', description: 'Pesquise professores, matérias e salas.', icon: <MapPin />, href: 'https://tech-2d.github.io/professores/' },
-        { id: 'pong', title: 'Liga Germinare Pong', description: 'Acesse a liga de tênis de mesa.', icon: <TableTennisPaddle />, href: 'https://ligagerminare-pong.vercel.app/' },
-      ],
-    },
-  ]
-
-}
-
 function MoreOptionsPage({ turmaId, onBack, sections, shortcuts, onToggleShortcut, onResetShortcuts }: {
   turmaId: string | null
   onBack: () => void
@@ -919,7 +797,7 @@ function MoreOptionsPage({ turmaId, onBack, sections, shortcuts, onToggleShortcu
       </header>
       <section className="menu-customize-note" aria-labelledby="customize-menu-title">
         <div><h2 id="customize-menu-title">Seu menu lateral</h2>
-          <p>Marque nos cartões os atalhos que quer no menu. A escolha é salva automaticamente neste navegador. “Ver mais opções” fica sempre disponível.</p>
+          <p>Marque nos cartões os atalhos que quer no menu. A seleção e a ordem valem para a Agenda e o Cadê o professor? neste navegador.</p>
           <span role="status" aria-live="polite">{shortcuts.length} {shortcuts.length === 1 ? 'atalho selecionado' : 'atalhos selecionados'}</span>
         </div>
         <button type="button" className="secondary-button" onClick={onResetShortcuts}>Restaurar padrão</button>
@@ -958,16 +836,6 @@ function MoreOptionCard({ title, description, icon, onClick, href, disabled }: M
 
   if (href) return <a className="more-option-card" href={href} target="_blank" rel="noopener noreferrer">{content}</a>
   return <button type="button" className="more-option-card" onClick={onClick} disabled={disabled}>{content}</button>
-}
-
-function TableTennisPaddle() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" aria-hidden="true">
-      <path d="m13.3 14.2 6.2 7" strokeWidth="3.2" />
-      <ellipse cx="9.2" cy="9.1" rx="5.7" ry="7" transform="rotate(-38 9.2 9.1)" fill="currentColor" stroke="none" />
-      <circle cx="19" cy="5" r="2.2" strokeWidth="1.8" />
-    </svg>
-  )
 }
 
 function ConfigDialog({
