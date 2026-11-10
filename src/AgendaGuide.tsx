@@ -59,7 +59,10 @@ export function AgendaGuide({ hasClass, onClose, onCalendar, onFeature }: {
           <details className="agenda-guide-data">
             <summary>Seus dados</summary>
             <p>O navegador guarda preferências como a turma selecionada, o tema e os ajustes de acessibilidade.</p>
-            {SQL_ENABLED && <p>Para medir o uso da Agenda, registramos o ID da conta em acessos com login. Em visitas anônimas, registramos um código diário derivado do IP, sem guardar o endereço em si. Os registros são removidos após 90 dias.</p>}
+            {SQL_ENABLED && <>
+              <p>Para medir o uso da Agenda, registramos o ID da conta em acessos com login. Em visitas anônimas, registramos um código diário derivado do IP.</p>
+              <p>Superadministradores podem consultar o último acesso de contas, incluindo e-mail e UID, e gerenciar bloqueios por e-mail ou rede. O IP é convertido em um código. Os registros de acesso são removidos após 90 dias, e os bloqueios ficam ativos até serem removidos.</p>
+            </>}
           </details>
         </div>
       </section>

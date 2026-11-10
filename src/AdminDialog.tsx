@@ -7,6 +7,7 @@ import { requestPasswordReset } from './passwordReset'
 import { StorageAdminPanel } from './StorageAdminPanel'
 import { RepresentativesPanel } from './RepresentativesPanel'
 import { AgendaAccessPanel } from './AgendaAccessPanel'
+import { AgendaUsersPanel } from './AgendaUsersPanel'
 import { observePublicInfo } from './publicInfo'
 import { ATTACHMENTS_ENABLED, deleteActivityWithAttachments, formatAttachmentSize, MAX_ATTACHMENTS, removeAttachment, uploadAttachment, validateAttachment } from './attachments'
 import { FirebaseError } from 'firebase/app'
@@ -87,7 +88,7 @@ export default function AdminDialog({ publicTurmaId, classNames, quickCreateDate
   const [updateBody, setUpdateBody] = useState('')
   const [updateFeedbackId, setUpdateFeedbackId] = useState('')
   const [adminSearch, setAdminSearch] = useState('')
-  const [adminTab, setAdminTab] = useState<'activities' | 'recurrences' | 'retention' | 'notices' | 'chat' | 'suggestions' | 'representatives' | 'classes' | 'site' | 'storage' | 'access'>('activities')
+  const [adminTab, setAdminTab] = useState<'activities' | 'recurrences' | 'retention' | 'notices' | 'chat' | 'suggestions' | 'representatives' | 'classes' | 'site' | 'storage' | 'access' | 'users'>('activities')
   const [recurrences, setRecurrences] = useState<RecurringActivity[]>([])
   const [repeatWeekly, setRepeatWeekly] = useState(false)
   const [repeatCustom, setRepeatCustom] = useState(false)
@@ -947,6 +948,7 @@ export default function AdminDialog({ publicTurmaId, classNames, quickCreateDate
                         { id: 'classes' as const, label: 'Novas turmas', icon: <Plus size={15} />, count: classRequests.length },
                         { id: 'storage' as const, label: 'Arquivos', icon: <HardDrive size={15} /> },
                         ...(SQL_ENABLED ? [{ id: 'access' as const, label: 'Estatísticas', icon: <BarChart3 size={15} /> }] : []),
+                        ...(SQL_ENABLED ? [{ id: 'users' as const, label: 'Usuários', icon: <Users size={15} /> }] : []),
                         { id: 'site' as const, label: 'Site', icon: <Globe size={15} />, count: pendingFeedbackCount },
                       ],
                     }] : []),
@@ -1116,6 +1118,7 @@ export default function AdminDialog({ publicTurmaId, classNames, quickCreateDate
                   )}
                   {isSuperAdmin && adminTab === 'storage' && <StorageAdminPanel />}
                   {SQL_ENABLED && isSuperAdmin && adminTab === 'access' && <AgendaAccessPanel key={user.uid} user={user} />}
+                  {SQL_ENABLED && isSuperAdmin && adminTab === 'users' && <AgendaUsersPanel key={user.uid} user={user} />}
                   {adminTab === 'site' && (
                     <>
                       <div className="admin-list-heading"><strong>Atualizações do sistema</strong></div>

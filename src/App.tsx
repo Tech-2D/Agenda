@@ -106,6 +106,7 @@ function App() {
   const [pollsOpen, setPollsOpen] = useState(false)
   const [noticesOpen, setNoticesOpen] = useState(false)
   const [calendarUser, setCalendarUser] = useState<User | null>(null)
+  const [accessBlocked, setAccessBlocked] = useState(false)
   const [docsOpen, setDocsOpen] = useState(false)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [notificationsSeenAt, setNotificationsSeenAt] = useState(0)
@@ -147,13 +148,18 @@ function App() {
 
   useEffect(() => {
     let previousUid: string | null | undefined
-    return observeCalendarSession({
+    let revision = 0
+    const stop = observeCalendarSession({
       subscribeAccount: change => onAuthStateChanged(auth, account => {
         const uid = account?.uid ?? null
         setCalendarUser(account)
         change(uid)
-        if (previousUid === undefined || (uid !== null && uid !== previousUid)) {
-          void recordAgendaAccess(account)
+        if (uid !== previousUid) {
+          const current = ++revision
+          setAccessBlocked(false)
+          void recordAgendaAccess(account).then(blocked => {
+            if (revision === current && auth.currentUser?.uid === account?.uid) setAccessBlocked(blocked)
+          })
         }
         previousUid = uid
       }),
@@ -161,6 +167,7 @@ function App() {
       publish: setCalendarProfile,
       reset: () => { setQuickCreateDate(null); setQuickEditActivity(null) },
     })
+    return () => { revision++; stop() }
   }, [])
 
 
@@ -465,6 +472,21 @@ function App() {
     setMenuShortcuts(next)
     storeMenuShortcuts(next)
   }
+
+  if (accessBlocked) return (
+    <main className="main-content">
+      <SyncStatus />
+      <section className="state-card error" aria-labelledby="agenda-blocked-title">
+        <DoorOpen aria-hidden="true" />
+        <div>
+          <h1 id="agenda-blocked-title">Acesso à Agenda bloqueado</h1>
+          <p>Se precisar de ajuda, fale com a administração da Agenda.</p>
+          <button type="button" className="secondary-button" onClick={() => window.location.reload()}>Verificar novamente</button>
+          {calendarUser && <button type="button" className="text-button" onClick={() => void signOut(auth)}>Sair da conta</button>}
+        </div>
+      </section>
+    </main>
+  )
 
   return (
     <div className="app-shell">
