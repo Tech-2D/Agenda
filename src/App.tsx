@@ -491,23 +491,18 @@ function App() {
   return (
     <div className="app-shell">
       <SyncStatus />
-      <header className="topbar">
-        <a className="brand" href="#inicio" aria-label="Agenda da turma — início">
-          <span className="brand-mark"><Calendar size={21} strokeWidth={2.3} /></span>
-          <span>Agenda da turma</span>
-        </a>
-        <button
-          type="button"
-          className="menu-trigger"
-          aria-label="Abrir menu"
-          aria-haspopup="dialog"
-          title="Menu"
-          onClick={() => setMenuOpen(true)}
-        >
-          <Menu size={20} strokeWidth={2.3} aria-hidden="true" />
-          {unseenNotifications > 0 && <span className="notif-dot" aria-hidden="true" />}
-        </button>
-      </header>
+      <button
+        type="button"
+        className="menu-trigger"
+        aria-label="Abrir menu"
+        aria-haspopup="dialog"
+        aria-expanded={menuOpen}
+        title="Menu"
+        onClick={() => setMenuOpen(true)}
+      >
+        <Menu size={22} strokeWidth={2.3} aria-hidden="true" />
+        {unseenNotifications > 0 && <span className="notif-dot" aria-hidden="true" />}
+      </button>
 
       {kanbanOpen ? (
         <DialogLoadBoundary><Suspense fallback={<div className="state-card" role="status"><LoaderCircle className="spin" /><p>Carregando seu Kanban…</p></div>}>
