@@ -84,19 +84,21 @@ export async function handleModeration(request, env, { connect, verify, reply, r
       const blockOffset = Number(query.get('blockOffset') || 0)
       const validOffset = value => Number.isInteger(value) && value >= 0 && value <= 10000
       if (search.length > 254 || !validOffset(offset) || !validOffset(blockOffset)) return fail('Confira a busca.')
-      const { rows } = await db.query(`SELECT u.uid, u.email, u.last_seen_at AS "lastSeen",
+      const accounts = await env.AGENDA_DIRECTORY.list(search, offset)
+      const { rows } = await db.query(`SELECT u.uid, u.email, recent.last_seen_at AS "lastSeen",
         (a.data->>'role' = 'superadmin') IS TRUE AS protected,
         EXISTS(SELECT FROM tech2d.agenda_blocks b WHERE b.kind='email' AND b.target=u.email) AS "emailBlocked",
-        EXISTS(SELECT FROM tech2d.agenda_blocks b WHERE b.kind='ip' AND b.target=u.network_key) AS "networkBlocked",
-        u.network_key IS NOT NULL AS "hasNetwork"
-        FROM tech2d.agenda_recent_users u LEFT JOIN tech2d.app_documents a ON a.path='admins/' || u.uid
-        WHERE u.last_seen_at >= now() - interval '7 days'
-        AND ($1='' OR strpos(coalesce(u.email,''),$1)>0 OR strpos(lower(u.uid),$1)>0)
-        ORDER BY u.last_seen_at DESC,u.uid LIMIT 51 OFFSET $2`, [search, offset])
+        EXISTS(SELECT FROM tech2d.agenda_blocks b WHERE b.kind='ip' AND b.target=recent.network_key) AS "networkBlocked",
+        (recent.network_key IS NOT NULL AND recent.last_seen_at >= now() - interval '7 days') AS "hasNetwork"
+        FROM jsonb_array_elements($1::jsonb) WITH ORDINALITY AS account
+          CROSS JOIN LATERAL jsonb_to_record(account.value) AS u(uid text, email text)
+        LEFT JOIN tech2d.agenda_recent_users recent ON recent.uid=u.uid
+        LEFT JOIN tech2d.app_documents a ON a.path='admins/' || u.uid
+        ORDER BY account.ordinality`, [JSON.stringify(accounts.slice(0, 50))])
       const { rows: blocks } = await db.query(`SELECT id, kind,
         CASE WHEN kind='email' THEN target ELSE 'Rede ' || left(target,8) END AS label,
         created_at AS "createdAt" FROM tech2d.agenda_blocks ORDER BY created_at DESC,id LIMIT 51 OFFSET $1`, [blockOffset])
-      return reply({ users: rows.slice(0, 50), hasMore: rows.length > 50, blocks: blocks.slice(0, 50), hasMoreBlocks: blocks.length > 50 })
+      return reply({ users: rows, hasMore: accounts.length > 50, blocks: blocks.slice(0, 50), hasMoreBlocks: blocks.length > 50 })
     }
 
     if (!request.headers.get('Origin')) return fail('Origem obrigatória.', 403)

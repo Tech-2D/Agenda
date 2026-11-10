@@ -17,12 +17,16 @@ const internalPath = '/api/internal/agenda-access-check'
 const visitPath = '/api/agenda-access'
 const ip = '192.0.2.42'
 const serviceKey = 's'.repeat(48)
+const identities = new Map([['owner', 'owner@example.test'], ['student', 'Student@example.test'], ['new-user', 'new@example.test']])
 const env = {
   AGENDA_MODERATION_ENABLED: 'true', AGENDA_ACCESS_HMAC_KEY: 'h'.repeat(48),
   APPLICATION_DATA_ENABLED: 'true', APPLICATION_WRITES_ENABLED: 'true', MIGRATION_READY: 'true',
   WEB_DATA_KEY: serviceKey,
+  AGENDA_DIRECTORY: { async list(search, offset) {
+    return [...identities].map(([uid, email]) => ({ uid, email: email.toLowerCase() }))
+      .filter(({ uid, email }) => uid.includes(search) || email.includes(search)).slice(offset, offset + 51)
+  } },
 }
-const identities = new Map([['owner', 'owner@example.test'], ['student', 'Student@example.test']])
 const worker = createHandler({
   connect: async () => ({ query: engine.query.bind(engine), end: async () => {} }),
   verify: async request => {
@@ -64,10 +68,20 @@ test('only superadmins see recent identities, and an exact network block is reve
   assert.equal((await blocked.json()).code, 'agenda-access-blocked')
   assert.equal((await call(visitPath, { method: 'POST', headers: { 'X-Forwarded-For': ip } })).status, 204)
   const panel = await (await call(usersPath, { token: 'owner' })).json()
-  assert.equal(panel.users[0].networkBlocked, true)
+  assert.equal(panel.users.find(user => user.uid === 'student').networkBlocked, true)
   assert.match(panel.blocks[0].label, /^Rede [a-f0-9]{8}$/)
   assert.equal((await updateBlock({ action: 'unblock', id: panel.blocks[0].id })).status, 200)
   assert.equal((await call(visitPath, { method: 'POST', headers: { 'CF-Connecting-IP': ip } })).status, 204)
+})
+
+test('lists and searches registered accounts without an Agenda visit', async () => {
+  const panel = await (await call(usersPath, { token: 'owner' })).json()
+  assert.equal(panel.users.length, 3)
+  const result = await (await call(usersPath + '?q=NEW%40EXAMPLE.TEST', { token: 'owner' })).json()
+  assert.deepEqual(result.users, [{
+    uid: 'new-user', email: 'new@example.test', lastSeen: null, protected: false,
+    emailBlocked: false, networkBlocked: false, hasNetwork: false,
+  }])
 })
 
 test('email blocks follow verified identities and stay scoped to Agenda data', async () => {
