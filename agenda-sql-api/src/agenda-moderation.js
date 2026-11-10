@@ -84,7 +84,14 @@ export async function handleModeration(request, env, { connect, verify, reply, r
       const blockOffset = Number(query.get('blockOffset') || 0)
       const validOffset = value => Number.isInteger(value) && value >= 0 && value <= 10000
       if (search.length > 254 || !validOffset(offset) || !validOffset(blockOffset)) return fail('Confira a busca.')
-      const accounts = await env.AGENDA_DIRECTORY.list(search, offset)
+      let accounts
+      try {
+        const directory = await env.AGENDA_DIRECTORY.list(search, offset)
+        accounts = directory.accounts
+        if (!Array.isArray(accounts)) throw Error('INVALID_ACCOUNT_DIRECTORY')
+      } catch {
+        return reply({ message: 'O cadastro de contas está temporariamente indisponível. Tente novamente.', code: 'directory-unavailable' }, 503)
+      }
       const { rows } = await db.query(`SELECT u.uid, u.email, recent.last_seen_at AS "lastSeen",
         (a.data->>'role' = 'superadmin') IS TRUE AS protected,
         EXISTS(SELECT FROM tech2d.agenda_blocks b WHERE b.kind='email' AND b.target=u.email) AS "emailBlocked",

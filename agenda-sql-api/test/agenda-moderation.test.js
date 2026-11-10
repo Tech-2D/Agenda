@@ -23,8 +23,9 @@ const env = {
   APPLICATION_DATA_ENABLED: 'true', APPLICATION_WRITES_ENABLED: 'true', MIGRATION_READY: 'true',
   WEB_DATA_KEY: serviceKey,
   AGENDA_DIRECTORY: { async list(search, offset) {
-    return [...identities].map(([uid, email]) => ({ uid, email: email.toLowerCase() }))
+    const accounts = [...identities].map(([uid, email]) => ({ uid, email: email.toLowerCase() }))
       .filter(({ uid, email }) => uid.includes(search) || email.includes(search)).slice(offset, offset + 51)
+    return { accounts }
   } },
 }
 const worker = createHandler({
