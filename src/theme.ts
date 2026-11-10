@@ -1,9 +1,23 @@
-export const THEMES = ['padrao', 'neon'] as const
+export const THEMES = ['padrao', 'rosa', 'roxo', 'escuro', 'cyberpunk', 'neon'] as const
 export type Theme = (typeof THEMES)[number]
 
 export const THEME_LABELS: Record<Theme, string> = {
   padrao: 'Padrão',
+  rosa: 'Rosa claro',
+  roxo: 'Roxo claro',
+  escuro: 'Escuro',
+  cyberpunk: 'Cyberpunk',
   neon: 'Claro com neon',
+}
+
+// Cor de pré-visualização do tema no seletor (não é a paleta inteira, só um aceno visual).
+export const THEME_PREVIEW: Record<Theme, string> = {
+  padrao: '#0e35be',
+  rosa: '#b51e70',
+  roxo: '#7536b5',
+  escuro: '#3b6dff',
+  cyberpunk: 'linear-gradient(135deg, #ff2b54, #25e0ff)',
+  neon: 'linear-gradient(135deg, #e3faff, #25e0ff)',
 }
 
 export const NEON_COLORS = ['vermelho', 'roxo', 'verde', 'azul', 'rosa'] as const
@@ -25,13 +39,13 @@ export const NEON_COLOR_SWATCHES: Record<NeonColor, string> = {
   rosa: '#ff2ec4',
 }
 
-const THEME_KEY = 'professores:theme'
-const NEON_KEY = 'professores:neon'
+const THEME_KEY = 'agenda:theme'
+const NEON_KEY = 'agenda:neon'
 
 export function readStoredTheme(): Theme {
   try {
-    const value = window.localStorage.getItem(THEME_KEY)
-    return (THEMES as readonly string[]).includes(value ?? '') ? value as Theme : 'padrao'
+    const value = window.localStorage.getItem(THEME_KEY) ?? window.localStorage.getItem('professores:theme')
+    return (THEMES as readonly string[]).includes(value ?? '') ? (value as Theme) : 'padrao'
   } catch {
     return 'padrao'
   }
@@ -39,8 +53,8 @@ export function readStoredTheme(): Theme {
 
 export function readStoredNeon(): NeonColor {
   try {
-    const value = window.localStorage.getItem(NEON_KEY)
-    return (NEON_COLORS as readonly string[]).includes(value ?? '') ? value as NeonColor : 'azul'
+    const value = window.localStorage.getItem(NEON_KEY) ?? window.localStorage.getItem('professores:neon')
+    return (NEON_COLORS as readonly string[]).includes(value ?? '') ? (value as NeonColor) : 'azul'
   } catch {
     return 'azul'
   }
@@ -50,7 +64,7 @@ export function storeTheme(theme: Theme) {
   try {
     window.localStorage.setItem(THEME_KEY, theme)
   } catch {
-    // A preferência continua funcionando até a página ser fechada.
+    // localStorage indisponível — a escolha só vale para esta sessão.
   }
 }
 
@@ -58,6 +72,6 @@ export function storeNeon(neon: NeonColor) {
   try {
     window.localStorage.setItem(NEON_KEY, neon)
   } catch {
-    // A preferência continua funcionando até a página ser fechada.
+    // localStorage indisponível — a escolha só vale para esta sessão.
   }
 }

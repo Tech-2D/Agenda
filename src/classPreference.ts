@@ -10,6 +10,11 @@ const PROFESSOR_CLASS_BY_AGENDA_CLASS: Record<string, string> = {
   '2° TECH G': '2º Tec G',
   '2° TECH H': '2º Tec H',
   '2° TECH I': '2º Tec I',
+  '3° TECH AD H': '3º Tec AD H',
+  '3° TECH AD I': '3º Tec AD I',
+  '3° TECH DS E': '3º Tec DS E',
+  '3° TECH DS F': '3º Tec DS F',
+  '3° TECH DS G': '3º Tec DS G',
 }
 
 export function readPreferredClass(): string | null {

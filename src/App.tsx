@@ -42,12 +42,14 @@ import { importDocumentId, parseSchedulesJson } from './importSchedules'
 import { isHappeningNow, matchesSearch, timeToMinutes } from './schedule'
 import { WEEKDAYS, type Schedule, type ScheduleInput } from './types'
 import { readClassParam, readViewParam, type View } from './viewParams'
+import { FONT_SCALES, FONT_SCALE_LABELS, readStoredFontScale, readStoredHighContrast, readStoredReduceMotion, storeFontScale, storeHighContrast, storeReduceMotion, type FontScale } from './accessibility'
 import {
   NEON_COLORS,
   NEON_COLOR_LABELS,
   NEON_COLOR_SWATCHES,
   THEMES,
   THEME_LABELS,
+  THEME_PREVIEW,
   readStoredNeon,
   readStoredTheme,
   storeNeon,
@@ -84,6 +86,9 @@ function App() {
   const [profilesOpen, setProfilesOpen] = useState(false)
   const [theme, setThemeState] = useState<Theme>(readStoredTheme)
   const [neon, setNeonState] = useState<NeonColor>(readStoredNeon)
+  const [fontScale, setFontScale] = useState(readStoredFontScale)
+  const [highContrast, setHighContrast] = useState(readStoredHighContrast)
+  const [reduceMotion, setReduceMotion] = useState(readStoredReduceMotion)
   const [user, setUser] = useState<User | null>(null)
   const [isAdmin, setIsAdmin] = useState(false)
   const [authChecked, setAuthChecked] = useState(false)
@@ -97,13 +102,33 @@ function App() {
   useEffect(() => {
     const fromUrl = readClassParam()
     if (fromUrl) savePreferredClass(fromUrl)
+    function syncPreferences(event: StorageEvent) {
+      if (event.key === null || event.key === 'tech-2d:preferredClass' || event.key === 'agenda:turma') {
+        const stored = readPreferredClass()
+        if (stored) setClassFilter(stored)
+      }
+      if (event.key === null || ['agenda:theme', 'agenda:neon', 'agenda:fontScale', 'agenda:highContrast', 'agenda:reduceMotion'].includes(event.key)) {
+        setThemeState(readStoredTheme())
+        setNeonState(readStoredNeon())
+        setFontScale(readStoredFontScale())
+        setHighContrast(readStoredHighContrast())
+        setReduceMotion(readStoredReduceMotion())
+      }
+    }
+    window.addEventListener('storage', syncPreferences)
+    return () => window.removeEventListener('storage', syncPreferences)
   }, [])
 
   useEffect(() => {
-    document.documentElement.dataset.theme = theme
-    document.documentElement.dataset.neon = neon
-    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'neon' ? '#f4fbff' : '#0e35be')
-  }, [theme, neon])
+    const root = document.documentElement
+    root.dataset.theme = theme
+    root.dataset.neon = neon
+    root.dataset.fontScale = fontScale
+    root.dataset.contrast = highContrast ? 'alto' : 'normal'
+    root.dataset.motion = reduceMotion ? 'reduzido' : 'normal'
+    const color = getComputedStyle(root).getPropertyValue('--bar-bg').trim()
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', color || (theme === 'neon' ? '#f4fbff' : '#0e35be'))
+  }, [theme, neon, fontScale, highContrast, reduceMotion])
 
   function selectTheme(value: Theme) {
     setThemeState(value)
@@ -297,6 +322,12 @@ function App() {
         <ConfigDialog
           theme={theme}
           neon={neon}
+          fontScale={fontScale}
+          highContrast={highContrast}
+          reduceMotion={reduceMotion}
+          onSetFontScale={value => { setFontScale(value); storeFontScale(value) }}
+          onSetHighContrast={value => { setHighContrast(value); storeHighContrast(value) }}
+          onSetReduceMotion={value => { setReduceMotion(value); storeReduceMotion(value) }}
           onSetTheme={selectTheme}
           onSetNeon={selectNeon}
           onClose={() => setConfigOpen(false)}
@@ -369,11 +400,17 @@ function SideMenu({ theme, onClose, onOpenConfig, onOpenProfiles, onOpenAdmin }:
   )
 }
 
-function ConfigDialog({ theme, neon, onSetTheme, onSetNeon, onClose }: {
+function ConfigDialog({ theme, neon, fontScale, highContrast, reduceMotion, onSetTheme, onSetNeon, onSetFontScale, onSetHighContrast, onSetReduceMotion, onClose }: {
   theme: Theme
   neon: NeonColor
   onSetTheme: (value: Theme) => void
   onSetNeon: (value: NeonColor) => void
+  fontScale: FontScale
+  highContrast: boolean
+  reduceMotion: boolean
+  onSetFontScale: (value: FontScale) => void
+  onSetHighContrast: (value: boolean) => void
+  onSetReduceMotion: (value: boolean) => void
   onClose: () => void
 }) {
   useEffect(() => {
@@ -391,15 +428,15 @@ function ConfigDialog({ theme, neon, onSetTheme, onSetNeon, onClose }: {
         </div>
         <div className="config-content">
           <h3>Aparência</h3>
-          <p>Escolha como a grade e o menu aparecem para você.</p>
+          <p>As preferências de aparência e acessibilidade valem para a Agenda e o Cadê o professor? neste navegador.</p>
           <div className="theme-options" aria-label="Tema">
             {THEMES.map((value) => (
               <button type="button" key={value} className={`theme-swatch ${theme === value ? 'active' : ''}`} onClick={() => onSetTheme(value)} aria-pressed={theme === value}>
-                <span className={`theme-dot theme-dot-${value}`} /> {THEME_LABELS[value]}
+                <span className="theme-dot" style={{ background: THEME_PREVIEW[value] }} /> {THEME_LABELS[value]}
               </button>
             ))}
           </div>
-          {theme === 'neon' && (
+          {(theme === 'neon' || theme === 'cyberpunk') && (
             <div className="neon-picker">
               <h3>Cor do neon</h3>
               <div className="neon-options" aria-label="Cor de destaque neon">
@@ -418,6 +455,18 @@ function ConfigDialog({ theme, neon, onSetTheme, onSetNeon, onClose }: {
               </div>
             </div>
           )}
+          <section className="professor-accessibility">
+            <h3>Acessibilidade</h3>
+            <div className="theme-options" role="group" aria-label="Tamanho da fonte">
+              {FONT_SCALES.map(value => (
+                <button type="button" key={value} className={`theme-swatch ${fontScale === value ? 'active' : ''}`} aria-pressed={fontScale === value} onClick={() => onSetFontScale(value)}>
+                  {FONT_SCALE_LABELS[value]}
+                </button>
+              ))}
+            </div>
+            <label><input type="checkbox" checked={highContrast} onChange={event => onSetHighContrast(event.target.checked)} /> Alto contraste</label>
+            <label><input type="checkbox" checked={reduceMotion} onChange={event => onSetReduceMotion(event.target.checked)} /> Reduzir animações</label>
+          </section>
         </div>
       </section>
     </div>
