@@ -1,6 +1,7 @@
 import { createHmac } from 'node:crypto'
 import { isIP } from 'node:net'
 import { localDate } from './jobs.js'
+import { assertAgendaAllowed, clientIp, recordRecentUser } from './agenda-moderation.js'
 
 const halfHourMs = 30 * 60 * 1000
 const retentionDays = 90
@@ -32,17 +33,19 @@ export async function handleAccessStats(request, env, { connect, verify, reply, 
 
   const account = !record || request.headers.has('Authorization') ? await verify(request, env) : null
   const today = localDate(now)
-  const ip = record && !account ? request.headers.get('CF-Connecting-IP') : null
+  const ip = record ? clientIp(request) : null
   if (record && !account && (!ip || !isIP(ip))) return noContent()
   const db = await connect(env)
   try {
     if (record) {
+      await assertAgendaAllowed(db, env, { account, ip })
       // Use the edge-supplied IP only to derive a key scoped to the local calendar day.
       const visitorKey = account?.uid ?? createHmac('sha256', env.AGENDA_ACCESS_HMAC_KEY).update(today + '|' + ip).digest('hex')
       await db.query(`INSERT INTO tech2d.agenda_access(day, half_hour, kind, visitor_key)
         SELECT $1, $2, $3, $4 FROM tech2d.migration_state
         WHERE id = true AND production_enabled AND application_seeded
         ON CONFLICT DO NOTHING`, [today, Math.floor(now.getTime() / halfHourMs), account ? 'account' : 'anonymous', visitorKey])
+      await recordRecentUser(db, env, account, ip, now)
       return noContent()
     }
 

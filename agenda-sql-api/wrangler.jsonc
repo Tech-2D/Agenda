@@ -13,6 +13,7 @@
     "APPLICATION_DATA_ENABLED": "true",
     "APPLICATION_WRITES_ENABLED": "true",
     "APPLICATION_JOBS_ENABLED": "true",
+    "AGENDA_MODERATION_ENABLED": "true",
     "WRITES_ENABLED": "false",
     "MIGRATION_READY": "true",
     "PREVIEW_READS_ENABLED": "false",

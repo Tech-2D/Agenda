@@ -19,5 +19,5 @@ export async function verifySession(request, env) {
   if (response.status >= 500 || response.status === 429) throw new Error('AUTH_UNAVAILABLE')
   const user = response.ok && (await response.json()).users?.[0]
   if (!user || user.disabled || user.localId !== payload.sub || Number(user.validSince || 0) > payload.auth_time) throw Object.assign(new Error('UNAUTHENTICATED'), { status: 401 })
-  return { uid: payload.sub, email: typeof payload.email === 'string' ? payload.email : null }
+  return { uid: payload.sub, email: typeof user.email === 'string' ? user.email : typeof payload.email === 'string' ? payload.email : null }
 }

@@ -1,6 +1,7 @@
 import { context, readDocument, queryDocuments, commitDocuments } from './document-store.js'
 import { denied, invalid } from './policies.js'
 import { kanbanMembers } from './shared-kanban-policy.js'
+import { assertAgendaAllowed, clientIp, isAgendaDocumentRequest } from './agenda-moderation.js'
 
 export async function secretMatches(value,expected) {
   if (!expected || expected.length < 40 || !value) return false
@@ -40,6 +41,9 @@ export async function handleData(request,env,{connect,verify,reply}) {
   if (input.action === 'commit' && env.APPLICATION_WRITES_ENABLED !== 'true') return reply({message:'Gravação SQL ainda não ativada.'},503)
   const db = await connect(env)
   try {
+    if (!internal && isAgendaDocumentRequest(input)) {
+      await assertAgendaAllowed(db, env, { account: identity.user, ip: clientIp(request) })
+    }
     const state = (await db.query(`SELECT m.application_seeded,m.production_enabled,p.data AS profile
       FROM tech2d.migration_state m LEFT JOIN tech2d.app_documents p ON p.path=$1 WHERE m.id=true`,[identity.user ? 'admins/'+identity.user.uid : null])).rows[0]
     if (!state?.application_seeded) return reply({message:'A sincronização dos dados ainda não foi validada.'},503)

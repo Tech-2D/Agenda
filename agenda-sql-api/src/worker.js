@@ -1,9 +1,10 @@
 import { connectDatabase } from './database.js'
 import { verifySession } from './auth.js'
 import { canManage, publicActivity, publicSchedule, publicUpdate, validActivity } from './data.js'
-import { handleData } from './data-route.js'
+import { handleData, readJson, secretMatches } from './data-route.js'
 import { handleJob } from './jobs.js'
 import { handleAccessStats, pruneAgendaAccess } from './access-stats.js'
+import { assertAgendaAllowed, clientIp, handleModeration, pruneRecentUsers } from './agenda-moderation.js'
 
 const ORIGIN = 'https://tech-2d.github.io'
 const failure = (status, message) => Object.assign(new Error(message), { status })
@@ -41,10 +42,18 @@ export function createHandler({ connect = connectDatabase, verify = verifySessio
       return new Response(null, { status: 204, headers })
     }
     const url = new URL(request.url)
+    if (url.pathname === '/api/admin/agenda-users' || url.pathname === '/api/internal/agenda-access-check') {
+      try {
+        return await handleModeration(request, env, { connect, verify, reply, readJson, secretMatches }, url.pathname.startsWith('/api/internal/'))
+      } catch (error) {
+        return reply({ message: error.status ? error.message : 'Controle de acesso temporariamente indisponível.', code: error.status ? error.code : 'unavailable' }, error.status || 503)
+      }
+    }
     if (url.pathname === '/api/agenda-access' || url.pathname === '/api/admin/agenda-access') {
       try {
         return await handleAccessStats(request, env, { connect, verify, reply, origin }, url.pathname === '/api/agenda-access' ? 'record' : 'stats')
       } catch (error) {
+        if (error.code === 'agenda-access-blocked') return reply({ message: error.message, code: error.code }, 403)
         const status = error.status === 401 ? 401 : 503
         return reply({ message: status === 401 ? 'Entre novamente na sua conta.' : 'Estatísticas temporariamente indisponíveis.' }, status)
       }
@@ -80,6 +89,9 @@ export function createHandler({ connect = connectDatabase, verify = verifySessio
       // Verify the account before any private SQL query; role comes from SQL, never request body.
       const account = privateRoute ? await verify(request, env) : null
       db = await connect(env)
+      if (sharedActivity || activity || ['/api/activities', '/api/catalog/agenda', '/api/catalog/updates'].includes(url.pathname)) {
+        await assertAgendaAllowed(db, env, { account, ip: clientIp(request) })
+      }
       let profile
       if (account) profile = (await db.query('SELECT uid, role, turma_id FROM tech2d.admin_profiles WHERE uid = $1', [account.uid])).rows[0]
       if (url.pathname === '/api/me') return reply({ uid: account.uid, profile: profile ? { role: profile.role, turmaId: profile.turma_id } : null })
@@ -158,7 +170,7 @@ export function createHandler({ connect = connectDatabase, verify = verifySessio
       } catch (error) { await db.query('ROLLBACK'); throw error }
     } catch (error) {
       // No SQL errors, tokens, connection strings or private documents in responses/logs.
-      return reply({ message: error.status ? error.message : 'Serviço temporariamente indisponível.' }, error.status || 503)
+      return reply({ message: error.status ? error.message : 'Serviço temporariamente indisponível.', ...(error.code === 'agenda-access-blocked' ? { code: error.code } : {}) }, error.status || 503)
     } finally { if (db) await db.end().catch(() => {}) }
   }
 }
@@ -168,7 +180,11 @@ export default {
   async scheduled(event, env) {
     if (event.cron !== '17 4 * * *' || env.MIGRATION_READY !== 'true') return
     const db = await connectDatabase(env)
-    try { await pruneAgendaAccess(db, new Date(event.scheduledTime)) }
+    try {
+      const now = new Date(event.scheduledTime)
+      await pruneAgendaAccess(db, now)
+      await pruneRecentUsers(db, env, now)
+    }
     finally { await db.end().catch(() => {}) }
   },
 }
