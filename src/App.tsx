@@ -1,6 +1,6 @@
 import { Component, type FormEvent, type ReactNode, useEffect, useMemo, useRef, useState, lazy, Suspense } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowDown, ArrowUp, GripVertical, Bell, BookOpen, Calendar, CalendarClock, Check, ChevronLeft, ChevronRight, DoorOpen, Edit3, ExternalLink, History, LayoutGrid, KeyRound, Lightbulb, ListChecks, LoaderCircle, MapPin, Menu, MessageSquarePlus, Plus, Settings, StickyNote, UserRound, Vote, X } from 'lucide-react'
+import { ArrowDown, ArrowUp, GripVertical, Bell, BookOpen, Calendar, CalendarClock, Check, ChevronLeft, ChevronRight, DoorOpen, ExternalLink, History, LayoutGrid, KeyRound, Lightbulb, ListChecks, LoaderCircle, MapPin, Menu, MessageSquarePlus, Plus, Settings, StickyNote, UserRound, Vote, X } from 'lucide-react'
 import { createUserWithEmailAndPassword, onAuthStateChanged, signInWithEmailAndPassword, type User } from 'firebase/auth'
 import { signOut } from './sessionActions'
 import { requestPasswordReset } from './passwordReset'
@@ -34,7 +34,7 @@ import { FONT_SCALES, FONT_SCALE_LABELS, readStoredFontScale, readStoredHighCont
 import { loadOrClaimAdminProfile } from './adminAccess'
 import { DEFAULT_MENU_SHORTCUTS, readMenuShortcuts, storeMenuShortcuts, type MenuShortcutId } from './menuShortcuts'
 import { SyncStatus } from './SyncStatus'
-import { ActivityShareButton } from './ActivityShareButton'
+import { ActivityDetails } from './ActivityDetails'
 import { readActivityLink } from './activityLinks'
 
 const CompareCalendar = lazy(() => import('./CompareCalendar').then(module => ({ default: module.CompareCalendar })))
@@ -1561,10 +1561,10 @@ function NotificationsDialog({ activities, onClose }: { activities: Activity[]; 
 
 function DayDetail({ day, activities, profile, canAdd, onEditActivity, onAddActivity, onClose }: { day: Date; activities: Activity[]; profile: AdminProfile | null; canAdd: boolean; onEditActivity: (activity: Activity) => void; onAddActivity: () => void; onClose: () => void }) {
   return (
-    <div className="modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
-      <section className="day-dialog" role="dialog" aria-modal="true" aria-labelledby="day-title">
+    <div className="modal-backdrop activity-day-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
+      <section className="day-dialog activity-day-dialog" role="dialog" aria-modal="true" aria-labelledby="day-title">
         <div className="dialog-header">
-          <h2 id="day-title">{day.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}</h2>
+          <div><p className="eyebrow">{activities.length} {activities.length === 1 ? 'atividade' : 'atividades'} na agenda</p><h2 id="day-title">{day.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}</h2></div>
           <button className="icon-button" onClick={onClose} aria-label="Fechar"><X /></button>
         </div>
         {canAdd && <div className="day-create-bar">
@@ -1574,20 +1574,7 @@ function DayDetail({ day, activities, profile, canAdd, onEditActivity, onAddActi
         <div className="day-dialog-list">
           {activities.length === 0 && <p className="day-empty">Ainda não há atividades para esta data.</p>}
           {activities.map((activity) => (
-            <article key={activity.id} className="activity-detail" style={{ borderLeftColor: ACTIVITY_TYPE_COLORS[activity.type] }}>
-              <div className="activity-detail-heading">
-                <span className="type-badge" style={{ background: ACTIVITY_TYPE_COLORS[activity.type] }}>{ACTIVITY_TYPE_LABELS[activity.type]}</span>
-                {activity.turmaId === null && <span className="type-badge general-badge">Geral</span>}
-                {activity.time && <span className="activity-time">{activity.time}</span>}
-              </div>
-              <h3>{activity.title}</h3>
-              {activity.subject && <p className="activity-subject">{activity.subject}</p>}
-              {activity.description && <p>{activity.description}</p>}
-              {ATTACHMENTS_ENABLED && <AttachmentLinks activityId={activity.id} attachments={activity.attachments} />}
-              <ActivityShareButton activityId={activity.id} />
-              {activity.createdByEmail && <p className="activity-author">Publicado por {activity.createdByEmail}</p>}
-              {canEditCalendarActivity(profile, activity) && <button type="button" className="secondary-button" onClick={() => onEditActivity(activity)} aria-label={`Editar ${activity.title}`}><Edit3 size={16} /> Editar atividade</button>}
-            </article>
+            <ActivityDetails key={activity.id} activity={activity} onEdit={canEditCalendarActivity(profile, activity) ? () => onEditActivity(activity) : undefined} />
           ))}
         </div>
       </section>

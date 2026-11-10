@@ -3,7 +3,7 @@ import { Download, LoaderCircle, Paperclip } from 'lucide-react'
 import { attachmentDownloadUrl, formatAttachmentSize } from './attachments'
 import type { ActivityAttachment } from './types'
 
-export function AttachmentLinks({ activityId, attachments }: { activityId: string; attachments?: ActivityAttachment[] }) {
+export function AttachmentLinks({ activityId, attachments, showTitle = true }: { activityId: string; attachments?: ActivityAttachment[]; showTitle?: boolean }) {
   const [loadingId, setLoadingId] = useState<string | null>(null)
   const [error, setError] = useState('')
   if (!attachments?.length) return null
@@ -25,7 +25,7 @@ export function AttachmentLinks({ activityId, attachments }: { activityId: strin
   }
 
   return <div className="attachment-links" aria-label="Anexos da atividade">
-    <span className="attachment-links-title"><Paperclip size={14} /> Anexos ({attachments.length})</span>
+    {showTitle && <span className="attachment-links-title"><Paperclip size={14} /> Anexos ({attachments.length})</span>}
     {attachments.map(item => <button type="button" className="attachment-link" key={item.id} onClick={() => open(item.id)} disabled={loadingId === item.id}>
       <span className="attachment-link-name">{item.name}</span>
       <span className="attachment-link-meta">{formatAttachmentSize(item.size)} {loadingId === item.id ? <LoaderCircle className="spin" size={14} /> : <Download size={14} />}</span>

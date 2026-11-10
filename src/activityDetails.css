@@ -1,0 +1,69 @@
+.activity-sheet {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-top: 3px solid var(--activity-color);
+  border-radius: 10px;
+  background: var(--paper);
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+.activity-sheet-heading { padding: 24px 24px 18px; }
+.activity-sheet-tags { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.activity-sheet-recurring { display: inline-flex; gap: 5px; align-items: center; color: var(--ink-soft); font-size: 11px; }
+.activity-sheet-heading h3 { margin: 12px 0 0; color: var(--text); font-size: 21px; line-height: 1.4; font-weight: 800; letter-spacing: -.025em; }
+.activity-sheet-date { display: flex; align-items: center; gap: 16px; margin: 0 24px; padding: 16px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-alt); }
+.activity-date-stamp { display: grid; place-items: center; flex: 0 0 58px; align-self: stretch; border-right: 1px solid var(--line); padding-right: 16px; color: var(--ink); }
+.activity-date-stamp strong { font-family: 'DM Mono', monospace; font-size: 28px; font-weight: 500; line-height: 1.2; }
+.activity-date-stamp span { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .12em; }
+.activity-sheet-date > div:last-child { min-width: 0; display: grid; gap: 5px; }
+.activity-field-label { color: var(--ink-soft); font-size: 10px; font-weight: 700; letter-spacing: .03em; }
+.activity-sheet-date time { color: var(--text); font-size: 13px; line-height: 1.6; font-weight: 700; }
+.activity-sheet-time { display: flex; align-items: center; gap: 6px; color: var(--ink-soft); font-size: 12px; }
+.activity-sheet-time time { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--ink); }
+.activity-sheet-facts { display: grid; grid-template-columns: 1fr 1fr; margin: 0 24px; padding: 18px 0; gap: 16px; border-bottom: 1px solid var(--line); }
+.activity-sheet-facts > div { min-width: 0; }
+.activity-sheet-facts dt { display: flex; gap: 6px; align-items: center; margin-bottom: 6px; color: var(--ink-soft); font-size: 11px; }
+.activity-sheet-facts dd { margin: 0; color: var(--text); font-size: 13px; line-height: 1.6; font-weight: 700; }
+.activity-sheet-section { margin: 0 24px; padding: 20px 0; }
+.activity-sheet-section h4 { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; color: var(--text); font-size: 13px; font-weight: 800; }
+.activity-sheet-section p { margin: 0; color: var(--text); font-size: 14px; line-height: 1.85; white-space: pre-wrap; }
+.activity-sheet-section p + p { margin-top: 14px; }
+.activity-sheet-section .activity-sheet-empty { color: var(--ink-soft); font-size: 12px; }
+.activity-sheet-files { padding-top: 0; }
+.activity-sheet-files h4 > span { display: grid; place-items: center; min-width: 21px; height: 21px; margin-left: auto; border-radius: 5px; background: var(--surface-alt); color: var(--ink); font-family: 'DM Mono', monospace; font-size: 11px; }
+.activity-sheet .attachment-links { margin: 0; gap: 8px; }
+.activity-sheet .attachment-link { min-height: 48px; padding: 12px; }
+.activity-sheet .attachment-link-name { line-height: 1.6; }
+.activity-sheet-actions { display: flex; align-items: flex-start; flex-wrap: wrap; justify-content: space-between; gap: 10px; padding: 16px 24px; border-top: 1px solid var(--line); }
+.activity-sheet-actions .activity-share { margin: 0; flex: 1 1 170px; }
+.activity-sheet-actions .secondary-button { min-height: 42px; padding: 10px 12px; font-size: 12px; }
+.day-dialog.activity-day-dialog, .day-dialog.activity-link-dialog { width: min(760px, calc(100vw - 32px)); max-height: calc(100dvh - 40px); display: flex; flex-direction: column; overflow: hidden; }
+.activity-day-dialog .dialog-header, .activity-link-dialog .dialog-header { position: static; flex-shrink: 0; padding: 22px 26px; gap: 16px; }
+.activity-day-dialog .dialog-header h2, .activity-link-dialog .dialog-header h2 { font-size: 20px; line-height: 1.4; }
+.activity-day-dialog .dialog-header .icon-button, .activity-link-dialog .dialog-header .icon-button { flex-shrink: 0; }
+.activity-day-dialog .dialog-header .eyebrow { margin-bottom: 5px; font-size: 10px; }
+.activity-day-dialog .day-dialog-list, .activity-link-dialog .day-dialog-list { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 22px 26px; gap: 20px; background: var(--surface-alt); }
+.activity-day-dialog .day-create-bar { flex-shrink: 0; padding: 12px 26px; flex-wrap: wrap; }
+.activity-link-dialog .activity-link-footer { flex-shrink: 0; padding: 16px 26px; }
+.period-task-details { display: inline-flex; align-items: center; gap: 6px; margin-top: 12px; color: var(--ink); font-size: 12px; font-weight: 700; text-underline-offset: 3px; }
+@media (max-width: 540px) {
+  .activity-day-backdrop, .activity-link-backdrop { padding: 0; }
+  .day-dialog.activity-day-dialog, .day-dialog.activity-link-dialog { width: 100%; max-height: 100dvh; border-radius: 0; }
+  .activity-day-dialog .dialog-header, .activity-link-dialog .dialog-header { padding: 18px 16px; }
+  .activity-day-dialog .dialog-header h2, .activity-link-dialog .dialog-header h2 { font-size: 17px; }
+  .activity-day-dialog .day-dialog-list, .activity-link-dialog .day-dialog-list { padding: 16px 12px; gap: 16px; }
+  .activity-day-dialog .day-create-bar, .activity-link-dialog .activity-link-footer { padding: 12px 16px; }
+  .activity-sheet-heading { padding: 18px 16px 16px; }
+  .activity-sheet-heading h3 { font-size: 18px; }
+  .activity-sheet-date { margin: 0 16px; padding: 12px; gap: 12px; }
+  .activity-date-stamp { flex-basis: 44px; padding-right: 12px; }
+  .activity-date-stamp strong { font-size: 24px; }
+  .activity-sheet-facts { margin: 0 16px; gap: 12px; }
+  .activity-sheet-section { margin: 0 16px; padding: 18px 0; }
+  .activity-sheet-section p { font-size: 13px; line-height: 1.8; }
+  .activity-sheet-files { padding-top: 0; }
+  .activity-sheet-actions { padding: 14px 16px; }
+  .activity-sheet .attachment-link { flex-wrap: wrap; gap: 4px 10px; }
+  .activity-sheet .attachment-link-meta { margin-left: auto; }
+}
+@media (max-width: 360px) { .activity-sheet-facts { grid-template-columns: 1fr; } }

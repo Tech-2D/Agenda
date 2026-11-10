@@ -1,4 +1,4 @@
-import { Edit3, Plus } from 'lucide-react'
+import { ArrowUpRight, Edit3, Plus } from 'lucide-react'
 import { dateKey, isToday } from './calendar'
 import { periodDays } from './calendarViews'
 import { canCreateForSelectedClass } from './quickCreate'
@@ -34,6 +34,7 @@ export function PeriodAgenda({ cursor, view, activitiesByDay, profile, turmaId, 
             {activity.subject && <p className="activity-subject">{activity.subject}</p>}
             {activity.description && <p className="period-task-description">{activity.description}</p>}
             {ATTACHMENTS_ENABLED && <AttachmentLinks activityId={activity.id} attachments={activity.attachments} />}
+            <a className="period-task-details" href={'#atividade=' + encodeURIComponent(activity.id)} aria-label={`Ver detalhes de ${activity.title}`}>Ver detalhes <ArrowUpRight size={14} /></a>
             <ActivityShareButton activityId={activity.id} />
             {canEditCalendarActivity(profile, activity) && <button type="button" className="period-edit" onClick={() => onEdit(activity)} aria-label={`Editar ${activity.title}`}><Edit3 size={14} /> Editar</button>}
           </article>)}
