@@ -2,7 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { User } from 'firebase/auth'
 import { Plus, RefreshCw, Search, Settings2, Share2, Users } from 'lucide-react'
 import { db } from './firebase'
-import { collection, deleteDoc, doc, documentVersion, getDoc, getDocs, limit, onSnapshot, query, serverTimestamp, setDoc, updateDoc, updateDocAtVersion, where, writeBatch } from './dataClient'
+import { collection, deleteDoc, doc, documentVersion, getDoc, getDocs, getKanbanMembers, limit, onSnapshot, query, serverTimestamp, setDoc, updateDoc, where, writeBatch } from './dataClient'
+import { enqueueDocument, queuedDocument, queuedViewData, seedQueuedDocument, subscribeQueuedDocument } from './queuedWrites'
 import { BoardForm, ColumnForm, EditorDialog, TaskForm } from './KanbanForms'
 import { KanbanBoardView } from './KanbanBoardView'
 import { copyBoardTemplate, createBoard, PRIORITIES, removeColumn, type KanbanBoard, type KanbanColumn, type KanbanTask } from './kanban'
@@ -13,10 +14,19 @@ export function SharedKanban({user,invite}:{user:User;invite:string | null}) {
   const [boards,setBoards]=useState<SharedBoard[]>([]),[selected,setSelected]=useState(''),[current,setCurrent]=useState<SharedBoard | null>(null)
   const [loading,setLoading]=useState(true),[opening,setOpening]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState(''),[stale,setStale]=useState(false),[refresh,setRefresh]=useState(0)
   const [editor,setEditorState]=useState<Editor | null>(null),[sharing,setSharing]=useState(false),[search,setSearch]=useState(''),[priority,setPriority]=useState('')
+  const [assignees,setAssignees]=useState<{uid:string;name:string}[]>([])
+  const rosterBoard=useRef('')
   const operation=useRef(false),version=useRef<string | null>(null),alive=useRef(true)
   const editLock=useRef(false),dragging=useRef(false)
   const setEditor=useCallback((value:Editor | null)=>{editLock.current=!!value;setEditorState(value)},[])
   useEffect(()=>{alive.current=true;return()=>{alive.current=false}},[])
+  useEffect(()=>{
+    let active=true
+    if(!selected){setAssignees([]);return}
+    if(rosterBoard.current!==selected){rosterBoard.current=selected;setAssignees([])}
+    void getKanbanMembers(selected).then(members=>{if(active)setAssignees(members)}).catch(()=>{if(active)setAssignees([])})
+    return()=>{active=false}
+  },[selected,user.uid,refresh,sharing])
   useEffect(()=>{
     let active=true;setLoading(true)
     async function load() {
@@ -36,38 +46,43 @@ export function SharedKanban({user,invite}:{user:User;invite:string | null}) {
   },[user.uid,refresh])
   useEffect(()=>{
     if(!selected){setCurrent(null);return}
-    let active=true,unsubscribe:()=>void=()=>{}
+    let active=true,authorized=false,unsubscribe:()=>void=()=>{}
     setOpening(true);setCurrent(null);setError('');setStale(false);setEditor(null);version.current=null;dragging.current=false
     const ref=doc(db,'sharedKanban',selected)
+    const stopQueue=subscribeQueuedDocument(ref,state=>{
+      if(!active || !authorized && !state.pending)return
+      const next=queuedViewData<SharedBoard>(state)
+      version.current=state.confirmed?.version || version.current;setCurrent(next);setBoards(bs=>bs.map(b=>b.board.id===selected ? next : b));setStale(!!state.failed);setError(state.failed?.message || '');setNotice(state.pending ? 'Alteração na fila de salvamento.' : 'Quadro confirmado no banco.')
+    })
     void getDoc(ref).then(snapshot=>{
       if(!active)return
       if(!snapshot.exists())throw Error('MISSING_BOARD')
-      version.current=documentVersion(ref);setCurrent(snapshot.data() as SharedBoard)
+      authorized=true
+      seedQueuedDocument(ref,'shared')
+      const pending=queuedDocument(ref)
+      version.current=pending?.pending ? pending.confirmed?.version || documentVersion(ref) : documentVersion(ref)
+      setCurrent(pending?.pending ? queuedViewData<SharedBoard>(pending) : snapshot.data() as SharedBoard)
       unsubscribe=onSnapshot(ref,latest=>{
-        if(!active || operation.current)return
+        if(!active || operation.current || queuedDocument(ref)?.pending)return
         if(!latest.exists()){setCurrent(null);setBoards(bs=>bs.filter(b=>b.board.id!==selected));setError('Este quadro foi excluído.');return}
         if(documentVersion(ref)!==version.current){
           if(editLock.current || dragging.current){setStale(true);setNotice('Outra pessoa atualizou este quadro. Atualize para continuar sem sobrescrever as alterações dela.')}
-          else{const next=latest.data() as SharedBoard;version.current=documentVersion(ref);setCurrent(next);setBoards(bs=>bs.map(b=>b.board.id===selected ? next : b));setStale(false);setError('');setNotice('Quadro atualizado com as alterações do grupo.')}
+          else{seedQueuedDocument(ref,'shared');const next=latest.data() as SharedBoard;version.current=documentVersion(ref);setCurrent(next);setBoards(bs=>bs.map(b=>b.board.id===selected ? next : b));setStale(false);setError('');setNotice('Quadro atualizado com as alterações do grupo.')}
         }
       },()=>{if(active){setCurrent(null);setEditor(null);setBoards(bs=>bs.filter(b=>b.board.id!==selected));setError('Não foi possível confirmar seu acesso. O dono pode ter removido sua participação. Atualize para conferir.')}})
-    }).catch(()=>{if(active)setError('Este quadro não está disponível ou você ainda não tem acesso.')}).finally(()=>{if(active)setOpening(false)})
-    return()=>{active=false;unsubscribe()}
+    }).catch(()=>{if(active){setCurrent(null);setStale(true);setError('Este quadro não está disponível ou você ainda não tem acesso.')}}).finally(()=>{if(active)setOpening(false)})
+    return()=>{active=false;unsubscribe();stopQueue()}
   },[selected,user.uid,refresh,setEditor])
   const board=current?.board,owner=current?.ownerId===user.uid,disabled=busy || opening || stale
-  function reload(){if(editor && !window.confirm('Descartar o formulário não salvo e atualizar o quadro?'))return;setEditor(null);setRefresh(n=>n+1)}
+  function reload(){if(current && queuedDocument(doc(db,'sharedKanban',current.board.id))?.pending){setError('Revise a fila de salvamento antes de recarregar este quadro.');return}if(editor && !window.confirm('Descartar o formulário não salvo e atualizar o quadro?'))return;setEditor(null);setRefresh(n=>n+1)}
   async function saveBoard(next:KanbanBoard) {
     if(!current || operation.current || !version.current || stale)return false
-    operation.current=true;setBusy(true);setError('');setNotice('')
+    setError('')
     try {
       const ref=doc(db,'sharedKanban',current.board.id)
-      await updateDocAtVersion(ref,{board:next,updatedAt:serverTimestamp()},version.current)
-      const snapshot=await getDoc(ref)
-      if(!alive.current)return false
-      version.current=documentVersion(ref);const saved=snapshot.data() as SharedBoard
-      setCurrent(saved);setBoards(bs=>bs.map(b=>b.board.id===saved.board.id ? saved : b));setNotice('Quadro compartilhado salvo.');return true
-    } catch(e){if(alive.current){setStale(true);setError((e as {code?:string}).code==='aborted' ? 'Outra pessoa editou este quadro. Atualize antes de salvar novamente.' : 'Não foi possível confirmar o salvamento ou seu acesso. Atualize antes de continuar.')}return false}
-    finally{operation.current=false;if(alive.current)setBusy(false)}
+      enqueueDocument(ref,'shared',{board:next},'Salvar quadro '+next.name,version.current)
+      return true
+    } catch(e){if(alive.current){const code=(e as {code?:string}).code;setStale(code!=='resource-exhausted' && code!=='invalid-argument');setError(code==='aborted' ? 'Outra pessoa editou este quadro. Atualize antes de salvar novamente.' : e instanceof Error ? e.message : 'Não foi possível colocar a alteração na fila.')}return false}
   }
   async function create(board:KanbanBoard) {
     if(operation.current)return
@@ -80,11 +95,13 @@ export function SharedKanban({user,invite}:{user:User;invite:string | null}) {
     finally{operation.current=false;if(alive.current)setBusy(false)}
   }
   async function remove() {
+    if(current && queuedDocument(doc(db,'sharedKanban',current.board.id))?.pending){setError('Aguarde os envios deste quadro antes de excluí-lo.');return}
     if(!current || !owner || !window.confirm(`Excluir “${current.board.name}” para todos os participantes? As tarefas serão removidas do quadro.`))return
     setBusy(true)
     try{await deleteDoc(doc(db,'sharedKanban',current.board.id));setCurrent(null);setSelected('');setEditor(null);setRefresh(n=>n+1)}catch{setError('Não foi possível excluir o quadro. Atualize e tente novamente.')}finally{setBusy(false)}
   }
   async function leave() {
+    if(current && queuedDocument(doc(db,'sharedKanban',current.board.id))?.pending){setError('Aguarde os envios deste quadro antes de sair.');return}
     if(!current || owner || !window.confirm('Sair deste quadro compartilhado? O dono precisará aprovar seu acesso novamente.'))return
     setBusy(true)
     try{const key=memberKey(current.board.id,user.uid),batch=writeBatch(db);batch.delete(doc(db,'kanbanMemberships',key));batch.update(doc(db,'kanbanRequests',key),{status:'revoked',updatedAt:serverTimestamp()});await batch.commit();setCurrent(null);setSelected('');setRefresh(n=>n+1)}catch{setError('Não foi possível sair do quadro. Tente novamente.')}finally{setBusy(false)}
@@ -97,11 +114,11 @@ export function SharedKanban({user,invite}:{user:User;invite:string | null}) {
       <header className="kb-board-heading"><div><span className={`kb-dot kb-color-${board.color}`}/><h2>{board.name}</h2><small>Compartilhado · {owner ? 'você é o dono' : 'você pode editar'}</small></div><div>{owner && <button className="secondary-button" disabled={disabled} onClick={()=>setSharing(true)}><Share2 size={16}/> Compartilhar e acessos</button>}<button className="secondary-button" disabled={disabled} onClick={()=>{setError('');setEditor({kind:'board'})}}><Settings2 size={16}/> Personalizar</button>{!owner && <button className="kb-link" disabled={busy} onClick={()=>void leave()}>Sair do quadro</button>}</div></header>
       <div className="kb-toolbar"><label className="kb-search"><Search size={17}/><input aria-label="Buscar tarefas compartilhadas" placeholder="Buscar tarefa ou etiqueta" value={search} onChange={e=>setSearch(e.target.value)}/></label><select aria-label="Filtrar prioridade compartilhada" value={priority} onChange={e=>setPriority(e.target.value)}><option value="">Todas as prioridades</option>{Object.entries(PRIORITIES).map(([v,label])=><option key={v} value={v}>{label}</option>)}</select><button className="kb-add" disabled={disabled || board.columns.length>=12} onClick={()=>setEditor({kind:'column'})}><Plus size={16}/> Coluna</button></div>
       <p className="kb-hint">Todos os participantes podem organizar tarefas. As mudanças são conferidas por versão; se outra pessoa editar, atualize antes de continuar.</p>
-      <KanbanBoardView key={board.id} board={board} disabled={disabled} search={search} priority={priority} canAddTask={board.tasks.length<200} onChange={saveBoard} onInteractionChange={active=>{dragging.current=active}} onEditTask={task=>{setError('');setEditor({kind:'task',columnId:task.columnId,task})}} onEditColumn={column=>{setError('');setEditor({kind:'column',column})}} onAddTask={columnId=>{setError('');setEditor({kind:'task',columnId})}}/>
+      <KanbanBoardView key={board.id} board={board} disabled={disabled} search={search} priority={priority} canAddTask={board.tasks.length<200} assignees={assignees} onChange={saveBoard} onInteractionChange={active=>{dragging.current=active}} onEditTask={task=>{setError('');setEditor({kind:'task',columnId:task.columnId,task})}} onEditColumn={column=>{setError('');setEditor({kind:'column',column})}} onAddTask={columnId=>{setError('');setEditor({kind:'task',columnId})}}/>
     </>}</section></div>
     {sharing && current && owner && <SharedAccessDialog user={user} record={current} onClose={()=>setSharing(false)}/>}
     {editor && <EditorDialog title={editor.kind==='new' ? 'Novo quadro compartilhado' : editor.kind==='board' ? 'Personalizar quadro compartilhado' : editor.kind==='column' ? 'Configurar coluna' : 'Tarefa compartilhada'} busy={busy} error={error} stale={stale} onReload={reload} onClose={()=>{setEditor(null);setError('')}}>
-      {editor.kind==='new' ? <><p>Você será o dono. Depois de criar, use “Compartilhar e acessos” para convidar e aprovar participantes.</p><BoardForm disabled={busy} onDelete={()=>{}} onSave={async(name,color,compact,template)=>{await create({...createBoard(name,template,color),compact})}}/></> : editor.kind==='board' && board ? <BoardForm board={board} disabled={disabled} canDelete={owner} onDelete={()=>void remove()} onDuplicate={async()=>{await create(copyBoardTemplate(board))}} onSave={async(name,color,compact)=>{if(await saveBoard({...board,name,color,compact}))setEditor(null)}}/> : editor.kind==='column' && board ? <ColumnForm column={editor.column} disabled={disabled} onDelete={async()=>{try{const next=removeColumn(board,editor.column!.id);if(window.confirm('Excluir esta coluna vazia?') && await saveBoard(next))setEditor(null)}catch(e){setError((e as Error).message)}}} onSave={async column=>{if(await saveBoard({...board,columns:editor.column ? board.columns.map(c=>c.id===column.id ? column : c) : [...board.columns,column]}))setEditor(null)}}/> : editor.kind==='task' && board ? <TaskForm task={editor.task} columnId={editor.columnId} columns={board.columns} disabled={disabled} onDelete={async()=>{if(window.confirm('Excluir esta tarefa para todos?') && await saveBoard({...board,tasks:board.tasks.filter(t=>t.id!==editor.task!.id)}))setEditor(null)}} onSave={async task=>{if(await saveBoard({...board,tasks:editor.task ? board.tasks.map(t=>t.id===task.id ? task : t) : [...board.tasks,task]}))setEditor(null)}}/> : null}
+      {editor.kind==='new' ? <><p>Você será o dono. Depois de criar, use “Compartilhar e acessos” para convidar e aprovar participantes.</p><BoardForm disabled={busy} onDelete={()=>{}} onSave={async(name,color,compact,template)=>{await create({...createBoard(name,template,color),compact})}}/></> : editor.kind==='board' && board ? <BoardForm board={board} disabled={disabled} canDelete={owner} onDelete={()=>void remove()} onDuplicate={async()=>{await create(copyBoardTemplate(board))}} onSave={async(name,color,compact)=>{if(await saveBoard({...board,name,color,compact}))setEditor(null)}}/> : editor.kind==='column' && board ? <ColumnForm column={editor.column} disabled={disabled} onDelete={async()=>{try{const next=removeColumn(board,editor.column!.id);if(window.confirm('Excluir esta coluna vazia?') && await saveBoard(next))setEditor(null)}catch(e){setError((e as Error).message)}}} onSave={async column=>{if(await saveBoard({...board,columns:editor.column ? board.columns.map(c=>c.id===column.id ? column : c) : [...board.columns,column]}))setEditor(null)}}/> : editor.kind==='task' && board ? <TaskForm assignees={assignees} task={editor.task} columnId={editor.columnId} columns={board.columns} disabled={disabled} onDelete={async()=>{if(window.confirm('Excluir esta tarefa para todos?') && await saveBoard({...board,tasks:board.tasks.filter(t=>t.id!==editor.task!.id)}))setEditor(null)}} onSave={async task=>{if(await saveBoard({...board,tasks:editor.task ? board.tasks.map(t=>t.id===task.id ? task : t) : [...board.tasks,task]}))setEditor(null)}}/> : null}
     </EditorDialog>}
   </>
 }

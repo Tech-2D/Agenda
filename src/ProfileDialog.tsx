@@ -1,5 +1,6 @@
 import { type FormEvent, useEffect, useState } from 'react'
-import { createUserWithEmailAndPassword, onAuthStateChanged, signInWithEmailAndPassword, signOut, type User } from 'firebase/auth'
+import { createUserWithEmailAndPassword, onAuthStateChanged, signInWithEmailAndPassword, type User } from 'firebase/auth'
+import { signOut } from './sessionActions'
 import { auth } from './firebase'
 import './profiles.css'
 

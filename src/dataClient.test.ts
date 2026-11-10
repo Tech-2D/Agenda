@@ -1,4 +1,13 @@
 import {beforeEach,afterEach,it,expect,vi} from 'vitest'
+vi.mock('firebase/firestore',()=>{
+  const blocked=()=>{throw Error('SQL tests must never call Firestore')}
+  class Timestamp {
+    constructor(private date:Date){}
+    static fromDate(date:Date){return new Timestamp(date)}
+    toDate(){return this.date}
+  }
+  return {Timestamp,doc:blocked,collection:blocked,query:blocked,where:blocked,orderBy:blocked,limit:blocked,serverTimestamp:blocked,getDoc:blocked,getDocs:blocked,addDoc:blocked,setDoc:blocked,updateDoc:blocked,deleteDoc:blocked,writeBatch:blocked,onSnapshot:blocked}
+})
 it('public SQL transport never falls back to the old Redis/Firestore backend',async()=>{
   const fetch=vi.fn().mockResolvedValue(new Response('{}',{status:503}))
   vi.stubGlobal('fetch',fetch)
@@ -66,6 +75,24 @@ it('shared edits pin the opened version even when a background read sees newer d
   await updateDocAtVersion(ref,{board:{name:'Minha edição'}},opened)
   expect(JSON.parse(fetch.mock.calls[2][1].body).commit.writes[0].version).toBe('5')
 })
+it('never retries a transport failure as the newly selected account',async()=>{
+  const fetch=vi.fn().mockImplementation(async()=>{
+    mocks.account={uid:'student',getIdToken:async()=> 'other-token'}
+    throw TypeError('network')
+  })
+  vi.stubGlobal('fetch',fetch)
+  const {addDoc,collection}=await import('./dataClient')
+  await expect(addDoc(collection({} as never,'activities'),{title:'Test'})).rejects.toMatchObject({code:'cancelled'})
+  expect(fetch).toHaveBeenCalledTimes(1)
+})
+it('discards the previous account response even if the account changes during JSON decoding',async()=>{
+  vi.stubGlobal('fetch',vi.fn().mockResolvedValue({ok:true,json:async()=>{
+    mocks.account={uid:'student',getIdToken:async()=> 'other-token'}
+    return {document:{path:'admins/owner',id:'owner',data:{role:'superadmin'},version:'1'}}
+  }}))
+  const {getDoc,doc}=await import('./dataClient')
+  await expect(getDoc(doc({} as never,'admins','owner'))).rejects.toMatchObject({code:'cancelled'})
+})
 it('timestamp hydration and optimistic versions survive an edit without exposing internal keys',async()=>{
   const fetch=vi.fn().mockResolvedValueOnce(Response.json({document:{path:'activities/id',id:'id',data:{date:'2026-10-20',createdAt:'2026-10-17T10:00:00Z'},version:'5'}})).mockResolvedValue(Response.json({committed:true}))
   vi.stubGlobal('fetch',fetch)
@@ -76,4 +103,25 @@ it('timestamp hydration and optimistic versions survive an edit without exposing
   expect(row.data()?.createdAt.toDate().toISOString()).toBe('2026-10-17T10:00:00.000Z')
   await updateDoc(ref,{title:'Updated'})
   expect(JSON.parse(fetch.mock.calls[1][1].body).commit.writes[0].version).toBe('5')
+})
+it('deduplicates concurrent reads only within the same authenticated session',async()=>{
+  let finish!:(value:Response)=>void
+  const fetch=vi.fn().mockReturnValue(new Promise<Response>(resolve=>{finish=resolve}));vi.stubGlobal('fetch',fetch)
+  const {doc,getDoc}=await import('./dataClient'),ref=doc({} as never,'personalKanban','owner')
+  const a=getDoc(ref),b=getDoc(ref)
+  await Promise.resolve();await Promise.resolve();expect(fetch).toHaveBeenCalledTimes(1)
+  finish(Response.json({document:null}));await Promise.all([a,b])
+})
+it('accepts a confirmed write version directly from the commit response',async()=>{
+  const fetch=vi.fn().mockResolvedValue(Response.json({committed:true,replay:false,documents:[{path:'personalKanban/owner',id:'owner',data:{boards:[]},version:'2'}]}));vi.stubGlobal('fetch',fetch)
+  const {doc,updateDoc,documentVersion,knownDocument}=await import('./dataClient'),ref=doc({} as never,'personalKanban','owner')
+  await updateDoc(ref,{boards:[]})
+  expect(documentVersion(ref)).toBe('2');expect(knownDocument(ref)?.data.boards).toEqual([]);expect(fetch).toHaveBeenCalledTimes(1)
+})
+it('does not rebase queued edits on somebody else\'s newer version after an idempotent replay',async()=>{
+  const fetch=vi.fn().mockResolvedValueOnce(Response.json({committed:true,replay:true})).mockResolvedValue(Response.json({document:{path:'sharedKanban/board',id:'board',data:{board:{}},version:'3'}}))
+  vi.stubGlobal('fetch',fetch)
+  const {sendQueuedCommit}=await import('./dataClient')
+  await expect(sendQueuedCommit({action:'commit',commit:{id:'aaaaaaaaaaaaaaaaaaaa',returnDocuments:true,writes:[{path:'sharedKanban/board',op:'update',version:'1',data:{board:{}}}]}},mocks.account as never)).rejects.toMatchObject({code:'aborted'})
+  expect(fetch).toHaveBeenCalledTimes(2)
 })

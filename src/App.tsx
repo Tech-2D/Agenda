@@ -1,7 +1,8 @@
 import { Component, type FormEvent, type ReactNode, useEffect, useMemo, useRef, useState, lazy, Suspense } from 'react'
 import { createPortal } from 'react-dom'
 import { ArrowDown, ArrowUp, GripVertical, Bell, BookOpen, Calendar, CalendarClock, Check, ChevronLeft, ChevronRight, DoorOpen, Edit3, ExternalLink, History, LayoutGrid, KeyRound, Lightbulb, ListChecks, LoaderCircle, MapPin, Menu, MessageSquarePlus, Plus, Settings, StickyNote, UserRound, Vote, X } from 'lucide-react'
-import { createUserWithEmailAndPassword, onAuthStateChanged, signInWithEmailAndPassword, signOut, type User } from 'firebase/auth'
+import { createUserWithEmailAndPassword, onAuthStateChanged, signInWithEmailAndPassword, type User } from 'firebase/auth'
+import { signOut } from './sessionActions'
 import { requestPasswordReset } from './passwordReset'
 import { WeeklyDigestSettings } from './WeeklyDigestSettings'
 import { AttachmentLinks } from './AttachmentLinks'
@@ -32,6 +33,7 @@ import { NEON_COLORS, NEON_COLOR_LABELS, NEON_COLOR_SWATCHES, THEME_LABELS, THEM
 import { FONT_SCALES, FONT_SCALE_LABELS, readStoredFontScale, readStoredHighContrast, readStoredReduceMotion, storeFontScale, storeHighContrast, storeReduceMotion, type FontScale } from './accessibility'
 import { loadOrClaimAdminProfile } from './adminAccess'
 import { DEFAULT_MENU_SHORTCUTS, readMenuShortcuts, storeMenuShortcuts, type MenuShortcutId } from './menuShortcuts'
+import { SyncStatus } from './SyncStatus'
 
 const CompareCalendar = lazy(() => import('./CompareCalendar').then(module => ({ default: module.CompareCalendar })))
 const ProfileDialog = lazy(() => import('./ProfileDialog').then(module => ({ default: module.ProfileDialog })))
@@ -367,6 +369,7 @@ function App() {
 
   return (
     <div className="app-shell">
+      <SyncStatus />
       <header className="topbar">
         <a className="brand" href="#inicio" aria-label="Agenda da turma — início">
           <span className="brand-mark"><Calendar size={21} strokeWidth={2.3} /></span>

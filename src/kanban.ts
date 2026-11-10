@@ -1,7 +1,7 @@
 export const KANBAN_COLORS = { blue: 'Azul', purple: 'Roxo', pink: 'Rosa', green: 'Verde', orange: 'Laranja', slate: 'Cinza' } as const
 export type KanbanColor = keyof typeof KANBAN_COLORS
 export const PRIORITIES = { none: 'Sem prioridade', low: 'Baixa', medium: 'Média', high: 'Alta' } as const
-export type KanbanTask = { id: string; columnId: string; title: string; description: string; priority: keyof typeof PRIORITIES; dueDate: string | null; labels: string[]; checklist: { id: string; text: string; done: boolean }[] }
+export type KanbanTask = { id: string; columnId: string; title: string; description: string; priority: keyof typeof PRIORITIES; dueDate: string | null; labels: string[]; checklist: { id: string; text: string; done: boolean }[]; assigneeId?:string | null }
 export type KanbanColumn = { id: string; name: string; color: KanbanColor; done: boolean }
 export type KanbanBoard = { id: string; name: string; color: KanbanColor; compact: boolean; columns: KanbanColumn[]; tasks: KanbanTask[] }
 export const KANBAN_TEMPLATES = { simple: 'Básico', study: 'Estudos', week: 'Minha semana', blank: 'Do zero' } as const

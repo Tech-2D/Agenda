@@ -34,3 +34,8 @@ it('does not offer board deletion to a participant',()=>{
   const html=renderToStaticMarkup(<BoardForm board={createBoard('Grupo','simple')} canDelete={false} disabled={false} onSave={noop} onDelete={noop}/> )
   expect(html).toContain('Salvar quadro');expect(html).not.toContain('Excluir quadro')
 })
+it('offers only supplied group participants as task assignees and keeps the task visible to everyone',()=>{
+  const board=createBoard('Grupo','simple')
+  const html=renderToStaticMarkup(<TaskForm columnId={board.columns[0].id} columns={board.columns} assignees={[{uid:'one',name:'Colega 1'},{uid:'two',name:'Colega 2'}]} disabled={false} onSave={noop} onDelete={noop}/> )
+  expect(html).toContain('Responsável');expect(html).toContain('Colega 1');expect(html).toContain('Colega 2');expect(html).toContain('Todos do quadro continuam vendo esta tarefa.')
+})

@@ -1,14 +1,16 @@
 import { type FormEvent, type ReactNode, useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { ArrowRight, Calendar, CalendarDays, Check, DoorOpen, Edit3, Globe, History, KeyRound, Lightbulb, ListChecks, LoaderCircle, LogOut, Megaphone, MessageSquarePlus, MessagesSquare, Plus, Paperclip, Repeat, ShieldCheck, HardDrive, StickyNote, Trash2, UserRound, Users, X } from 'lucide-react'
-import { createUserWithEmailAndPassword, onAuthStateChanged, signInWithEmailAndPassword, signOut, type User } from 'firebase/auth'
+import { createUserWithEmailAndPassword, onAuthStateChanged, signInWithEmailAndPassword, type User } from 'firebase/auth'
+import { signOut } from './sessionActions'
 import { requestPasswordReset } from './passwordReset'
 import { StorageAdminPanel } from './StorageAdminPanel'
 import { RepresentativesPanel } from './RepresentativesPanel'
 import { observePublicInfo } from './publicInfo'
 import { ATTACHMENTS_ENABLED, deleteActivityWithAttachments, formatAttachmentSize, MAX_ATTACHMENTS, removeAttachment, uploadAttachment, validateAttachment } from './attachments'
 import { FirebaseError } from 'firebase/app'
-import { addDoc, collection, deleteDoc, doc, onSnapshot, query, serverTimestamp, setDoc, updateDoc, where, writeBatch } from './dataClient'
+import { addDoc, collection, deleteDoc, doc, knownDocument, onSnapshot, query, serverTimestamp, setDoc, SQL_ENABLED, updateDoc, where, writeBatch } from './dataClient'
+import { enqueueDocument, mergeQueuedActivities, pendingActivityStates, queuedDocument, QUEUED_CHANGED } from './queuedWrites'
 import { auth, db } from './firebase'
 import { CLASS_NAMES } from './classNames'
 import { normalizeClassName, isValidClassName, type ClassRequest } from './classRequests'
@@ -216,7 +218,7 @@ export default function AdminDialog({ publicTurmaId, classNames, quickCreateDate
     if (!profile || !managedTurma) return
     const activitiesQuery = query(collection(db, 'activities'), where('turmaId', '==', managedTurma))
     return onSnapshot(activitiesQuery, (snapshot) => {
-      setManagedActivities(snapshot.docs.map((item) => ({ id: item.id, ...item.data() }) as Activity))
+      setManagedActivities(mergeQueuedActivities(snapshot.docs.map((item) => ({ id: item.id, ...item.data() }) as Activity),managedTurma))
     })
   }, [profile, managedTurma])
 
@@ -232,9 +234,20 @@ export default function AdminDialog({ publicTurmaId, classNames, quickCreateDate
     if (!profile) return
     const globalQuery = query(collection(db, 'activities'), where('turmaId', '==', null))
     return onSnapshot(globalQuery, (snapshot) => {
-      setGlobalActivities(snapshot.docs.map((item) => ({ id: item.id, ...item.data() }) as Activity))
+      setGlobalActivities(mergeQueuedActivities(snapshot.docs.map((item) => ({ id: item.id, ...item.data() }) as Activity),null))
     })
   }, [profile])
+  useEffect(()=>{
+    const change=(event:Event)=>{
+      const detail=(event as CustomEvent<{path?:string;reset?:boolean}>).detail
+      if(detail?.reset){setManagedActivities([]);setGlobalActivities([]);return}
+      if(!detail?.path?.startsWith('activities/') || !pendingActivityStates().length)return
+      if(profile && managedTurma)setManagedActivities(current=>mergeQueuedActivities(current,managedTurma))
+      if(profile)setGlobalActivities(current=>mergeQueuedActivities(current,null))
+    }
+    window.addEventListener(QUEUED_CHANGED,change)
+    return()=>window.removeEventListener(QUEUED_CHANGED,change)
+  },[profile,managedTurma])
 
   useEffect(() => {
     if (!profile || !managedTurma) return
@@ -542,6 +555,19 @@ export default function AdminDialog({ publicTurmaId, classNames, quickCreateDate
     if (repeatWeekly && repeatEndDate && repeatEndDate < form.date) {
       setSaveError('A data final precisa ser igual ou posterior à primeira data.')
       return
+    }
+    // Uploads and permission changes still await the server. Ordinary tasks can be staged immediately.
+    if(SQL_ENABLED && !repeatWeekly && selectedFiles.length===0) {
+      const target=editing ? doc(db,'activities',editing.id) : doc(collection(db,'activities'))
+      if(!editing || knownDocument(target) || queuedDocument(target)?.pending) {
+        try {
+          const payload={title:form.title,description:form.description,type:form.type,subject:form.subject ?? null,date:form.date,time:hasTime ? form.time : null,turmaId:isGlobalForm ? null : managedTurma,updatedAt:serverTimestamp()}
+          enqueueDocument(target,editing ? 'activity-update' : 'activity-create',editing ? payload : {...payload,createdBy:user.uid,createdByEmail:user.email,createdAt:serverTimestamp()},`${editing ? 'Editar' : 'Criar'} atividade: ${form.title}`)
+          setSaveError('');setNotice('Atividade na fila de salvamento. Você pode continuar.');setFormOpen(false)
+          if((quickCreateActive && !editing) || quickEditActivity)onClose()
+        } catch(error){setSaveError(activitySaveError(error,false))}
+        return
+      }
     }
     setBusy(true)
     setSaveError('')

@@ -1,6 +1,8 @@
 import { auth } from './firebase'
 import { SQL_ENABLED } from './dataBackend'
 import { catalogWriteEndpoint, fetchCatalog } from './catalogTransport'
+import { mergeQueuedActivities, pendingActivityStates, QUEUED_CHANGED } from './optimisticActivities'
+import type { Activity } from './types'
 
 export type CatalogMeta = { generatedAt: string; stale: boolean }
 const CHANGED = 'tech2d-public-catalog-changed'
@@ -22,7 +24,13 @@ export function observeCatalog<T>(resource: 'schedules' | 'agenda' | 'updates', 
   let nextAllowed = 0
   let lastContent = ''
   let recovering = false
+  let lastPayload:Record<string,unknown> | null=null
   const abort = new AbortController()
+  function deliver(payload:Record<string,unknown>,optimistic=true) {
+    const data=hydrate(payload) as T & {meta:CatalogMeta;activities?:Activity[]}
+    if(resource==='agenda' && Array.isArray(data.activities) && optimistic)data.activities=mergeQueuedActivities(data.activities,className,true)
+    change(data)
+  }
   async function poll() {
     if (stopped || running || document.hidden) return
     clearTimeout(timer)
@@ -42,10 +50,10 @@ export function observeCatalog<T>(resource: 'schedules' | 'agenda' | 'updates', 
         throw new Error('PUBLIC_QUERY_FAILED')
       }
       const payload = await response.json()
+      lastPayload=payload
       const content = JSON.stringify({ ...payload, meta: { stale: payload.meta?.stale } })
       if (!stopped && (content !== lastContent || recovering)) {
-        const data = hydrate(payload) as T & { meta: CatalogMeta }
-        change(data)
+        deliver(payload)
         lastContent = content
       }
       recovering = false
@@ -61,9 +69,16 @@ export function observeCatalog<T>(resource: 'schedules' | 'agenda' | 'updates', 
   }
   const wake = () => { if (Date.now() - lastAttempt > 10000) void poll() }
   const changed = () => { nextAllowed = 0; void poll() }
+  const queued=(event:Event)=>{
+    const detail=(event as CustomEvent<{path?:string;reset?:boolean}>).detail
+    if(resource!=='agenda' || !detail?.reset && !detail?.path?.startsWith('activities/'))return
+    if(detail?.reset){if(lastPayload)deliver(lastPayload,false);changed();return}
+    if(pendingActivityStates().length){if(lastPayload)deliver(lastPayload)}else changed()
+  }
   document.addEventListener('visibilitychange', wake)
   window.addEventListener('focus', wake)
   window.addEventListener(CHANGED, changed)
+  window.addEventListener(QUEUED_CHANGED,queued)
   void poll()
   return () => {
     stopped = true
@@ -72,6 +87,7 @@ export function observeCatalog<T>(resource: 'schedules' | 'agenda' | 'updates', 
     document.removeEventListener('visibilitychange', wake)
     window.removeEventListener('focus', wake)
     window.removeEventListener(CHANGED, changed)
+    window.removeEventListener(QUEUED_CHANGED,queued)
   }
 }
 

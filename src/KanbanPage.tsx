@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, type User } from 'firebase/auth'
+import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, type User } from 'firebase/auth'
+import { signOut } from './sessionActions'
 import { ChevronLeft, LayoutPanelLeft, LockKeyhole, LogOut, Plus, Search, Settings2, Users } from 'lucide-react'
 import { auth, db } from './firebase'
-import { doc, getDoc, serverTimestamp, setDoc, updateDoc } from './dataClient'
+import { doc, getDoc } from './dataClient'
+import { enqueueDocument, queuedDocument, queuedViewData, seedQueuedDocument, subscribeQueuedDocument } from './queuedWrites'
 import { requestPasswordReset } from './passwordReset'
 import { copyBoardTemplate, createBoard, PRIORITIES, removeColumn, replaceBoard, workspaceLimit, type KanbanBoard, type KanbanColumn, type KanbanTask } from './kanban'
 import { BoardForm, ColumnForm, TaskForm, EditorDialog } from './KanbanForms'
@@ -63,47 +65,54 @@ type Editor = { kind:'board'; board?:KanbanBoard } | { kind:'column'; column?:Ka
 
 function Workspace({user}:{user:User}) {
   const [workspace,setWorkspace] = useState<WorkspaceData | null>(null), [loading,setLoading] = useState(true), [error,setError] = useState(''), [notice,setNotice] = useState('')
-  const [busy,setBusy] = useState(false), [stale,setStale] = useState(false), [reload,setReload] = useState(0)
+  const busy=false
+  const [stale,setStale] = useState(false), [reload,setReload] = useState(0)
   const [selected,setSelected] = useState(''), [search,setSearch] = useState(''), [priority,setPriority] = useState('')
   const [editor,setEditor] = useState<Editor | null>(null)
-  const lock = useRef(false), alive = useRef(true)
+  const alive = useRef(true)
   useEffect(()=>{ alive.current=true; return ()=>{alive.current=false} },[])
   useEffect(()=>{
-    let active=true
+    let active=true,authorized=false
     setLoading(true);setError('');setNotice('')
-    getDoc(doc(db,'personalKanban',user.uid)).then(snapshot=>{
+    const ref=doc(db,'personalKanban',user.uid)
+    const stopQueue=subscribeQueuedDocument(ref,state=>{
+      if(!active || !authorized && !state.pending)return
+      setWorkspace(queuedViewData<WorkspaceData>(state));setStale(!!state.failed);setError(state.failed?.message || '');setNotice(state.pending ? 'Alteração na fila de salvamento.' : 'Alterações confirmadas no banco.')
+    })
+    getDoc(ref).then(snapshot=>{
       if (!active || auth.currentUser?.uid!==user.uid) return
+      authorized=true
+      seedQueuedDocument(ref,'personal')
+      const pending=queuedDocument(ref)
+      if(pending?.pending){setWorkspace(queuedViewData<WorkspaceData>(pending));setStale(!!pending.failed);return}
       const data = snapshot.exists() ? snapshot.data() as WorkspaceData : {ownerId:user.uid,schemaVersion:1 as const,boards:[]}
       setWorkspace(data);setStale(false)
-    }).catch(()=>{if(active) setError('Não foi possível carregar seu Kanban. Tente recarregar.')}).finally(()=>{if(active)setLoading(false)})
-    return ()=>{active=false}
+    }).catch(()=>{if(active){if(!queuedDocument(ref)?.pending)setWorkspace(null);setStale(true);setError('Não foi possível confirmar o acesso ao Kanban. Confira sua conta e tente recarregar.')}}).finally(()=>{if(active)setLoading(false)})
+    return ()=>{active=false;stopQueue()}
   },[user.uid,reload])
   const board=workspace?.boards.find(b=>b.id===selected) || workspace?.boards[0]
   const disabled=busy || loading || stale
   async function save(boards:KanbanBoard[]) {
-    if (!workspace || lock.current || stale || auth.currentUser?.uid!==user.uid) return false
+    if (!workspace || stale || auth.currentUser?.uid!==user.uid) return false
     const limit=workspaceLimit(boards)
     if (limit) {setError(limit);return false}
-    lock.current=true;setBusy(true);setError('');setNotice('')
+    setError('')
     try {
       const ref=doc(db,'personalKanban',user.uid)
-      if (workspace.createdAt) await updateDoc(ref,{boards,updatedAt:serverTimestamp()})
-      else await setDoc(ref,{ownerId:user.uid,schemaVersion:1,boards,createdAt:serverTimestamp(),updatedAt:serverTimestamp()})
-      // Refresh the version only after saving, never silently overwrite a pending edit.
-      const saved=await getDoc(ref)
-      if (!alive.current || auth.currentUser?.uid!==user.uid) return false
-      setWorkspace(saved.data() as WorkspaceData);setNotice('Alterações salvas.');return true
+      enqueueDocument(ref,'personal',{boards},'Salvar meu Kanban')
+      return true
     } catch (cause) {
       if (alive.current && auth.currentUser?.uid===user.uid) {
         const code=(cause as {code?:string}).code
-        setError(code==='aborted' ? 'Seu Kanban mudou em outra aba. Recarregue para continuar com a versão atual.' : 'Não foi possível confirmar o salvamento. Recarregue antes de tentar novamente; suas alterações podem já ter sido salvas.')
-        setStale(true)
+        setError(code==='aborted' ? 'Seu Kanban mudou em outra aba. Recarregue para continuar com a versão atual.' : cause instanceof Error ? cause.message : 'Não foi possível colocar a alteração na fila.')
+        setStale(code!=='resource-exhausted' && code!=='invalid-argument')
       }
       return false
-    } finally {lock.current=false;if(alive.current)setBusy(false)}
+    }
   }
   async function changeBoard(next:KanbanBoard) {return workspace ? save(replaceBoard(workspace.boards,next)) : false}
   function refresh() {
+    if(queuedDocument(doc(db,'personalKanban',user.uid))?.pending){setError('Use a fila de salvamento para copiar ou revisar seus rascunhos antes de recarregar.');return}
     if (editor && !window.confirm('Recarregar e descartar as alterações ainda não salvas deste formulário?')) return
     setEditor(null);setReload(n=>n+1)
   }

@@ -1,3 +1,4 @@
+.kb-card-meta .kb-assignee{max-width:100%;white-space:normal;overflow-wrap:anywhere}.kb-assignee svg{flex-shrink:0}
 :root {
   font-family: 'Manrope', Arial, sans-serif;
   font-synthesis: none;
@@ -14,6 +15,7 @@
   --mint: #dff0ff;
   --shadow: 0 2px 5px rgba(29, 44, 82, .16);
 }
+.sync-status{position:fixed;right:18px;bottom:18px;z-index:400;width:min(410px,calc(100vw - 36px));padding:14px 16px;border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:10px;background:var(--paper);color:var(--text);box-shadow:var(--shadow);font-size:.8rem}.sync-status>div{display:flex;gap:10px;align-items:flex-start}.sync-status strong{display:block;font-size:.83rem}.sync-status small{display:block;color:var(--ink-soft);line-height:1.6;margin-top:4px}.sync-status summary{margin-top:10px;cursor:pointer;color:var(--ink);font-size:.75rem}.sync-status ul{list-style:none;padding:0;margin:12px 0;max-height:180px;overflow-y:auto}.sync-status li{border-top:1px solid var(--line);padding:8px 0;overflow-wrap:anywhere}.sync-status-failed{border-left-color:#d15c48}.sync-actions{display:flex;gap:8px;flex-wrap:wrap}.sync-actions button{border:1px solid var(--line);border-radius:5px;background:var(--surface-alt);color:var(--text);padding:6px 9px;font-size:.72rem;cursor:pointer}.sync-status details p{font-size:.75rem;line-height:1.6}.sync-status svg{flex-shrink:0;color:var(--ink)}
 
 :root[data-theme="rosa"] {
   color-scheme: light;
