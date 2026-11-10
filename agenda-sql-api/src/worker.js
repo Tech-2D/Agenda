@@ -51,7 +51,8 @@ export function createHandler({ connect = connectDatabase, verify = verifySessio
     }
     if (url.pathname === '/api/health' && request.method === 'GET') return reply({ ok: true, ready: env.MIGRATION_READY === 'true', writesEnabled: env.WRITES_ENABLED === 'true', previewReadsEnabled: env.PREVIEW_READS_ENABLED === 'true', applicationDataEnabled:env.APPLICATION_DATA_ENABLED==='true', applicationWritesEnabled:env.APPLICATION_WRITES_ENABLED==='true', applicationJobsEnabled:env.APPLICATION_JOBS_ENABLED==='true', databaseConfigured: Boolean(env.HYPERDRIVE?.connectionString) })
     const activity = url.pathname.match(/^\/api\/activities\/([A-Za-z0-9_-]{1,128})$/)
-    if (!activity && !supported.has(url.pathname)) return reply({ message: 'Rota não encontrada.' }, 404)
+    const sharedActivity = url.pathname.match(/^\/api\/catalog\/activities\/([A-Za-z0-9_-]{1,128})$/)
+    if (!activity && !sharedActivity && !supported.has(url.pathname)) return reply({ message: 'Rota não encontrada.' }, 404)
     const allowed = activity ? ['GET', 'PATCH'] : url.pathname === '/api/activities' ? ['POST'] : ['GET']
     if (!allowed.includes(request.method)) return reply({ message: 'Método não permitido.' }, 405)
     const previewOnly = env.MIGRATION_READY !== 'true' && env.PREVIEW_READS_ENABLED === 'true'
@@ -73,6 +74,13 @@ export function createHandler({ connect = connectDatabase, verify = verifySessio
       let profile
       if (account) profile = (await db.query('SELECT uid, role, turma_id FROM tech2d.admin_profiles WHERE uid = $1', [account.uid])).rows[0]
       if (url.pathname === '/api/me') return reply({ uid: account.uid, profile: profile ? { role: profile.role, turmaId: profile.turma_id } : null })
+      if (sharedActivity) {
+        if (url.search) throw failure(400, 'Filtro inválido.')
+        const row = (await db.query('SELECT * FROM tech2d.activities WHERE id=$1',[sharedActivity[1]])).rows[0]
+        if (!row) return reply({message:'Esta atividade não está mais disponível.'},404)
+        // Same public projection as the calendar. Raw documents and author data stay protected.
+        return reply({activity:publicActivity(row),meta:meta()})
+      }
       if (url.pathname === '/api/catalog/schedules') {
         if ([...url.searchParams.keys()].some(key => !['q', 'class', 'day'].includes(key))) throw failure(400, 'Filtro inválido.')
         const className = url.searchParams.get('class')

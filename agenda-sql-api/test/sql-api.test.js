@@ -103,6 +103,24 @@ test('write gate is closed until explicitly enabled', async () => {
   assert.equal((await handler(request('/api/activities', 'POST', input), { MIGRATION_READY: 'true' })).status, 503)
 })
 
+test('shared activity links read one public activity without login or author/storage details',async()=>{
+  const publicHandler=createHandler({connect:async()=>db,verify:async()=>{throw Error('MUST_NOT_AUTHENTICATE_PUBLIC_READ')}})
+  const response=await publicHandler(request('/api/catalog/activities/'+activityId),env)
+  assert.equal(response.status,200)
+  assert.equal(response.headers.get('Cache-Control'),'no-store')
+  const result=await response.json()
+  assert.equal(result.activity.id,activityId)
+  assert.equal(result.activity.turmaId,input.turmaId)
+  assert.equal(result.activity.title,input.title)
+  for(const key of ['createdBy','createdByEmail','created_by','created_by_email'])assert.equal(result.activity[key],undefined)
+  assert.equal(JSON.stringify(result).includes('private@example.com'),false)
+  assert.equal((await publicHandler(request('/api/catalog/activities/nonexistent'),env)).status,404)
+  assert.equal((await publicHandler(request('/api/catalog/activities/'+activityId+'?class=other'),env)).status,400)
+  assert.equal((await publicHandler(request('/api/catalog/activities/'+activityId,'PATCH',input),env)).status,405)
+  const privateHandler=createHandler({connect:async()=>{throw Error('MUST_NOT_CONNECT')},verify:async()=>{throw Object.assign(Error('UNAUTHENTICATED'),{status:401})}})
+  assert.equal((await privateHandler(request('/api/activities/'+activityId),env)).status,401)
+})
+
 test('ordinary students cannot edit even when they own the account', async () => {
   state.uid = 'student'
   assert.equal((await handler(request(`/api/activities/${activityId}`, 'PATCH', input, { 'If-Match': '"1"' }), env)).status, 403)
