@@ -44,13 +44,3 @@
   border-radius: 2px;
   background: var(--accent);
 }
-.agenda-access-notice {
-  display: block;
-  margin: 0 auto;
-  padding: 16px 20px;
-  max-width: 780px;
-  color: var(--ink-soft);
-  font-size: 12px;
-  line-height: 1.6;
-  text-align: center;
-}

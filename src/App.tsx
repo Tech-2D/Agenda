@@ -555,8 +555,6 @@ function App() {
       </main>
       )}
 
-      {SQL_ENABLED && <footer className="agenda-access-notice">Para medir o uso da Agenda, registramos o ID da conta ao entrar ou um código diário derivado do IP em visitas anônimas. Os registros são removidos após 90 dias.</footer>}
-
       <DialogLoadBoundary>
       <Suspense fallback={<div className="modal-backdrop" role="status" aria-live="polite"><div className="state-card"><LoaderCircle className="spin" /><p>Carregando…</p></div></div>}>
       {dayPreview && createPortal(
@@ -1126,7 +1124,8 @@ function DocsDialog({ onClose }: { onClose: () => void }) {
 
           <div className="config-section">
             <h3>Seus dados</h3>
-            <p>Alunos não criam conta. O navegador guarda localmente (no seu próprio aparelho) só a turma escolhida, o tema, as preferências de acessibilidade e os IDs das sugestões que você enviou — nada disso é compartilhado com outras pessoas nem sai do seu navegador.</p>
+            <p>O navegador guarda preferências como a turma selecionada, o tema e os ajustes de acessibilidade.</p>
+            {SQL_ENABLED && <p>Para medir o uso da Agenda, registramos o ID da conta em acessos com login. Em visitas anônimas, registramos um código diário derivado do IP, sem guardar o endereço em si. Os registros são removidos após 90 dias.</p>}
           </div>
 
           <div className="config-section muted">
