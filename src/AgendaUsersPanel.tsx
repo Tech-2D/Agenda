@@ -4,9 +4,9 @@ import { RefreshCw, ShieldBan } from 'lucide-react'
 import { SQL_BASE } from './dataBackend'
 import { auth } from './firebase'
 
-type RecentUser = { uid: string; email: string | null; lastSeen: string; protected: boolean; emailBlocked: boolean; networkBlocked: boolean; hasNetwork: boolean }
+type AgendaAccount = { uid: string; email: string | null; lastSeen: string | null; protected: boolean; emailBlocked: boolean; networkBlocked: boolean; hasNetwork: boolean }
 type Block = { id: string; kind: 'email' | 'ip'; label: string; createdAt: string }
-type UsersResult = { users: RecentUser[]; hasMore: boolean; blocks: Block[]; hasMoreBlocks: boolean }
+type UsersResult = { users: AgendaAccount[]; hasMore: boolean; blocks: Block[]; hasMoreBlocks: boolean }
 type Kind = 'email' | 'ip' | 'recent-network'
 type Change = { action: 'block'; kind: Kind; value: string } | { action: 'unblock'; id: string }
 const endpoint = SQL_BASE + '/api/admin/agenda-users'
@@ -85,7 +85,7 @@ export function AgendaUsersPanel({ user }: { user: User }) {
   return (
     <section className="storage-admin agenda-users" aria-labelledby="agenda-users-title">
       <div className="storage-admin-heading">
-        <div><h3 id="agenda-users-title">Usuários e bloqueios</h3><p>Contas com acesso registrado nos últimos 7 dias. O último acesso indica uma abertura da Agenda, mesmo que a pessoa já tenha fechado o site.</p></div>
+        <div><h3 id="agenda-users-title">Usuários e bloqueios</h3><p>Todos os usuários cadastrados. O último acesso mostra quando a conta abriu a Agenda, quando houver registro.</p></div>
         <button type="button" className="secondary-button" disabled={busy} onClick={() => refresh(n => n + 1)}><RefreshCw size={16} /> Atualizar</button>
       </div>
       {notice && <p className="storage-admin-success" role="status">{notice}</p>}
@@ -97,13 +97,13 @@ export function AgendaUsersPanel({ user }: { user: User }) {
       {!result && !error && <p role="status">Carregando usuários…</p>}
       {result && <>
         <div className="storage-admin-list">
-          {result.users.length === 0 && <p className="admin-empty">Nenhuma conta recente encontrada.</p>}
+          {result.users.length === 0 && <p className="admin-empty">Nenhuma conta encontrada.</p>}
           {result.users.map(item => (
             <article className="storage-admin-file" key={item.uid}>
               <div className="agenda-user-details">
                 <strong>{item.email || 'Conta sem e-mail registrado'}</strong>
                 <small>UID {item.uid}</small>
-                <small>Último acesso <time dateTime={item.lastSeen}>{date.format(new Date(item.lastSeen))}</time></small>
+                <small>{item.lastSeen ? <>Último acesso <time dateTime={item.lastSeen}>{date.format(new Date(item.lastSeen))}</time></> : 'Sem acesso registrado na Agenda'}</small>
                 {(item.emailBlocked || item.networkBlocked) && <small>{item.emailBlocked ? 'E-mail bloqueado' : 'Última rede bloqueada'}</small>}
               </div>
               {item.protected ? <small>Superadministrador</small> : <div className="agenda-user-actions">
