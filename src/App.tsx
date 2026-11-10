@@ -3,6 +3,8 @@ import {
   ArrowRight,
   CalendarDays,
   Check,
+  ChevronLeft,
+  ChevronRight,
   DoorOpen,
   Edit3,
   KeyRound,
@@ -42,6 +44,9 @@ import { importDocumentId, parseSchedulesJson } from './importSchedules'
 import { isHappeningNow, matchesSearch, timeToMinutes } from './schedule'
 import { WEEKDAYS, type Schedule, type ScheduleInput } from './types'
 import { readClassParam, readViewParam, type View } from './viewParams'
+import { IntegratedMenu } from './IntegratedMenu'
+import { menuOptionSections } from './menuCatalog'
+import { agendaMenuUrl, MENU_SHORTCUTS_KEY, readMenuShortcuts, storeMenuShortcuts } from './menuShortcuts'
 import { FONT_SCALES, FONT_SCALE_LABELS, readStoredFontScale, readStoredHighContrast, readStoredReduceMotion, storeFontScale, storeHighContrast, storeReduceMotion, type FontScale } from './accessibility'
 import {
   NEON_COLORS,
@@ -82,6 +87,7 @@ function App() {
   const [view, setView] = useState<View>(readViewParam)
   const [adminOpen, setAdminOpen] = useState(window.location.hash === '#admin')
   const [menuOpen, setMenuOpen] = useState(false)
+  const [menuShortcuts, setMenuShortcuts] = useState(readMenuShortcuts)
   const [configOpen, setConfigOpen] = useState(false)
   const [profilesOpen, setProfilesOpen] = useState(false)
   const [theme, setThemeState] = useState<Theme>(readStoredTheme)
@@ -103,6 +109,7 @@ function App() {
     const fromUrl = readClassParam()
     if (fromUrl) savePreferredClass(fromUrl)
     function syncPreferences(event: StorageEvent) {
+      if (event.key === null || event.key === MENU_SHORTCUTS_KEY) setMenuShortcuts(readMenuShortcuts())
       if (event.key === null || event.key === 'tech-2d:preferredClass' || event.key === 'agenda:turma') {
         const stored = readPreferredClass()
         if (stored) setClassFilter(stored)
@@ -310,12 +317,25 @@ function App() {
       </main>
 
       {menuOpen && (
-        <SideMenu
-          theme={theme}
+        <IntegratedMenu
           onClose={() => setMenuOpen(false)}
-          onOpenConfig={() => { setMenuOpen(false); setConfigOpen(true) }}
-          onOpenProfiles={() => { setMenuOpen(false); setProfilesOpen(true) }}
-          onOpenAdmin={() => { setMenuOpen(false); openAdmin() }}
+          shortcuts={menuShortcuts}
+          onReorder={ids => { setMenuShortcuts(ids); storeMenuShortcuts(ids) }}
+          onOpenMoreOptions={() => window.location.assign(agendaMenuUrl('options'))}
+          localLinks={<>
+            <a href="#inicio" onClick={() => setMenuOpen(false)}><Search size={18} /> Buscar professores</a>
+            {!menuShortcuts.includes('settings') && <button type="button" onClick={() => { setMenuOpen(false); setConfigOpen(true) }}><Settings size={18} /> Configurações <span className="menu-current-theme">{THEME_LABELS[theme]}</span></button>}
+            {!menuShortcuts.includes('profiles') && <button type="button" onClick={() => { setMenuOpen(false); setProfilesOpen(true) }}><UserRound size={18} /> Perfis da comunidade</button>}
+            <button type="button" onClick={() => { setMenuOpen(false); openAdmin() }}><KeyRound size={18} /> Área administrativa</button>
+            <a href={agendaMenuUrl()}><CalendarDays size={18} /> Agenda da turma <ArrowRight size={15} className="menu-external-icon" /></a>
+          </>}
+          options={menuOptionSections({ hasTurma: true, actions: {} }).flatMap(section => section.items.map(option => {
+            if (option.id === 'settings') return { ...option, onClick: () => { setMenuOpen(false); setConfigOpen(true) } }
+            if (option.id === 'profiles') return { ...option, onClick: () => { setMenuOpen(false); setProfilesOpen(true) } }
+            if (option.id === 'todayClasses') return { ...option, onClick: () => { setView('today'); setMenuOpen(false) } }
+            if (option.id === 'teachers') return { ...option, href: undefined, onClick: () => setMenuOpen(false) }
+            return { ...option, href: option.href ?? agendaMenuUrl(option.id) }
+          }))}
         />
       )}
       {configOpen && (
@@ -367,35 +387,6 @@ function EmptyState({ view, search }: { view: View; search: string }) {
     <div className="state-card empty">
       <span className="empty-icon"><Search /></span>
       <div><h3>{title}</h3><p>{search ? 'Tente o sobrenome, a matéria ou o nome da turma.' : 'Consulte outro período ou a semana completa.'}</p></div>
-    </div>
-  )
-}
-
-function SideMenu({ theme, onClose, onOpenConfig, onOpenProfiles, onOpenAdmin }: { theme: Theme; onClose: () => void; onOpenConfig: () => void; onOpenProfiles: () => void; onOpenAdmin: () => void }) {
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => event.key === 'Escape' && onClose()
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [onClose])
-
-  return (
-    <div className="drawer-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
-      <aside className="side-menu" role="dialog" aria-modal="true" aria-labelledby="menu-title">
-        <div className="dialog-header">
-          <h2 id="menu-title">Menu</h2>
-          <button className="icon-button" onClick={onClose} aria-label="Fechar menu"><X /></button>
-        </div>
-        <nav className="side-menu-list">
-          <a href="#inicio" onClick={onClose}><Search size={18} /> Buscar professores</a>
-          <button type="button" onClick={onOpenConfig}>
-            <Settings size={18} /> Configurações
-            <span className="menu-current-theme">{THEME_LABELS[theme]}</span>
-          </button>
-          <button type="button" onClick={onOpenProfiles}><UserRound size={18} /> Perfis da comunidade</button>
-          <button type="button" onClick={onOpenAdmin}><KeyRound size={18} /> Área administrativa</button>
-          <a href="https://tech-2d.github.io/Agenda/" target="_blank" rel="noopener noreferrer"><CalendarDays size={18} /> Agenda da turma <ArrowRight size={15} className="menu-external-icon" /></a>
-        </nav>
-      </aside>
     </div>
   )
 }
@@ -492,17 +483,31 @@ function AdminDialog({ schedules, user, isAdmin, authChecked, onClose }: AdminDi
   const [saveError, setSaveError] = useState('')
   const [notice, setNotice] = useState('')
   const [adminSearch, setAdminSearch] = useState('')
+  const [adminSection, setAdminSection] = useState<'schedules' | 'import'>('schedules')
+  const [adminPage, setAdminPage] = useState(1)
   const [importRows, setImportRows] = useState<ScheduleInput[]>([])
   const [importError, setImportError] = useState('')
   const [importProgress, setImportProgress] = useState('')
 
-  const filteredAdminSchedules = schedules.filter((item) => matchesSearch(item, adminSearch))
+  const filteredAdminSchedules = useMemo(() => schedules.filter(item => matchesSearch(item, adminSearch)), [schedules, adminSearch])
+  const pageSize = 30
+  const totalPages = Math.max(1, Math.ceil(filteredAdminSchedules.length / pageSize))
+  const page = Math.min(adminPage, totalPages)
+  const pageStart = (page - 1) * pageSize
+  const pageSchedules = filteredAdminSchedules.slice(pageStart, pageStart + pageSize)
 
   useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => event.key === 'Escape' && onClose()
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      if (formOpen) {
+        if (!busy) setFormOpen(false)
+      } else {
+        onClose()
+      }
+    }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [onClose])
+  }, [busy, formOpen, onClose])
 
   async function logIn(event: FormEvent) {
     event.preventDefault()
@@ -655,9 +660,9 @@ function AdminDialog({ schedules, user, isAdmin, authChecked, onClose }: AdminDi
 
   return (
     <div className="modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
-      <section className="admin-dialog" role="dialog" aria-modal="true" aria-labelledby="admin-title">
+      <section className="admin-dialog professor-admin-dialog" role="dialog" aria-modal="true" aria-labelledby="admin-title">
         <div className="dialog-header">
-          <div><p className="eyebrow dark">ACESSO RESTRITO</p><h2 id="admin-title">Área administrativa</h2></div>
+          <div><p className="eyebrow dark">CADÊ O PROFESSOR?</p><h2 id="admin-title">Área administrativa</h2></div>
           <button className="icon-button" onClick={onClose} aria-label="Fechar"><X /></button>
         </div>
 
@@ -667,7 +672,7 @@ function AdminDialog({ schedules, user, isAdmin, authChecked, onClose }: AdminDi
           <form className="login-form" onSubmit={logIn}>
             <div className="login-symbol"><KeyRound /></div>
             <h3>Entre para gerenciar os horários</h3>
-            <p>Use o e-mail e a senha da sua conta no Firebase Authentication.</p>
+            <p>Use o e-mail e a senha da sua conta.</p>
             <label htmlFor="admin-email">E-mail</label>
             <input id="admin-email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="username" autoFocus required />
             <label htmlFor="admin-password">Senha</label>
@@ -679,11 +684,11 @@ function AdminDialog({ schedules, user, isAdmin, authChecked, onClose }: AdminDi
           </form>
         ) : !isAdmin ? (
           <div className="unauthorized">
-            <DoorOpen /><h3>Esta conta não tem permissão</h3><p>Confira se há um documento com o UID desta conta em <code>admins</code> e o campo <code>role</code> igual a <code>admin</code> ou <code>superadmin</code>.</p>
+            <DoorOpen /><h3>Esta conta não tem permissão</h3><p>Entre com uma conta autorizada a gerenciar os horários.</p>
             <button className="secondary-button" onClick={() => signOut(auth)}>Sair</button>
           </div>
         ) : (
-          <div className="admin-content">
+          <div className="admin-content" inert={formOpen}>
             <div className="admin-toolbar">
               <div><span>Conectado como</span><strong>{user.email}</strong></div>
               <div className="toolbar-actions">
@@ -691,21 +696,31 @@ function AdminDialog({ schedules, user, isAdmin, authChecked, onClose }: AdminDi
                 <button className="primary-button compact" onClick={startCreate}><Plus size={18} /> Novo horário</button>
               </div>
             </div>
-            {notice && <div className="notice"><Check size={17} /> {notice}</div>}
-            <div className="import-panel">
+            {notice && <div className="notice" role="status"><Check size={17} /> {notice}</div>}
+            <nav className="professor-admin-sections" aria-label="Seções da administração">
+              <button type="button" aria-pressed={adminSection === 'schedules'} onClick={() => setAdminSection('schedules')}><CalendarDays size={17} /> Horários</button>
+              <button type="button" aria-pressed={adminSection === 'import'} onClick={() => setAdminSection('import')}><Upload size={17} /> Importar JSON</button>
+            </nav>
+            <div hidden={adminSection !== 'import'}>
+            <section className="import-panel" aria-label="Importar horários por JSON">
               <div className="import-copy"><strong>Importar horários por JSON</strong><span>Os horários ativos ficam visíveis mesmo sem localização. Reimportar atualiza o status dos horários já cadastrados.</span></div>
               <label className="import-file">Escolher JSON<input type="file" accept=".json,application/json" onChange={readImportFile} disabled={busy} /></label>
               {importRows.length > 0 && <div className="import-preview"><span>{importRows.length} horários validados · {new Set(importRows.map((row) => row.className)).size} turmas</span><button className="primary-button compact" onClick={importSchedules} disabled={busy}><Upload size={16} /> {busy ? 'Importando…' : 'Cadastrar horários'}</button></div>}
               {importProgress && <p className="import-progress" role="status">{importProgress}</p>}
               {importError && <p className="form-error" role="alert">{importError}</p>}
+            </section>
             </div>
-            <div className="admin-list-heading"><strong>Horários cadastrados</strong><input aria-label="Buscar horários cadastrados" placeholder="Buscar professor ou turma" value={adminSearch} onChange={(event) => setAdminSearch(event.target.value)} /></div>
+            {adminSection === 'schedules' && <section aria-labelledby="professor-admin-schedules">
+            <div className="admin-list-heading">
+              <div><h3 id="professor-admin-schedules">Horários cadastrados</h3><span role="status">{filteredAdminSchedules.length.toLocaleString('pt-BR')} {filteredAdminSchedules.length === 1 ? 'horário encontrado' : 'horários encontrados'}</span></div>
+              <input type="search" aria-label="Buscar horários cadastrados" placeholder="Buscar professor, matéria ou turma" value={adminSearch} onChange={(event) => { setAdminSearch(event.target.value); setAdminPage(1) }} />
+            </div>
             <div className="admin-list">
-              {filteredAdminSchedules.length === 0 ? <p className="admin-empty">Nenhum horário encontrado.</p> : filteredAdminSchedules.map((schedule) => (
+              {pageSchedules.length === 0 ? <p className="admin-empty">Nenhum horário encontrado.</p> : pageSchedules.map((schedule) => (
                 <article key={schedule.id} className="admin-row">
                   <div className="avatar"><UserRound /></div>
                   <div className="admin-row-main"><strong>{schedule.professor}</strong><span>{schedule.subject} · {schedule.className}</span></div>
-                  <div className="admin-row-meta"><span>{WEEKDAYS.find((item) => item.value === schedule.dayOfWeek)?.short}</span><strong>{schedule.startTime}—{schedule.endTime}</strong></div>
+                  <div className="admin-row-meta"><span>{WEEKDAYS.find((item) => item.value === schedule.dayOfWeek)?.label}</span><strong>{schedule.startTime}–{schedule.endTime}</strong></div>
                   <div className="row-actions">
                     <button onClick={() => startEdit(schedule)} aria-label={`Editar horário de ${schedule.professor}`}><Edit3 /></button>
                     <button className="danger" onClick={() => removeSchedule(schedule)} aria-label={`Excluir horário de ${schedule.professor}`}><Trash2 /></button>
@@ -713,15 +728,21 @@ function AdminDialog({ schedules, user, isAdmin, authChecked, onClose }: AdminDi
                 </article>
               ))}
             </div>
+            {totalPages > 1 && <nav className="professor-admin-pagination" aria-label="Páginas de horários">
+              <button type="button" className="secondary-button" disabled={page === 1} onClick={() => setAdminPage(page - 1)}><ChevronLeft size={16} /> Anterior</button>
+              <span aria-live="polite">Página {page} de {totalPages}</span>
+              <button type="button" className="secondary-button" disabled={page === totalPages} onClick={() => setAdminPage(page + 1)}>Próxima <ChevronRight size={16} /></button>
+            </nav>}
+            </section>}
           </div>
         )}
 
         {formOpen && (
           <div className="form-overlay">
-            <form className="schedule-form" onSubmit={saveSchedule}>
-              <div className="form-title"><div><p className="eyebrow dark">HORÁRIO</p><h3>{editing ? 'Editar aula' : 'Adicionar aula'}</h3></div><button type="button" className="icon-button" onClick={() => setFormOpen(false)}><X /></button></div>
+            <form className="schedule-form" role="dialog" aria-modal="true" aria-labelledby="schedule-form-title" onSubmit={saveSchedule}>
+              <div className="form-title"><div><p className="eyebrow dark">HORÁRIO</p><h3 id="schedule-form-title">{editing ? 'Editar aula' : 'Adicionar aula'}</h3></div><button type="button" className="icon-button" disabled={busy} aria-label="Fechar edição de horário" onClick={() => setFormOpen(false)}><X /></button></div>
               <div className="form-grid">
-                <label>Professor<input required value={form.professor} onChange={(event) => setForm({ ...form, professor: event.target.value })} /></label>
+                <label>Professor<input autoFocus required value={form.professor} onChange={(event) => setForm({ ...form, professor: event.target.value })} /></label>
                 <label>Matéria<input required value={form.subject} onChange={(event) => setForm({ ...form, subject: event.target.value })} /></label>
                 <label>Turma<select required value={form.className} onChange={(event) => setForm({ ...form, className: event.target.value })}><option value="">Selecione a turma</option>{CLASS_NAMES.map((name) => <option value={name} key={name}>{name}</option>)}</select></label>
                 <label>Andar<input value={form.floor} onChange={(event) => setForm({ ...form, floor: event.target.value })} placeholder="Ex.: 1º andar" /></label>
@@ -731,7 +752,7 @@ function AdminDialog({ schedules, user, isAdmin, authChecked, onClose }: AdminDi
                 <label className="toggle wide"><input type="checkbox" checked={form.active} onChange={(event) => setForm({ ...form, active: event.target.checked })} /><span /> Horário visível no site</label>
               </div>
               {saveError && <p className="form-error">{saveError}</p>}
-              <div className="form-actions"><button type="button" className="secondary-button" onClick={() => setFormOpen(false)}>Cancelar</button><button className="primary-button compact" disabled={busy}>{busy ? <LoaderCircle className="spin" /> : 'Salvar horário'}</button></div>
+              <div className="form-actions"><button type="button" className="secondary-button" disabled={busy} onClick={() => setFormOpen(false)}>Cancelar</button><button className="primary-button compact" disabled={busy}>{busy ? <LoaderCircle className="spin" /> : 'Salvar horário'}</button></div>
             </form>
           </div>
         )}

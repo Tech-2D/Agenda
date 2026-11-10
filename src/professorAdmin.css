@@ -1,0 +1,82 @@
+.professor-admin-dialog { border-radius: 12px; }
+.professor-admin-dialog .dialog-header { gap: 12px; }
+.professor-admin-dialog .dialog-header .icon-button { flex: none; }
+.professor-admin-dialog .admin-toolbar { margin-bottom: 16px; }
+.professor-admin-dialog .admin-toolbar > div:first-child { min-width: 0; overflow-wrap: anywhere; }
+.professor-admin-dialog .toolbar-actions { flex-wrap: wrap; }
+.professor-admin-dialog :is(.primary-button, .secondary-button, .icon-button, .row-actions button) { border-radius: 7px; }
+.professor-admin-sections {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 22px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+.professor-admin-sections button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 44px;
+  padding: 8px 14px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--ink-soft);
+  font-size: .8125rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+.professor-admin-sections button[aria-pressed="true"] {
+  background: var(--surface, var(--neon-soft, #edf3ff));
+  border-color: var(--line);
+  color: var(--ink);
+}
+.professor-admin-dialog .admin-list-heading h3 { margin: 0 0 4px; color: var(--ink); font-size: 1rem; }
+.professor-admin-dialog .admin-list-heading span { color: var(--ink-soft); font-size: .75rem; }
+.professor-admin-dialog .admin-list-heading input { border-radius: 7px; }
+.professor-admin-dialog .admin-row { border-radius: 8px; }
+.professor-admin-dialog .admin-row-main { min-width: 0; overflow-wrap: anywhere; }
+.professor-admin-dialog .avatar { border-radius: 7px; }
+.professor-admin-dialog .row-actions button { width: 44px; height: 44px; }
+.professor-admin-dialog .import-file { min-width: 0; max-width: 100%; }
+.professor-admin-dialog .import-file input { width: 100%; }
+.professor-admin-dialog .import-file input::file-selector-button {
+  margin-right: 10px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface, var(--neon-soft, #edf3ff));
+  color: var(--ink);
+  cursor: pointer;
+}
+.professor-admin-pagination { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+.professor-admin-pagination button { padding-inline: 12px; }
+.professor-admin-pagination button:disabled { opacity: .55; cursor: default; }
+.professor-admin-pagination span { color: var(--ink-soft); font-size: .75rem; }
+.professor-admin-dialog .form-overlay {
+  position: fixed;
+  display: grid;
+  place-items: center;
+  min-height: 0;
+  padding: 16px;
+  background: rgba(9, 20, 48, .6);
+}
+.professor-admin-dialog .schedule-form {
+  width: min(620px, 100%);
+  min-height: 0;
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-radius: 12px;
+}
+@media (max-width: 640px) {
+  .professor-admin-dialog { border-radius: 0; }
+  .professor-admin-dialog .admin-row { grid-template-columns: 36px minmax(0, 1fr) auto; padding: 10px; gap: 8px; }
+  .professor-admin-dialog .avatar { width: 36px; height: 36px; }
+  .professor-admin-dialog .row-actions { flex-wrap: wrap; justify-content: end; }
+  .professor-admin-dialog .admin-row-meta { grid-column: 2; }
+}
+@media (max-width: 360px) {
+  .professor-admin-dialog .row-actions { grid-column: 2; grid-row: auto; justify-content: start; }
+}
