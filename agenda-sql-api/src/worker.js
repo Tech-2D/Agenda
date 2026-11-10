@@ -33,6 +33,8 @@ export function createHandler({ connect = connectDatabase, verify = verifySessio
     if (origin === ORIGIN) headers.set('Access-Control-Allow-Origin', ORIGIN)
     headers.set('Access-Control-Expose-Headers', 'ETag')
     if (request.method === 'OPTIONS') {
+      // Cache only the browser's transport preflight, never login, roles or private data.
+      headers.set('Access-Control-Max-Age','600')
       headers.set('Access-Control-Allow-Methods', 'GET, POST, PATCH, OPTIONS')
       headers.set('Access-Control-Allow-Headers', 'Authorization, Content-Type, If-Match')
       return new Response(null, { status: 204, headers })
@@ -45,7 +47,7 @@ export function createHandler({ connect = connectDatabase, verify = verifySessio
     }
     if (['/api/data','/api/internal/web-data'].includes(url.pathname)) {
       try { return await handleData(request,env,{connect,verify,reply}) }
-      catch (error) { return reply({message:error.status ? error.message : 'Serviço temporariamente indisponível.',code:error.code || 'unavailable'},error.status || 503) }
+      catch (error) { return reply({message:error.status ? error.message : 'Serviço temporariamente indisponível.',code:error.code || ({401:'unauthenticated',403:'permission-denied',400:'invalid-argument',409:'aborted',429:'resource-exhausted'}[error.status]) || 'unavailable'},error.status || 503) }
     }
     if (url.pathname === '/api/health' && request.method === 'GET') return reply({ ok: true, ready: env.MIGRATION_READY === 'true', writesEnabled: env.WRITES_ENABLED === 'true', previewReadsEnabled: env.PREVIEW_READS_ENABLED === 'true', applicationDataEnabled:env.APPLICATION_DATA_ENABLED==='true', applicationWritesEnabled:env.APPLICATION_WRITES_ENABLED==='true', applicationJobsEnabled:env.APPLICATION_JOBS_ENABLED==='true', databaseConfigured: Boolean(env.HYPERDRIVE?.connectionString) })
     const activity = url.pathname.match(/^\/api\/activities\/([A-Za-z0-9_-]{1,128})$/)
@@ -87,9 +89,15 @@ export function createHandler({ connect = connectDatabase, verify = verifySessio
       if (url.pathname.startsWith('/api/catalog/')) {
         if ([...url.searchParams.keys()].some(key => key !== 'class') || (url.searchParams.get('class')?.length || 0) > 100) throw failure(400, 'Filtro inválido.')
         const turma = url.searchParams.get('class')
-        const activities = url.pathname.endsWith('/updates') ? { rows: [] } : await db.query('SELECT * FROM tech2d.activities WHERE ($1::text IS NULL OR turma_id = $1 OR turma_id IS NULL) ORDER BY date, time, id LIMIT 10001', [turma])
+        const combined=(await db.query(`WITH selected_activities AS (
+          SELECT * FROM tech2d.activities WHERE $2::boolean AND ($1::text IS NULL OR turma_id=$1 OR turma_id IS NULL) ORDER BY date,time,id LIMIT 10001
+        ), selected_documents AS (
+          SELECT collection,id,data FROM tech2d.catalog_documents WHERE collection IN ('agendaClasses','agendaUpdates','announcement') ORDER BY data->>'publishedAt' DESC NULLS LAST LIMIT 10001
+        ) SELECT
+          (SELECT coalesce(jsonb_agg(to_jsonb(a)||jsonb_build_object('version',a.version::text) ORDER BY a.date,a.time,a.id),'[]'::jsonb) FROM selected_activities a) AS activities,
+          (SELECT coalesce(jsonb_agg(to_jsonb(d) ORDER BY d.data->>'publishedAt' DESC NULLS LAST),'[]'::jsonb) FROM selected_documents d) AS documents`,[turma,!url.pathname.endsWith('/updates')])).rows[0]
+        const activities={rows:combined.activities},documents={rows:combined.documents}
         if (activities.rows.length > 10000) throw failure(503, 'Catálogo excede o limite da consulta.')
-        const documents = await db.query("SELECT collection, id, data FROM tech2d.catalog_documents WHERE collection IN ('agendaClasses', 'agendaUpdates', 'announcement') ORDER BY data->>'publishedAt' DESC NULLS LAST LIMIT 10001")
         if (documents.rows.length > 10000) throw failure(503, 'Catálogo excede o limite da consulta.')
         const updates = documents.rows.filter(row => row.collection === 'agendaUpdates').slice(0, 100).map(row => publicUpdate(row.id, row.data))
         const announcement = documents.rows.find(row => row.collection === 'announcement' && row.id === 'latest')?.data

@@ -22,14 +22,22 @@ const exposed = (c, row) => {
   if (row.collection === 'notebookNotes' && data.authorUid !== c.user?.uid && c.profile?.role !== 'superadmin') delete data.authorEmail
   return { path: row.path, id: row.id, data, version: String(row.version) }
 }
-export async function context(db, identity = {}) {
-  const get = async path => (await db.query('SELECT data FROM tech2d.app_documents WHERE path=$1', [path])).rows[0]?.data
-  return { ...identity, profile: identity.user ? await get('admins/' + identity.user.uid) : null, now: new Date().toISOString(), get }
+export async function context(db, identity = {}, hint = {}) {
+  // Request-local only. Never cache permissions or private documents across requests/accounts.
+  const cache = new Map()
+  const prime = (path,data) => {if(!cache.has(path))cache.set(path,Promise.resolve(data))}
+  const get = path => {
+    if(!cache.has(path))cache.set(path,db.query('SELECT data FROM tech2d.app_documents WHERE path=$1',[path]).then(result=>result.rows[0]?.data))
+    return cache.get(path)
+  }
+  if(identity.user && Object.hasOwn(hint,'profile'))prime('admins/'+identity.user.uid,hint.profile)
+  return { ...identity, profile: identity.user ? await get('admins/' + identity.user.uid) : null, now: new Date().toISOString(), get, prime }
 }
 export async function readDocument(db, c, path) {
   parsePath(path)
   authorizePrivatePath(c,path)
   const row = (await db.query('SELECT * FROM tech2d.app_documents WHERE path=$1', [path])).rows[0]
+  c.prime?.(path,row?.data)
   if (!await authorizeRead(c,path,row?.data)) throw denied()
   return exposed(c,row)
 }
@@ -118,7 +126,7 @@ async function applyPlans(db,plans) {
     ON CONFLICT(collection,id) DO UPDATE SET data=excluded.data`,[JSON.stringify(catalog.filter(p=>p.data).map(p=>({collection:p.collection,id:p.id,data:p.data})))])
 }
 export async function commitDocuments(db,identity,input) {
-  if (!input || Object.keys(input).some(k => !['id','writes','reads'].includes(k)) || !/^[a-zA-Z0-9_-]{20,80}$/.test(input.id) || !Array.isArray(input.writes) || input.writes.length < 1 || input.writes.length > 500 || !Array.isArray(input.reads || []) || (input.reads || []).length > 500) throw invalid()
+  if (!input || Object.keys(input).some(k => !['id','writes','reads','returnDocuments'].includes(k)) || input.returnDocuments!==undefined && typeof input.returnDocuments!=='boolean' || !/^[a-zA-Z0-9_-]{20,80}$/.test(input.id) || !Array.isArray(input.writes) || input.writes.length < 1 || input.writes.length > 500 || !Array.isArray(input.reads || []) || (input.reads || []).length > 500) throw invalid()
   const paths = new Set()
   for (const w of input.writes) {
     if (!w || Object.keys(w).some(k => !['path','op','data','merge','version'].includes(k)) || !['create','set','update','delete'].includes(w.op) || w.op !== 'delete' && (!w.data || typeof w.data !== 'object' || Array.isArray(w.data)) || w.merge !== undefined && typeof w.merge !== 'boolean') throw invalid()
@@ -148,6 +156,7 @@ export async function commitDocuments(db,identity,input) {
     const plans = []
     // One round trip for a whole import, rather than 500 sequential lookups.
     const existing=(await db.query('SELECT path,data,version FROM tech2d.app_documents WHERE path=ANY($1::text[]) FOR UPDATE',[[...paths]])).rows
+    for(const row of existing)c.prime(row.path,row.data)
     const byPath=new Map(existing.map(row=>[row.path,row]))
     for (const w of input.writes) {
       const old = byPath.get(w.path)
@@ -157,7 +166,14 @@ export async function commitDocuments(db,identity,input) {
       const values = w.op === 'delete' ? null : resolveValues(w.data,c.now)
       const data = w.op === 'update' || w.op === 'set' && w.merge ? { ...old?.data,...values } : values
       if (!await authorizeWrite(c,w.path,old?.data || null,data)) throw denied()
-      plans.push({path:w.path,data,old:old?.data || null,operation:w.op})
+      plans.push({path:w.path,data,old:old?.data || null,operation:w.op,nextVersion:String(BigInt(old?.version || 0)+1n)})
+    }
+    const documents=[]
+    if(input.returnDocuments) for(const p of plans) {
+      if(p.data && await authorizeRead(c,p.path,p.data)) {
+        const parts=p.path.split('/')
+        documents.push(exposed(c,{path:p.path,id:parts.at(-1),collection:parts.slice(0,-1).join('/'),data:p.data,version:p.nextVersion}))
+      }
     }
     // Evaluate every permission against the same pre-commit state, then apply atomically.
     await applyPlans(db,plans)
@@ -166,6 +182,6 @@ export async function commitDocuments(db,identity,input) {
     [actor,JSON.stringify(plans.map(p=>({path:p.path,operation:p.operation,previous_data:p.old})))])
     await db.query('INSERT INTO tech2d.app_commits(id,actor,digest) VALUES($1,$2,$3)',[input.id,actor,hash])
     await db.query('COMMIT')
-    return {committed:true,replay:false}
+    return {committed:true,replay:false,...(input.returnDocuments ? {documents,deleted:plans.filter(p=>p.data===null).map(p=>p.path)} : {})}
   } catch (error) { await db.query('ROLLBACK'); throw error }
 }

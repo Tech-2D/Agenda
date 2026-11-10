@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import {readFile} from 'node:fs/promises'
 import {PGlite} from '@electric-sql/pglite'
 import {context,commitDocuments,queryDocuments,readDocument,putDocument} from '../src/document-store.js'
+import {kanbanMembers} from '../src/shared-kanban-policy.js'
 
 const engine=new PGlite()
 for(const file of ['001_initial','002_application'])await engine.exec(await readFile(new URL('../migrations/'+file+'.sql',import.meta.url),'utf8'))
@@ -17,7 +18,9 @@ const query=(identity,path,filters=[])=>context(db,identity).then(c=>queryDocume
 const read=(identity,path)=>context(db,identity).then(c=>readDocument(db,c,path))
 
 test('authenticated owner creates a shared board with no implicit admin or anonymous access',async()=>{
-  await commit(owner,[{op:'set',path,data:{ownerId:'owner',board,createdAt:stamp,updatedAt:stamp}}])
+  const created=await commitDocuments(db,owner,{id:crypto.randomUUID(),returnDocuments:true,writes:[{op:'set',path,data:{ownerId:'owner',board,createdAt:stamp,updatedAt:stamp}}]})
+  assert.equal(created.documents.length,1);assert.equal(created.documents[0].version,'1')
+  assert.equal(created.documents[0].data.ownerId,'owner')
   assert.equal((await read(owner,path)).data.board.name,'Grupo de estudos')
   for(const identity of [{},stranger,member,admin,{service:'web'}])await assert.rejects(()=>read(identity,path),{status:403})
   assert.equal((await query(owner,'sharedKanban',[{field:'ownerId',op:'==',value:'owner'}])).length,1)
@@ -48,8 +51,17 @@ test('only the owner approves; a forged self-grant and forged approval batch are
 test('members edit tasks and custom columns, but cannot transfer ownership or change ACL data',async()=>{
   const original=await read(member,path)
   const changed=structuredClone(board);changed.tasks.push({id:'task',columnId:'todo',title:'Revisar prova',description:'Em grupo',priority:'medium',dueDate:null,labels:['Estudos'],checklist:[]})
+  changed.tasks[0].assigneeId='member'
   await commit(member,[{op:'update',path,version:original.version,data:{board:changed,updatedAt:stamp}}])
   assert.equal((await read(owner,path)).data.board.tasks[0].title,'Revisar prova')
+  assert.equal((await read(member,path)).data.board.tasks[0].assigneeId,'member')
+  const roster=await kanbanMembers(db,await context(db,member),path)
+  assert.deepEqual(roster.map(p=>p.uid).sort(),['member','owner'])
+  assert.equal(JSON.stringify(roster).includes('@'),false)
+  const outsider=await context(db,stranger)
+  await assert.rejects(()=>kanbanMembers(db,outsider,path),{status:403})
+  const forged=structuredClone(changed);forged.tasks[0].assigneeId='stranger'
+  await assert.rejects(()=>commit(member,[{op:'update',path,data:{board:forged,updatedAt:stamp}}]),{status:403})
   await assert.rejects(()=>commit(owner,[{op:'update',path,version:original.version,data:{board,updatedAt:stamp}}]),{status:409})
   for(const data of [{ownerId:'member'},{memberIds:['stranger']},{createdAt:'2000-01-01T00:00:00Z'}])await assert.rejects(()=>commit(member,[{op:'update',path,data:{...data,updatedAt:stamp}}]),{status:403})
   await assert.rejects(()=>commit(member,[{op:'delete',path}]),{status:403})
@@ -68,6 +80,9 @@ test('revoking access immediately blocks reads and writes; the link is never a b
   await commit(owner,[{op:'delete',path:grantPath},{op:'update',path:requestPath,data:{status:'revoked',updatedAt:stamp}}])
   await assert.rejects(()=>read(member,path),{status:403})
   await assert.rejects(()=>commit(member,[{op:'update',path,data:{board,updatedAt:stamp}}]),{status:403})
+  const preserved=(await read(owner,path)).data.board
+  assert.equal(preserved.tasks[0].assigneeId,'member')
+  await commit(owner,[{op:'update',path,data:{board:{...preserved,name:'Tarefa histórica atribuída'},updatedAt:stamp}}])
   await commit(member,[{op:'update',path:requestPath,data:{status:'pending',updatedAt:stamp}}])
   await assert.rejects(()=>read(member,path),{status:403})
 })

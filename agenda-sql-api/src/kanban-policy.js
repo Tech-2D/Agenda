@@ -1,5 +1,6 @@
 // Personal workspaces are never public, even to representatives or superadmins.
 const keys = (v, names) => v && typeof v === 'object' && !Array.isArray(v) && Object.keys(v).length === names.length && names.every(k => Object.hasOwn(v,k))
+const taskKeys = v => v && keys(v,Object.hasOwn(v,'assigneeId') ? ['id','columnId','title','description','priority','dueDate','labels','checklist','assigneeId'] : ['id','columnId','title','description','priority','dueDate','labels','checklist'])
 const text = (v,max,min=0) => typeof v === 'string' && v.length >= min && v.length <= max
 const id = v => typeof v === 'string' && /^[a-zA-Z0-9_-]{1,80}$/.test(v)
 const unique = list => list.every(v=>v && typeof v === 'object' && id(v.id)) && new Set(list.map(v=>v.id)).size === list.length
@@ -15,7 +16,7 @@ export function validKanban(d) {
     if (!b.columns.every(c=>keys(c,['id','name','color','done']) && id(c.id) && text(c.name,60,1) && c.name.trim() && colors.has(c.color) && typeof c.done === 'boolean')) return false
     const columns = new Set(b.columns.map(c=>c.id))
     for (const t of b.tasks) {
-      if (!keys(t,['id','columnId','title','description','priority','dueDate','labels','checklist']) || !id(t.id) || !columns.has(t.columnId) || !text(t.title,160,1) || !t.title.trim() || !text(t.description,3000)
+      if (!taskKeys(t) || t.assigneeId!=null && !text(t.assigneeId,128,1) || !id(t.id) || !columns.has(t.columnId) || !text(t.title,160,1) || !t.title.trim() || !text(t.description,3000)
         || !['none','low','medium','high'].includes(t.priority) || !date(t.dueDate) || !Array.isArray(t.labels) || t.labels.length > 6 || !t.labels.every(l=>text(l,30,1))
         || !Array.isArray(t.checklist) || t.checklist.length > 20 || !unique(t.checklist) || !t.checklist.every(i=>keys(i,['id','text','done']) && id(i.id) && text(i.text,200,1) && typeof i.done === 'boolean')) return false
     }
@@ -27,6 +28,6 @@ export function validKanban(d) {
 export function canWriteKanban(c,id,before,after) {
   if (!c.user || id !== c.user.uid || before && before.ownerId !== c.user.uid) return false
   if (!after) return false // Delete individual boards explicitly; no account-wide wipe endpoint.
-  return validKanban(after) && after.ownerId === c.user.uid && after.updatedAt === c.now
+  return validKanban(after) && after.boards.every(b=>b.tasks.every(t=>t.assigneeId==null || t.assigneeId===c.user.uid)) && after.ownerId === c.user.uid && after.updatedAt === c.now
     && (before ? after.createdAt === before.createdAt : after.createdAt === c.now)
 }

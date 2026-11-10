@@ -12,7 +12,7 @@ async function call(body,{authenticated=true,status=200}={}) {
   if(response.status!==status)throw Error('SHARED_SMOKE_HTTP_'+response.status)
   return response.json()
 }
-const commit=writes=>call({action:'commit',commit:{id:randomUUID(),writes}})
+const commit=writes=>call({action:'commit',commit:{id:randomUUID(),writes,returnDocuments:true}})
 try {
   const email=process.env.TEST_ADMIN_EMAIL
   if(!email || !email.includes('@'))throw Error('TEST_ADMIN_EMAIL_REQUIRED')
@@ -34,10 +34,17 @@ try {
     temporaryPath='sharedKanban/'+id
     const board={id,name:'[Teste técnico temporário do Kanban]',color:'blue',compact:false,columns:[{id:'todo',name:'Teste',color:'blue',done:false}],tasks:[]}
     attempted=true
-    await commit([{op:'create',path:temporaryPath,data:{ownerId:user.uid,board,createdAt:stamp,updatedAt:stamp}}]);report.created=true
-    const first=(await call({action:'get',path:temporaryPath})).document
-    const edited={...board,tasks:[{id:'task',columnId:'todo',title:'Teste temporário',description:'Removido ao concluir a verificação.',priority:'none',dueDate:null,labels:[],checklist:[]}]}
-    await commit([{op:'update',path:temporaryPath,version:first.version,data:{board:edited,updatedAt:stamp}}])
+    const created=await commit([{op:'create',path:temporaryPath,data:{ownerId:user.uid,board,createdAt:stamp,updatedAt:stamp}}]);report.created=true
+    const first=created.documents?.find(row=>row.path===temporaryPath)
+    if(first?.version!=='1')throw Error('CONFIRMED_CREATE_MISSING')
+    report.confirmedVersionInResponse=true
+    const members=(await call({action:'members',path:temporaryPath})).members
+    if(members?.length!==1 || members[0].uid!==user.uid || Object.keys(members[0]).some(k=>!['uid','name'].includes(k)))throw Error('ROSTER_CHECK_FAILED')
+    report.privateRoster=true
+    const edited={...board,tasks:[{id:'task',columnId:'todo',title:'Teste temporário',description:'Removido ao concluir a verificação.',priority:'none',dueDate:null,labels:[],checklist:[],assigneeId:user.uid}]}
+    const updated=await commit([{op:'update',path:temporaryPath,version:first.version,data:{board:edited,updatedAt:stamp}}])
+    if(updated.documents?.[0]?.version!=='2' || updated.documents[0].data.board.tasks[0].assigneeId!==user.uid)throw Error('CONFIRMED_ASSIGNMENT_MISSING')
+    report.assignmentConfirmed=true
     if((await call({action:'get',path:temporaryPath})).document?.data?.board?.tasks?.length!==1)throw Error('SHARED_EDIT_FAILED')
     report.edited=true
     await call({action:'commit',commit:{id:randomUUID(),writes:[{op:'update',path:temporaryPath,version:first.version,data:{board,updatedAt:stamp}}]}},{status:409});report.staleEditBlocked=true

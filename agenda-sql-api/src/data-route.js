@@ -1,5 +1,6 @@
 import { context, readDocument, queryDocuments, commitDocuments } from './document-store.js'
 import { denied, invalid } from './policies.js'
+import { kanbanMembers } from './shared-kanban-policy.js'
 
 export async function secretMatches(value,expected) {
   if (!expected || expected.length < 40 || !value) return false
@@ -35,17 +36,19 @@ export async function handleData(request,env,{connect,verify,reply}) {
   } else identity = {user:request.headers.has('Authorization') ? await verify(request,env) : null}
   if (env.APPLICATION_DATA_ENABLED !== 'true') return reply({message:'Integração SQL ainda não ativada.'},503)
   const input = await readJson(request)
-  if (!input || Object.keys(input).some(k => !['action','path','query','commit'].includes(k)) || !['get','query','commit'].includes(input.action)) throw invalid()
+  if (!input || Object.keys(input).some(k => !['action','path','query','commit'].includes(k)) || !['get','query','commit','members'].includes(input.action)) throw invalid()
   if (input.action === 'commit' && env.APPLICATION_WRITES_ENABLED !== 'true') return reply({message:'Gravação SQL ainda não ativada.'},503)
   const db = await connect(env)
   try {
-    const state = (await db.query('SELECT application_seeded,production_enabled FROM tech2d.migration_state WHERE id=true')).rows[0]
+    const state = (await db.query(`SELECT m.application_seeded,m.production_enabled,p.data AS profile
+      FROM tech2d.migration_state m LEFT JOIN tech2d.app_documents p ON p.path=$1 WHERE m.id=true`,[identity.user ? 'admins/'+identity.user.uid : null])).rows[0]
     if (!state?.application_seeded) return reply({message:'A sincronização dos dados ainda não foi validada.'},503)
     if (input.action === 'commit') {
       if(!state.production_enabled) return reply({message:'A sincronização final ainda não foi liberada.'},503)
       return reply(await commitDocuments(db,identity,input.commit))
     }
-    const c = await context(db,identity)
+    const c = await context(db,identity,{profile:state.profile})
+    if(input.action==='members')return reply({members:await kanbanMembers(db,c,input.path)})
     if (input.action === 'get') return reply({document:await readDocument(db,c,input.path)})
     return reply({documents:await queryDocuments(db,c,input.query)})
   } finally { await db.end().catch(() => {}) }

@@ -1,6 +1,6 @@
 export const PROJECT = 'd-tech-8555e'
 const pick = (data, fields) => Object.fromEntries(fields.filter(key => data?.[key] !== undefined).map(key => [key, data[key]]))
-export const iso = value => value instanceof Date ? value.toISOString() : value ?? null
+export const iso = value => value instanceof Date ? value.toISOString() : typeof value==='string' && value.includes('T') && Number.isFinite(Date.parse(value)) ? new Date(value).toISOString() : value ?? null
 
 export function publicActivity(row) {
   return {

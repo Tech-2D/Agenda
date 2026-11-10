@@ -1,4 +1,5 @@
 import {validKanban} from './kanban-policy.js'
+const denied=()=>Object.assign(new Error('Você não tem permissão para esta operação.'),{status:403,code:'permission-denied'})
 const keys=(d,names)=>d && typeof d==='object' && !Array.isArray(d) && Object.keys(d).length===names.length && names.every(k=>Object.hasOwn(d,k))
 const text=(v,max)=>typeof v==='string' && v.length>0 && v.length<=max
 const id=v=>typeof v==='string' && /^[a-zA-Z0-9_-]{1,80}$/.test(v)
@@ -13,9 +14,17 @@ export async function sharedAccess(c,boardId) {
   const member=await c.get(membershipPath(boardId,c.user.uid))
   return member?.boardId===boardId && member.userId===c.user.uid
 }
+export async function kanbanMembers(db,c,path) {
+  const parts=typeof path==='string' ? path.split('/') : []
+  if(parts.length!==2 || parts[0]!=='sharedKanban' || !await sharedAccess(c,parts[1]))throw denied()
+  const board=await c.get(path)
+  const rows=(await db.query("SELECT data FROM tech2d.app_documents WHERE collection='kanbanMemberships' AND data->>'boardId'=$1 ORDER BY id LIMIT 101",[parts[1]])).rows
+  return [{uid:board.ownerId,name:'Dono do quadro'},...rows.slice(0,100).map(({data})=>({uid:data.userId,name:String(data.name || 'Participante').split('@')[0].slice(0,80)}))]
+}
 export async function canReadShared(c,name,id,data) {
   if(!c.user || c.service)return false
-  if(name==='sharedKanban')return sharedAccess(c,id)
+  // The validated candidate also covers the owner's create confirmation before INSERT.
+  if(name==='sharedKanban')return data?.ownerId===c.user.uid || sharedAccess(c,id)
   if(!data)return id.endsWith('_'+c.user.uid)
   return Boolean(data && (data.userId===c.user.uid || (await c.get('sharedKanban/'+data.boardId))?.ownerId===c.user.uid))
 }
@@ -34,7 +43,13 @@ export async function canWriteShared(c,name,docId,old,d) {
     if(!d)return Boolean(old && old.ownerId===uid)
     if(!keys(d,['ownerId','board','createdAt','updatedAt']) || !id(docId) || !text(d.ownerId,128) || d.board?.id!==docId || d.updatedAt!==now
       || !validKanban({ownerId:d.ownerId,schemaVersion:1,boards:[d.board],createdAt:d.createdAt,updatedAt:d.updatedAt}))return false
-    return old ? await sharedAccess(c,docId) && d.ownerId===old.ownerId && d.createdAt===old.createdAt : d.ownerId===uid && d.createdAt===now
+    if(old ? !await sharedAccess(c,docId) || d.ownerId!==old.ownerId || d.createdAt!==old.createdAt : d.ownerId!==uid || d.createdAt!==now)return false
+    const previous=new Map((old?.board?.tasks || []).map(t=>[t.id,t.assigneeId]))
+    for(const task of d.board.tasks)if(task.assigneeId!=null && task.assigneeId!==previous.get(task.id) && task.assigneeId!==d.ownerId) {
+      const member=await c.get(membershipPath(docId,task.assigneeId))
+      if(member?.boardId!==docId || member.userId!==task.assigneeId)return false
+    }
+    return true
   }
   const record=d || old
   if(!record || !id(record.boardId) || !text(record.userId,128) || docId!==record.boardId+'_'+record.userId)return false

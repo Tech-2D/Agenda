@@ -168,3 +168,25 @@ test('malformed or excessive kanban content fails closed without exposing person
     d=>{d.boards[0].tasks=Array.from({length:201},(_,i)=>({...d.boards[0].tasks[0],id:String(i)}))},
   ]) {const d=make();alter(d);assert.equal(validKanban(d),false)}
 })
+test('commit confirmation returns authorized document data and its version, without a second read',async()=>{
+  const input={id:id(),returnDocuments:true,writes:[{op:'create',path:'personalKanban/confirm-owner',data:{ownerId:'confirm-owner',schemaVersion:1,boards:[],createdAt:stamp,updatedAt:stamp}}]}
+  const identity={user:{uid:'confirm-owner',email:'confirm@example.com'}}
+  const result=await commitDocuments(db,identity,input)
+  assert.equal(result.documents.length,1);assert.equal(result.documents[0].version,'1')
+  assert.equal(typeof result.documents[0].data.createdAt,'string')
+  const replay=await commitDocuments(db,identity,input)
+  assert.equal(replay.replay,true);assert.equal(replay.documents,undefined)
+})
+test('request-local permission memoization neither repeats lookups nor survives a new request',async()=>{
+  let calls=0
+  const counted={query:(...args)=>{calls++;return db.query(...args)}}
+  const c=await context(counted,{})
+  await Promise.all([c.get('admins/admin'),c.get('admins/admin')])
+  assert.equal(calls,1)
+  const next=await context(counted,{})
+  await next.get('admins/admin');assert.equal(calls,2)
+})
+test('write confirmation never echoes fields from a document the caller cannot read',async()=>{
+  const result=await commitDocuments(db,{}, {id:id(),returnDocuments:true,writes:[{op:'create',path:'representativeRequests/qqqqqqqqqqqqqqqqqqqq',data:{turmaId:'2° TECH D',email:'request@example.com',status:'pendente',createdAt:stamp}}]})
+  assert.equal(result.committed,true);assert.deepEqual(result.documents,[])
+})
