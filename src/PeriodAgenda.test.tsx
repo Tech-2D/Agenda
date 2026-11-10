@@ -16,6 +16,7 @@ describe('tarefas nas novas visões', () => {
     expect(html).toContain('Entrega do projeto')
     expect(html).toContain('Conteúdo completo da tarefa')
     expect(html).toContain('07:00')
+    expect(html).toContain('Copiar link da atividade')
     expect(html).not.toContain('Prova amanhã')
   })
   it('inclui tarefas da semana e identifica dias vazios e itens sem horário', () => {

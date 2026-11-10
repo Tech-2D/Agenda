@@ -5,6 +5,7 @@ import { canCreateForSelectedClass } from './quickCreate'
 import { canEditCalendarActivity } from './calendarPermissions'
 import { AttachmentLinks } from './AttachmentLinks'
 import { ATTACHMENTS_ENABLED } from './attachments'
+import { ActivityShareButton } from './ActivityShareButton'
 import { ACTIVITY_TYPE_COLORS, ACTIVITY_TYPE_LABELS, type Activity, type AdminProfile } from './types'
 
 export function PeriodAgenda({ cursor, view, activitiesByDay, profile, turmaId, showTurmaLabel = false, onAdd, onEdit, onOpenDay }: {
@@ -33,6 +34,7 @@ export function PeriodAgenda({ cursor, view, activitiesByDay, profile, turmaId, 
             {activity.subject && <p className="activity-subject">{activity.subject}</p>}
             {activity.description && <p className="period-task-description">{activity.description}</p>}
             {ATTACHMENTS_ENABLED && <AttachmentLinks activityId={activity.id} attachments={activity.attachments} />}
+            <ActivityShareButton activityId={activity.id} />
             {canEditCalendarActivity(profile, activity) && <button type="button" className="period-edit" onClick={() => onEdit(activity)} aria-label={`Editar ${activity.title}`}><Edit3 size={14} /> Editar</button>}
           </article>)}
         </div>

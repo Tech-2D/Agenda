@@ -34,6 +34,8 @@ import { FONT_SCALES, FONT_SCALE_LABELS, readStoredFontScale, readStoredHighCont
 import { loadOrClaimAdminProfile } from './adminAccess'
 import { DEFAULT_MENU_SHORTCUTS, readMenuShortcuts, storeMenuShortcuts, type MenuShortcutId } from './menuShortcuts'
 import { SyncStatus } from './SyncStatus'
+import { ActivityShareButton } from './ActivityShareButton'
+import { readActivityLink } from './activityLinks'
 
 const CompareCalendar = lazy(() => import('./CompareCalendar').then(module => ({ default: module.CompareCalendar })))
 const ProfileDialog = lazy(() => import('./ProfileDialog').then(module => ({ default: module.ProfileDialog })))
@@ -42,6 +44,7 @@ const PollsDialog = lazy(() => import('./PollsDialog').then(module => ({ default
 const NoticeBoardDialog = lazy(() => import('./NoticeBoard').then(module => ({ default: module.NoticeBoardDialog })))
 const AdminDialog = lazy(() => import('./AdminDialog'))
 const KanbanPage = lazy(() => import('./KanbanPage'))
+const ActivityLinkDialog = lazy(() => import('./ActivityLinkDialog').then(module => ({ default: module.ActivityLinkDialog })))
 
 const RECENT_WINDOW_MS = 14 * 24 * 60 * 60 * 1000
 
@@ -75,6 +78,7 @@ function App() {
   const [monthCursor, setMonthCursor] = useState(() => new Date())
   const [calendarView, setCalendarView] = useState<CalendarView>('month')
   const [selectedDay, setSelectedDay] = useState<Date | null>(null)
+  const [linkedActivityId, setLinkedActivityId] = useState(() => readActivityLink(window.location.hash))
   const [dayPreview, setDayPreview] = useState<{ key: string; day: Date; activities: Activity[]; left: number; top: number; width: number } | null>(null)
   const previewCloseTimer = useRef<number | null>(null)
   const [adminOpen, setAdminOpen] = useState(['#admin', '#representante'].includes(window.location.hash))
@@ -176,7 +180,7 @@ function App() {
   const unseenSystemUpdate = updatesReady && !updatesError
     ? latestUnseenUpdate(systemUpdates, seenSystemUpdateId)
     : null
-  const showSystemUpdate = unseenSystemUpdate && !adminOpen && !updatesOpen
+  const showSystemUpdate = unseenSystemUpdate && !adminOpen && !updatesOpen && !linkedActivityId
 
   const announcementUpdatedMs = announcement?.updatedAt?.toDate().getTime() ?? 0
   const showAnnouncement = Boolean(turmaId) && announcementUpdatedMs > 0 && announcementUpdatedMs > announcementSeenAt
@@ -185,6 +189,9 @@ function App() {
     const syncOptionsPage = () => {
       setMoreOptionsOpen(window.location.hash === '#opcoes')
       setKanbanOpen(window.location.hash.split('?')[0] === '#kanban')
+      const linkedId = readActivityLink(window.location.hash)
+      setLinkedActivityId(linkedId)
+      if (linkedId) { setSelectedDay(null); setDayPreview(null); setAdminOpen(false); setMenuOpen(false) }
     }
     window.addEventListener('hashchange', syncOptionsPage)
     window.addEventListener('popstate', syncOptionsPage)
@@ -199,7 +206,22 @@ function App() {
     savePreferredTurma(value)
   }
 
+  function closeLinkedActivity() {
+    window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}`)
+    setLinkedActivityId(null)
+  }
+
+  function viewLinkedActivity(activity: Activity) {
+    if (activity.turmaId) chooseTurma(activity.turmaId)
+    const [year, month, day] = activity.date.split('-').map(Number)
+    const date = new Date(year, month - 1, day)
+    setSubjectFilter(''); setCompareMode(false); setMonthCursor(date); setSelectedDay(date)
+    closeLinkedActivity()
+  }
+
   useEffect(() => {
+    // A shared link loads only its activity; the full calendar starts when it is closed.
+    if (linkedActivityId) return
     let loaded = false
     setLoading(true)
     setTurmaActivities([])
@@ -225,7 +247,7 @@ function App() {
         setUpdatesError('Não foi possível carregar as atualizações. Tente novamente mais tarde.')
       }
     }, turmaId || undefined)
-  }, [turmaId])
+  }, [turmaId, linkedActivityId])
 
   const activities = useMemo(() => {
     const merged = [...turmaActivities, ...globalActivities]
@@ -554,7 +576,9 @@ function App() {
         <DayDetail day={selectedDay} activities={activitiesByDay.get(dateKey(selectedDay)) ?? []} profile={calendarProfile} canAdd={canCreateForSelectedClass(calendarProfile, turmaId)} onEditActivity={openCalendarEdit} onAddActivity={() => openAdminForDay(selectedDay)} onClose={() => setSelectedDay(null)} />
       )}
 
-      {!turmaId && !classRequestOpen && !kanbanOpen && <TurmaPickerModal classNames={classNames} onChoose={chooseTurma} onRequest={() => setClassRequestOpen(true)} />}
+      {linkedActivityId && <ActivityLinkDialog key={linkedActivityId} id={linkedActivityId} onClose={closeLinkedActivity} onViewCalendar={viewLinkedActivity} />}
+
+      {!turmaId && !classRequestOpen && !kanbanOpen && !linkedActivityId && <TurmaPickerModal classNames={classNames} onChoose={chooseTurma} onRequest={() => setClassRequestOpen(true)} />}
 
       {menuOpen && (
         <SideMenu
@@ -595,7 +619,7 @@ function App() {
 
       {notificationsOpen && <NotificationsDialog activities={recentActivities} onClose={() => setNotificationsOpen(false)} />}
 
-      {showAnnouncement && announcement && updatesReady && !showSystemUpdate && (
+      {showAnnouncement && announcement && updatesReady && !showSystemUpdate && !linkedActivityId && (
         <AnnouncementModal
           message={announcement.message}
           onClose={() => {
@@ -1560,6 +1584,7 @@ function DayDetail({ day, activities, profile, canAdd, onEditActivity, onAddActi
               {activity.subject && <p className="activity-subject">{activity.subject}</p>}
               {activity.description && <p>{activity.description}</p>}
               {ATTACHMENTS_ENABLED && <AttachmentLinks activityId={activity.id} attachments={activity.attachments} />}
+              <ActivityShareButton activityId={activity.id} />
               {activity.createdByEmail && <p className="activity-author">Publicado por {activity.createdByEmail}</p>}
               {canEditCalendarActivity(profile, activity) && <button type="button" className="secondary-button" onClick={() => onEditActivity(activity)} aria-label={`Editar ${activity.title}`}><Edit3 size={16} /> Editar atividade</button>}
             </article>
