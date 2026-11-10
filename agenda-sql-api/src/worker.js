@@ -3,6 +3,7 @@ import { verifySession } from './auth.js'
 import { canManage, publicActivity, publicSchedule, publicUpdate, validActivity } from './data.js'
 import { handleData } from './data-route.js'
 import { handleJob } from './jobs.js'
+import { handleAccessStats, pruneAgendaAccess } from './access-stats.js'
 
 const ORIGIN = 'https://tech-2d.github.io'
 const failure = (status, message) => Object.assign(new Error(message), { status })
@@ -40,6 +41,14 @@ export function createHandler({ connect = connectDatabase, verify = verifySessio
       return new Response(null, { status: 204, headers })
     }
     const url = new URL(request.url)
+    if (url.pathname === '/api/agenda-access' || url.pathname === '/api/admin/agenda-access') {
+      try {
+        return await handleAccessStats(request, env, { connect, verify, reply, origin }, url.pathname === '/api/agenda-access' ? 'record' : 'stats')
+      } catch (error) {
+        const status = error.status === 401 ? 401 : 503
+        return reply({ message: status === 401 ? 'Entre novamente na sua conta.' : 'Estatísticas temporariamente indisponíveis.' }, status)
+      }
+    }
     const job = url.pathname.match(/^\/api\/internal\/jobs\/(recurrences|purge)$/)
     if (job) {
       try {return await handleJob(request,env,{connect,reply},job[1])}
@@ -154,4 +163,12 @@ export function createHandler({ connect = connectDatabase, verify = verifySessio
   }
 }
 
-export default { fetch: createHandler() }
+export default {
+  fetch: createHandler(),
+  async scheduled(event, env) {
+    if (event.cron !== '17 4 * * *' || env.MIGRATION_READY !== 'true') return
+    const db = await connectDatabase(env)
+    try { await pruneAgendaAccess(db, new Date(event.scheduledTime)) }
+    finally { await db.end().catch(() => {}) }
+  },
+}

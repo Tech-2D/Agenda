@@ -6,6 +6,7 @@
   "compatibility_flags": ["nodejs_compat"],
   "workers_dev": true,
   "preview_urls": false,
+  "triggers": { "crons": ["17 4 * * *"] },
   "vars": {
     "FIREBASE_PROJECT_ID": "d-tech-8555e",
     "FIREBASE_WEB_API_KEY": "AIzaSyCscvBCfXJJhOd1B0ySY1g2hbwjNkWUdvo",
