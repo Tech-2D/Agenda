@@ -6,7 +6,7 @@ import { signOut } from './sessionActions'
 import { requestPasswordReset } from './passwordReset'
 import { StorageAdminPanel } from './StorageAdminPanel'
 import { RepresentativesPanel } from './RepresentativesPanel'
-import { AgendaAccessPanel } from './AgendaAccessPanel'
+import { SiteAccessPanel } from './SiteAccessPanel'
 import { AgendaUsersPanel } from './AgendaUsersPanel'
 import { observePublicInfo } from './publicInfo'
 import { ATTACHMENTS_ENABLED, deleteActivityWithAttachments, formatAttachmentSize, MAX_ATTACHMENTS, removeAttachment, uploadAttachment, validateAttachment } from './attachments'
@@ -1117,7 +1117,7 @@ export default function AdminDialog({ publicTurmaId, classNames, quickCreateDate
                     </>
                   )}
                   {isSuperAdmin && adminTab === 'storage' && <StorageAdminPanel />}
-                  {SQL_ENABLED && isSuperAdmin && adminTab === 'access' && <AgendaAccessPanel key={user.uid} user={user} />}
+                  {SQL_ENABLED && isSuperAdmin && adminTab === 'access' && <SiteAccessPanel key={user.uid} user={user} />}
                   {SQL_ENABLED && isSuperAdmin && adminTab === 'users' && <AgendaUsersPanel key={user.uid} user={user} />}
                   {adminTab === 'site' && (
                     <>
