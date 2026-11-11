@@ -115,9 +115,9 @@ export function createHandler({ connect = connectDatabase, verify = verifySessio
         const term = url.searchParams.get('q') || ''
         const day = url.searchParams.get('day')
         if ((className?.length || 0) > 100 || term.length > 150 || (day !== null && !/^[0-6]$/.test(day))) throw failure(400, 'Filtro inválido.')
-        const result = await db.query(`SELECT id, data FROM tech2d.catalog_documents WHERE collection = 'schedules'
-          AND data->>'active' = 'true' AND ($1::text IS NULL OR data->>'className' = $1)
-          AND ($2::text IS NULL OR data->>'dayOfWeek' = $2) LIMIT 10001`, [className, day])
+        const result = await db.query(`SELECT id, data FROM tech2d.school_schedule_catalog
+          WHERE active AND ($1::text IS NULL OR class_name = $1)
+          AND ($2::smallint IS NULL OR day_of_week = $2) LIMIT 10001`, [className, day])
         if (result.rows.length > 10000) throw failure(503, 'Catálogo excede o limite da consulta.')
         const normalize = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
         return reply({ schedules: result.rows.map(row => publicSchedule(row.id, row.data)).filter(row => !term || ['professor', 'subject', 'className', 'roomDescription', 'floor'].some(key => normalize(row[key]).includes(normalize(term)))), meta: meta() })

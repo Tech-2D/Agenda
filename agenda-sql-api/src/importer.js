@@ -69,7 +69,10 @@ export async function verifyProjections(db, documents) {
   // A pg Client represents one connection: do not issue overlapping queries on it.
   const activities = await db.query('SELECT * FROM tech2d.activities WHERE id=ANY($1::text[])', [root.filter(row => row.path.startsWith('activities/')).map(row => row.path.split('/')[1])])
   const admins = await db.query('SELECT uid,role,turma_id,data FROM tech2d.admin_profiles WHERE uid=ANY($1::text[])', [root.filter(row => row.path.startsWith('admins/')).map(row => row.path.split('/')[1])])
-  const catalog = await db.query('SELECT collection,id,data FROM tech2d.catalog_documents WHERE collection=ANY($1::text[])', [[...CATALOG_COLLECTIONS]])
+  const catalog = await db.query(`
+    SELECT collection,id,data FROM tech2d.catalog_documents WHERE collection=ANY($1::text[]) AND collection<>'schedules'
+    UNION ALL
+    SELECT 'schedules',id,data FROM tech2d.school_schedule_catalog`, [[...CATALOG_COLLECTIONS]])
   const activityMap = new Map(activities.rows.map(row => [row.id, row]))
   const adminMap = new Map(admins.rows.map(row => [row.uid, row]))
   const catalogMap = new Map(catalog.rows.map(row => [row.collection + '/' + row.id, row.data]))

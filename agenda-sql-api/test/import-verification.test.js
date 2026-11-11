@@ -9,6 +9,8 @@ import { mapLimited } from '../src/concurrency.js'
 
 const database = new PGlite()
 await database.exec(await readFile(new URL('../migrations/001_initial.sql', import.meta.url), 'utf8'))
+await database.exec(await readFile(new URL('../migrations/007_normalize_schedules.sql', import.meta.url), 'utf8'))
+await database.exec(await readFile(new URL('../migrations/008_compact_schedule_catalog.sql', import.meta.url), 'utf8'))
 after(() => database.close())
 const db = { query: (sql, parameters) => database.query(sql, parameters) }
 const documents = [

@@ -7,7 +7,9 @@ import {importDocument} from '../src/importer.js'
 import {putDocument} from '../src/document-store.js'
 
 const engine=new PGlite()
-for(const version of ['001_initial','002_application','003_source_revisions']) await engine.exec(await readFile(new URL('../migrations/'+version+'.sql',import.meta.url),'utf8'))
+for(const version of ['001_initial','002_application','003_source_revisions','007_normalize_schedules','008_compact_schedule_catalog']) {
+  await engine.exec(await readFile(new URL('../migrations/'+version+'.sql',import.meta.url),'utf8'))
+}
 const db={query:(sql,values)=>engine.query(sql,values)}
 after(()=>engine.close())
 const row=(id,message)=>({path:'feedback/'+id,fields:{message:{stringValue:message}},updateTime:'2026-10-17T10:00:00Z'})
