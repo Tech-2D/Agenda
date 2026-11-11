@@ -10,23 +10,27 @@ export type MoreOption = {
   onClick?: () => void
   href?: string
   disabled?: boolean
+  pendingLabel?: string
 }
 
 export type MoreOptionSection = { title: string; description: string; items: MoreOption[] }
 
-export function menuOptionSections({ hasTurma, actions, todayClassesUrl }: {
+export function menuOptionSections({ hasTurma, actions, todayClassesUrl, unreadCount, hasUnseenUpdate }: {
   hasTurma: boolean
   actions: Partial<Record<MenuShortcutId, () => void>>
   todayClassesUrl?: string
+  unreadCount: number
+  hasUnseenUpdate: boolean
 }): MoreOptionSection[] {
   const needsTurma = !hasTurma
+  const notificationsBadge = unreadCount > 0 ? `${unreadCount} ${unreadCount === 1 ? 'não lida' : 'não lidas'}` : undefined
   return [
     {
       title: 'Acompanhar a turma',
       description: 'Avisos e atividades da turma selecionada.',
       items: [
-        { id: 'notifications', title: 'Notificações', description: 'Veja atividades adicionadas ou alteradas recentemente.', icon: <Bell />, onClick: actions.notifications },
-        { id: 'updates', title: 'Atualizações', description: 'Confira o que mudou no sistema da Agenda.', icon: <History />, onClick: actions.updates },
+        { id: 'notifications', title: 'Notificações', description: 'Veja atividades adicionadas ou alteradas recentemente.', icon: <Bell />, onClick: actions.notifications, pendingLabel: notificationsBadge },
+        { id: 'updates', title: 'Atualizações', description: 'Confira o que mudou no sistema da Agenda.', icon: <History />, onClick: actions.updates, pendingLabel: hasUnseenUpdate ? 'Nova atualização' : undefined },
         { id: 'polls', title: 'Enquetes da turma', description: needsTurma ? 'Escolha uma turma para ver e responder enquetes.' : 'Acompanhe votações e participe das decisões.', icon: <Vote />, onClick: actions.polls, disabled: needsTurma },
         { id: 'notices', title: 'Quadro de avisos', description: needsTurma ? 'Escolha uma turma para abrir os avisos.' : 'Consulte comunicados importantes da turma.', icon: <StickyNote />, onClick: actions.notices, disabled: needsTurma },
         { id: 'suggestActivity', title: 'Sugerir atividade', description: needsTurma ? 'Escolha uma turma antes de enviar uma sugestão.' : 'Peça para incluir uma atividade na agenda.', icon: <Lightbulb />, onClick: actions.suggestActivity, disabled: needsTurma },

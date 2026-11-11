@@ -26,7 +26,8 @@
 .agenda-guide-card > svg { color: var(--ink); }
 .agenda-guide-card h3 { margin: 8px 0 5px; color: var(--text); font-size: .9375rem; }
 .agenda-guide-card p, .agenda-guide-data p { margin: 5px 0; color: var(--ink-soft); font-size: .8125rem; line-height: 1.6; }
-.agenda-guide-card .text-button { margin-top: auto; padding: 8px 0 0; min-height: 36px; text-align: start; }
+.agenda-guide-card p:last-of-type { margin-bottom: 12px; }
+.agenda-guide-card .secondary-button { margin-top: auto; min-height: 42px; padding: 8px 12px; text-align: start; }
 .agenda-guide-data { border-top: 1px solid var(--line); padding-top: 12px; }
 .agenda-guide-data summary { color: var(--ink); font-size: .8125rem; font-weight: 700; cursor: pointer; }
 .agenda-settings-intro { margin: 0; color: var(--ink-soft); font-size: .8125rem; line-height: 1.6; }

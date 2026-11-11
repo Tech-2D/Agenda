@@ -111,6 +111,7 @@ function App() {
   const [docsOpen, setDocsOpen] = useState(false)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [notificationsSeenAt, setNotificationsSeenAt] = useState(0)
+  const [notificationsOpenedFrom, setNotificationsOpenedFrom] = useState(0)
   const [announcement, setAnnouncement] = useState<Announcement | null>(null)
   const [announcementSeenAt, setAnnouncementSeenAt] = useState(readAnnouncementSeenAt)
   const [systemUpdates, setSystemUpdates] = useState<SystemUpdate[]>([])
@@ -226,7 +227,11 @@ function App() {
   const activeMenuDialog = notificationsOpen || updatesOpen || pollsOpen || noticesOpen
     || suggestOpen || classRequestOpen || feedbackOpen || mySuggestionsOpen || configOpen || profilesOpen || docsOpen
   const menuDialogOpen = linkedMenuDialog || activeMenuDialog
-  const showSystemUpdate = unseenSystemUpdate && !adminOpen && !menuDialogOpen && !linkedActivityId
+  const showSystemUpdate = unseenSystemUpdate && !adminOpen && !menuDialogOpen && !linkedActivityId && !menuOpen && !moreOptionsOpen
+  const acknowledgeSystemUpdate = useCallback((id: string) => {
+    markSystemUpdateSeen(id)
+    setSeenSystemUpdateId(id)
+  }, [])
 
   const announcementUpdatedMs = announcement?.updatedAt?.toDate().getTime() ?? 0
   const showAnnouncement = Boolean(turmaId) && announcementUpdatedMs > 0 && announcementUpdatedMs > announcementSeenAt
@@ -250,6 +255,7 @@ function App() {
 
   const openMenuDialog = useCallback((id: NonNullable<ReturnType<typeof readAgendaMenuDialog>>) => {
     if (id === 'notifications') {
+      setNotificationsOpenedFrom(turmaId ? readLastSeen(turmaId) : 0)
       setNotificationsOpen(true)
       if (turmaId) setNotificationsSeenAt(markNotificationsSeenNow(turmaId))
       return
@@ -339,6 +345,7 @@ function App() {
   }, [activities])
 
   const unseenNotifications = recentActivities.filter((activity) => updatedAtMs(activity) > notificationsSeenAt).length
+  const hasPendingMenuItems = unseenNotifications > 0 || Boolean(unseenSystemUpdate)
 
   const activitiesByDay = useMemo(() => {
     const map = new Map<string, Activity[]>()
@@ -435,6 +442,8 @@ function App() {
   }
   const menuSections = menuOptionSections({
     hasTurma: Boolean(turmaId),
+    unreadCount: unseenNotifications,
+    hasUnseenUpdate: Boolean(unseenSystemUpdate),
     todayClassesUrl: turmaId ? teacherFinderTodayUrl(turmaId) : undefined,
     actions: {
       notifications: menuAction(() => openMenuDialog('notifications')),
@@ -500,14 +509,14 @@ function App() {
       <button
         type="button"
         className="menu-trigger"
-        aria-label="Abrir menu"
+        aria-label={hasPendingMenuItems ? 'Abrir menu, há novidades' : 'Abrir menu'}
         aria-haspopup="dialog"
         aria-expanded={menuOpen}
         title="Menu"
         onClick={() => setMenuOpen(true)}
       >
         <Menu size={22} strokeWidth={2.3} aria-hidden="true" />
-        {unseenNotifications > 0 && <span className="notif-dot" aria-hidden="true" />}
+        {hasPendingMenuItems && <span className="notif-dot" aria-hidden="true" />}
       </button>
 
       {kanbanOpen ? (
@@ -693,15 +702,13 @@ function App() {
           shortcuts={menuShortcuts}
           onOpenMoreOptions={openMoreOptions}
           onReorder={next => { setMenuShortcuts(next); storeMenuShortcuts(next) }}
-          latestUpdateIsNew={Boolean(unseenSystemUpdate)}
-          unseenNotifications={unseenNotifications}
         />
       )}
 
       {docsOpen && <AgendaGuide hasClass={Boolean(turmaId)} onClose={() => setDocsOpen(false)} onCalendar={openCalendarFromGuide} onFeature={openGuideFeature} />}
       {profilesOpen && <ProfileDialog onClose={() => setProfilesOpen(false)} />}
 
-      {updatesOpen && <SystemUpdatesDialog onClose={() => setUpdatesOpen(false)} />}
+      {updatesOpen && <SystemUpdatesDialog pendingId={unseenSystemUpdate?.id} onRead={acknowledgeSystemUpdate} onClose={() => setUpdatesOpen(false)} />}
 
       {suggestOpen && turmaId && <SuggestDialog turmaId={turmaId} onClose={() => setSuggestOpen(false)} />}
 
@@ -723,7 +730,7 @@ function App() {
         />
       )}
 
-      {notificationsOpen && <NotificationsDialog activities={recentActivities} onClose={() => setNotificationsOpen(false)} />}
+      {notificationsOpen && <NotificationsDialog activities={recentActivities} previouslySeenAt={notificationsOpenedFrom} onClose={() => setNotificationsOpen(false)} />}
 
       {showAnnouncement && announcement && updatesReady && !showSystemUpdate && !linkedActivityId && !menuDialogOpen && (
         <AnnouncementModal
@@ -757,8 +764,7 @@ function App() {
 
       {showSystemUpdate && unseenSystemUpdate && (
         <SystemUpdateWelcome update={unseenSystemUpdate} onClose={() => {
-          markSystemUpdateSeen(unseenSystemUpdate.id)
-          setSeenSystemUpdateId(unseenSystemUpdate.id)
+          acknowledgeSystemUpdate(unseenSystemUpdate.id)
         }} />
       )}
 
@@ -883,11 +889,17 @@ function MoreOptionsPage({ turmaId, classNames, onChooseTurma, onBack, sections,
   )
 }
 
-function MoreOptionCard({ title, description, icon, onClick, href, disabled }: MoreOption) {
+function MoreOptionCard({ title, description, icon, onClick, href, disabled, pendingLabel }: MoreOption) {
   const content = (
     <>
       <span className="more-option-icon" aria-hidden="true">{icon}</span>
-      <span className="more-option-copy"><strong>{title}</strong><small>{description}</small></span>
+      <span className="more-option-copy">
+        <span className="more-option-title">
+          <strong>{title}</strong>
+          {pendingLabel && <span className="menu-pending-badge">{pendingLabel}</span>}
+        </span>
+        <small>{description}</small>
+      </span>
       {href ? <ExternalLink size={16} className="more-option-end" aria-hidden="true" /> : <ChevronRight size={17} className="more-option-end" aria-hidden="true" />}
     </>
   )
@@ -1368,7 +1380,7 @@ function SystemUpdateWelcome({ update, onClose }: { update: SystemUpdate; onClos
   )
 }
 
-function SystemUpdatesDialog({ onClose }: { onClose: () => void }) {
+function SystemUpdatesDialog({ pendingId, onRead, onClose }: { pendingId?: string; onRead: (id: string) => void; onClose: () => void }) {
   const [updates, setUpdates] = useState<SystemUpdate[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -1381,6 +1393,10 @@ function SystemUpdatesDialog({ onClose }: { onClose: () => void }) {
     setLoading(false)
     setError('Não foi possível carregar as atualizações. Tente novamente mais tarde.')
   }), [])
+
+  useEffect(() => {
+    if (!loading && !error && pendingId && updates.some(update => update.id === pendingId)) onRead(pendingId)
+  }, [loading, error, pendingId, updates, onRead])
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => event.key === 'Escape' && onClose()
@@ -1410,7 +1426,7 @@ function SystemUpdatesDialog({ onClose }: { onClose: () => void }) {
   )
 }
 
-function NotificationsDialog({ activities, onClose }: { activities: Activity[]; onClose: () => void }) {
+function NotificationsDialog({ activities, previouslySeenAt, onClose }: { activities: Activity[]; previouslySeenAt: number; onClose: () => void }) {
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => event.key === 'Escape' && onClose()
     window.addEventListener('keydown', onKeyDown)
@@ -1436,6 +1452,7 @@ function NotificationsDialog({ activities, onClose }: { activities: Activity[]; 
                   <span className="type-badge" style={{ background: ACTIVITY_TYPE_COLORS[activity.type] }}>{ACTIVITY_TYPE_LABELS[activity.type]}</span>
                   {activity.turmaId === null && <span className="type-badge general-badge">Geral</span>}
                   <span className={`status-badge ${isNew ? 'status-nova' : 'status-atualizada'}`}>{isNew ? 'Nova' : 'Atualizada'}</span>
+                  {updatedAtMs(activity) > previouslySeenAt && <span className="menu-pending-badge">Não lida</span>}
                 </div>
                 <h3>{activity.title}</h3>
                 {activity.subject && <p className="activity-subject">{activity.subject}</p>}

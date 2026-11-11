@@ -37,23 +37,23 @@ export function AgendaGuide({ hasClass, onClose, onCalendar, onFeature }: {
             <section className="agenda-guide-card">
               <StickyNote size={18} aria-hidden="true" /><h3>Acompanhar a turma</h3>
               <p>Veja comunicados no <b>Quadro de avisos</b> e alterações recentes em <b>Notificações</b>. Para votar em enquetes, entre com sua conta e peça aprovação ao representante.</p>
-              {hasClass && <button type="button" className="text-button" onClick={() => onFeature('notices')}>Abrir quadro de avisos</button>}
+              {hasClass && <button type="button" className="secondary-button" onClick={() => onFeature('notices')}>Abrir quadro de avisos</button>}
             </section>
             <section className="agenda-guide-card">
               <LayoutGrid size={18} aria-hidden="true" /><h3>Organizar tarefas em grupo</h3>
               <p>Entre com sua conta em <b>Meu Kanban</b> para criar quadros pessoais ou compartilhados. Ao receber um convite, abra o link e peça acesso.</p>
               <p>Se você criou o quadro, abra <b>Compartilhados → Compartilhar e acessos</b> para aprovar os pedidos.</p>
-              <button type="button" className="text-button" onClick={() => onFeature('kanban')}>Abrir Meu Kanban</button>
+              <button type="button" className="secondary-button" onClick={() => onFeature('kanban')}>Abrir Meu Kanban</button>
             </section>
             <section className="agenda-guide-card">
               <Settings size={18} aria-hidden="true" /><h3>Ajustar a Agenda ao seu jeito</h3>
               <p>Mude o tema, aumente a fonte ou reduza as animações nas <b>Configurações</b>. Também dá para personalizar o menu e ativar o resumo semanal por e-mail com sua conta.</p>
-              <button type="button" className="text-button" onClick={() => onFeature('settings')}>Abrir configurações</button>
+              <button type="button" className="secondary-button" onClick={() => onFeature('settings')}>Abrir configurações</button>
             </section>
             <section className="agenda-guide-card">
               <Users size={18} aria-hidden="true" /><h3>Publicar atividades da turma</h3>
               <p>Representantes aprovados podem cadastrar e editar atividades da própria turma. Para sugerir uma atividade, abra <b>Sugerir atividade</b> em <b>Ver mais opções</b>.</p>
-              <button type="button" className="text-button" onClick={() => onFeature('admin')}>Sou representante</button>
+              <button type="button" className="secondary-button" onClick={() => onFeature('admin')}>Sou representante</button>
             </section>
           </div>
           <details className="agenda-guide-data">

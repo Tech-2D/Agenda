@@ -3,20 +3,19 @@ import { ArrowDown, ArrowUp, Check, ChevronRight, ExternalLink, GripVertical, La
 import type { MenuShortcutId } from './menuShortcuts'
 import type { MoreOption } from './menuCatalog'
 
-export function IntegratedMenu({ onClose, options, shortcuts, onOpenMoreOptions, onReorder, unseenNotifications = 0, latestUpdateIsNew = false, localLinks }: {
+export function IntegratedMenu({ onClose, options, shortcuts, onOpenMoreOptions, onReorder, localLinks }: {
   onClose: () => void
   options: MoreOption[]
   shortcuts: MenuShortcutId[]
   onOpenMoreOptions: () => void
   onReorder: (ids: MenuShortcutId[]) => void
-  unseenNotifications?: number
-  latestUpdateIsNew?: boolean
   localLinks?: ReactNode
 }) {
   const [organizing, setOrganizing] = useState(false)
   const [draggedId, setDraggedId] = useState<MenuShortcutId | null>(null)
   const [dropTarget, setDropTarget] = useState<MenuShortcutId | null>(null)
   const [orderStatus, setOrderStatus] = useState('')
+  const hasPendingOutsideShortcuts = options.some(option => option.pendingLabel && !shortcuts.includes(option.id))
 
   function moveShortcut(id: MenuShortcutId, targetId: MenuShortcutId) {
     const from = shortcuts.indexOf(id)
@@ -54,8 +53,7 @@ export function IntegratedMenu({ onClose, options, shortcuts, onOpenMoreOptions,
             const option = options.find(item => item.id === id)
             if (!option) return null
             const content = <><span className="side-menu-shortcut-icon" aria-hidden="true">{option.icon}</span><span>{option.title}</span>
-              {id === 'notifications' && unseenNotifications > 0 && <span className="notif-count">{unseenNotifications}</span>}
-              {id === 'updates' && latestUpdateIsNew && <span className="notif-count">Novo</span>}
+              {option.pendingLabel && <span className="menu-pending-badge">{option.pendingLabel}</span>}
               {option.href && <ExternalLink size={14} className="external-icon" aria-hidden="true" />}
             </>
             if (organizing) return <div key={id} className={`side-menu-sort-row${draggedId === id ? ' dragging' : ''}${dropTarget === id ? ' drop-target' : ''}`}
@@ -80,7 +78,10 @@ export function IntegratedMenu({ onClose, options, shortcuts, onOpenMoreOptions,
           <p>Precisa de outra ferramenta?</p>
           <button type="button" className="side-menu-more-button" onClick={onOpenMoreOptions}>
             <span className="side-menu-more-icon"><LayoutGrid size={19} /></span>
-            <span className="side-menu-more-copy"><strong>Ver mais opções</strong><small>Todos os recursos e atalhos compartilhados</small></span>
+            <span className="side-menu-more-copy">
+              <strong>Ver mais opções</strong>
+              {hasPendingOutsideShortcuts ? <span className="menu-pending-badge">Há novidades</span> : <small>Todos os recursos e atalhos compartilhados</small>}
+            </span>
             <ChevronRight size={18} aria-hidden="true" />
           </button>
         </div>
