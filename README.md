@@ -6,22 +6,12 @@ Aplicação web para consultar em qual sala cada professor está, com busca por 
 
 - React + TypeScript + Vite
 - Firebase Authentication
-- Cloud Firestore
+- API no Cloudflare Workers + PostgreSQL
 - GitHub Actions + GitHub Pages
 
-## Configurar o Firebase
+## API compartilhada
 
-Os sites **Cadê o professor?** e **Agenda** usam o mesmo projeto Firebase central, `d-tech-8555e`, mantendo coleções separadas no mesmo Firestore.
-
-1. No Console do Firebase, abra **Authentication > Sign-in method** e habilite **E-mail/senha**.
-2. Em **Authentication > Users**, crie cada usuário administrador com seu próprio e-mail e senha. A senha é definida apenas no Firebase e nunca vai para o código ou para o Firestore.
-3. Copie o UID de cada usuário.
-4. No Firestore, crie a coleção `admins`. Para cada usuário, crie um documento cujo **ID seja o UID copiado**, com o campo `{ "role": "admin" }`. Para administrar também a Agenda, use `{ "role": "superadmin" }`.
-5. Publique as regras deste repositório com `firebase deploy --only firestore:rules` ou cole o conteúdo de `firestore.rules` no Console do Firebase.
-
-Os sites **Cadê o professor?** e **Agenda** usam o mesmo projeto Firebase e o mesmo conjunto de regras. A Agenda agora recebe solicitações de representantes (`representativeRequests`) e aprova convites por e-mail (`representativeInvites`); por isso, mantenha `firestore.rules` sincronizado entre os dois repositórios antes de publicar qualquer alteração nas regras.
-
-> Variáveis `VITE_*` são incorporadas ao JavaScript público. Por isso, nunca coloque senhas em `.env`, no Firestore ou nos secrets do GitHub. O site pede e-mail e senha, valida pelo Firebase Authentication e só libera o painel se o UID autenticado tiver `role: "admin"` ou `role: "superadmin"` em `admins`.
+O código do backend da Agenda e do Cadê o professor fica em [Tech-2D/api](https://github.com/Tech-2D/api). A API consulta horários e permissões no PostgreSQL e valida o login pelo Firebase Authentication do projeto `d-tech-8555e`. As variáveis `VITE_*` são públicas no navegador.
 
 ## Rodar localmente
 
@@ -31,7 +21,7 @@ Copy-Item .env.example .env.local
 npm run dev
 ```
 
-O arquivo `.env.local` é opcional e serve somente para sobrescrever a configuração pública do Firebase.
+Em `.env.local`, defina `VITE_DATA_BACKEND=sql` para usar o mesmo backend do site publicado. O arquivo também pode sobrescrever a configuração pública do Firebase.
 
 ## Estrutura dos dados
 
@@ -82,7 +72,7 @@ python scripts/generate-schedules.py "caminho/da/planilha.xlsx" data/horarios-tu
 
 1. Em **Settings > Pages**, selecione **GitHub Actions** como fonte de publicação.
 2. Envie as alterações para a branch `main`. O workflow `.github/workflows/deploy.yml` fará a publicação.
-3. Publique também a versão atualizada das regras do Firestore, que verifica o campo `role: "admin"`.
+3. Em **Settings > Secrets and variables > Actions > Variables**, confira que `VITE_DATA_BACKEND` está como `sql`.
 
 ## Centralizar os bancos Firestore
 

@@ -33,4 +33,4 @@ Amostra pequena de cinco consultas por cenário, feita deste computador em 09/11
 
 Esses números variam com rede, região e carga; não representam SLA. O ganho estrutural é reduzir viagens ao banco e leituras de confirmação. O bundle principal ainda contém o SDK existente e continua gerando o aviso de tamanho do Vite; esta mudança não afirma resolver todo o carregamento inicial.
 
-Para repetir a medida sem mostrar dados ou tokens: executar `scripts/benchmark-api.js` dentro de `agenda-sql-api`, opcionalmente com `TEST_ADMIN_EMAIL` da conta autorizada. Ele faz somente leituras e imprime durações.
+Para repetir a medida, execute `node scripts/benchmark-api.js` na raiz de [Tech-2D/api](https://github.com/Tech-2D/api). Para incluir a leitura autenticada, defina `TEST_ADMIN_EMAIL` com a conta de teste. O script imprime as durações.
