@@ -1,8 +1,8 @@
-# Aprovaê
+# Pegaki
 
 A grade calculator for Instituto J&F Tech students. Pick your year, type your N1 and N2 grades for each semester, and see right away whether you passed, need the final recovery exam, or failed. The page is styled after the school's own grades portal.
 
-**Live:** https://dvarakaki.github.io/aprovae-web/
+**Live:** https://dvarakaki.github.io/pegaki/
 
 ## Features
 
