@@ -74,6 +74,10 @@ src/
 
 Edit [`src/data/subjects.ts`](src/data/subjects.ts) and fill in that year's array. Years with no subjects show as "coming soon" on the selection screen.
 
+## Deployment
+
+Every push to `main` runs [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml). The workflow runs the tests, builds the site and publishes it to GitHub Pages.
+
 ## License
 
 [MIT](LICENSE)
