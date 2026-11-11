@@ -6,7 +6,7 @@ import { createHandler } from '../src/worker.js'
 import { handleAccessStats, pruneAgendaAccess } from '../src/access-stats.js'
 
 const engine = new PGlite()
-for (const name of ['001_initial', '002_application', '004_agenda_access']) {
+for (const name of ['001_initial', '002_application', '004_agenda_access', '006_site_access']) {
   await engine.exec(await readFile(new URL('../migrations/' + name + '.sql', import.meta.url), 'utf8'))
 }
 after(() => engine.close())
@@ -20,7 +20,7 @@ const db = { query: (sql, params) => engine.query(sql, params), end: async () =>
 const verify = async request => {
   const uid = request.headers.get('Authorization')?.split(' ')[1]
   if (!['owner', 'rep', 'student'].includes(uid)) throw Object.assign(Error('UNAUTHENTICATED'), { status: 401 })
-  return { uid }
+  return { uid, email: uid + '@example.test' }
 }
 const connect = async () => db
 const request = (path, init) => new Request('https://worker.example' + path, init)
@@ -79,4 +79,22 @@ test('retention removes expired rows and keeps the current 90 days', async () =>
   await pruneAgendaAccess(db, new Date('2026-11-10T04:00:00Z'))
   const { rows } = await db.query("SELECT visitor_key FROM tech2d.agenda_access WHERE visitor_key IN ('expired', 'retained')")
   assert.deepEqual(rows, [{ visitor_key: 'retained' }])
+})
+
+test('compares only overlapping dates and records a separate visit for each site', async () => {
+  const headers = { Origin: origin, Authorization: 'Bearer student', 'CF-Connecting-IP': '192.0.2.24' }
+  const time = '2026-11-10T03:10:00Z'
+  const visit = request('/api/professor-access', { method: 'POST', headers })
+  assert.equal((await invoke(visit, 'professor-record', time)).status, 204)
+  assert.equal((await invoke(visit, 'professor-record', time)).status, 204)
+  const path = '/api/admin/site-access?days=7'
+  const worker = createHandler({ connect, verify })
+  assert.equal((await worker(request(path), env)).status, 401)
+  assert.equal((await worker(request(path, { headers: { Authorization: 'Bearer student' } }), env)).status, 403)
+  const response = await invoke(request(path, { headers: { Authorization: 'Bearer owner' } }), 'comparison', '2026-11-10T04:00:00Z')
+  const result = await response.json()
+  assert.equal(result.professorSince, '2026-11-10')
+  assert.deepEqual(result.sites.agenda.total, { authenticated: 2, anonymous: 1, accounts: 1 })
+  assert.deepEqual(result.sites.professores.total, { authenticated: 1, anonymous: 0, accounts: 1 })
+  assert.deepEqual(result.recent, [{ uid: 'student', email: 'student@example.test', lastSeen: '2026-11-10T03:10:00.000Z' }])
 })

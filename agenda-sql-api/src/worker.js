@@ -9,6 +9,12 @@ import { assertAgendaAllowed, clientIp, handleModeration, pruneRecentUsers } fro
 const ORIGIN = 'https://tech-2d.github.io'
 const failure = (status, message) => Object.assign(new Error(message), { status })
 const supported = new Set(['/api/catalog/agenda', '/api/catalog/updates', '/api/catalog/schedules', '/api/me', '/api/activities'])
+const accessRoutes = new Map([
+  ['/api/agenda-access', 'record'],
+  ['/api/professor-access', 'professor-record'],
+  ['/api/admin/agenda-access', 'stats'],
+  ['/api/admin/site-access', 'comparison'],
+])
 
 async function readInput(request) {
   if (!request.headers.get('Content-Type')?.startsWith('application/json')) throw failure(415, 'Envie JSON.')
@@ -49,9 +55,10 @@ export function createHandler({ connect = connectDatabase, verify = verifySessio
         return reply({ message: error.status ? error.message : 'Controle de acesso temporariamente indisponível.', code: error.status ? error.code : 'unavailable' }, error.status || 503)
       }
     }
-    if (url.pathname === '/api/agenda-access' || url.pathname === '/api/admin/agenda-access') {
+    const accessRoute = accessRoutes.get(url.pathname)
+    if (accessRoute) {
       try {
-        return await handleAccessStats(request, env, { connect, verify, reply, origin }, url.pathname === '/api/agenda-access' ? 'record' : 'stats')
+        return await handleAccessStats(request, env, { connect, verify, reply, origin }, accessRoute)
       } catch (error) {
         if (error.code === 'agenda-access-blocked') return reply({ message: error.message, code: error.code }, 403)
         const status = error.status === 401 ? 401 : 503

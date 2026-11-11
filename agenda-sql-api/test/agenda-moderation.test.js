@@ -6,7 +6,7 @@ import { createHandler } from '../src/worker.js'
 
 const engine = new PGlite()
 after(() => engine.close())
-for (const migration of ['001_initial', '002_application', '004_agenda_access', '005_agenda_moderation']) {
+for (const migration of ['001_initial', '002_application', '004_agenda_access', '005_agenda_moderation', '006_site_access']) {
   await engine.exec(await readFile(new URL('../migrations/' + migration + '.sql', import.meta.url), 'utf8'))
 }
 await engine.exec(`UPDATE tech2d.migration_state SET application_seeded=true, production_enabled=true WHERE id=true;

@@ -1,6 +1,7 @@
 import { type ChangeEvent, FormEvent, useEffect, useMemo, useState } from 'react'
 import {
   ArrowRight,
+  BarChart3,
   CalendarDays,
   Check,
   ChevronLeft,
@@ -37,6 +38,8 @@ import {
   writeBatch,
 } from './dataClient'
 import { auth, db } from './firebase'
+import { SQL_BASE, SQL_ENABLED } from './dataBackend'
+import { SiteAccessPanel } from './SiteAccessPanel'
 import { CLASS_NAMES } from './classNames'
 import { readPreferredClass, savePreferredClass } from './classPreference'
 import { importDocumentId, parseSchedulesJson } from './importSchedules'
@@ -95,7 +98,8 @@ function App() {
   const [highContrast, setHighContrast] = useState(readStoredHighContrast)
   const [reduceMotion, setReduceMotion] = useState(readStoredReduceMotion)
   const [user, setUser] = useState<User | null>(null)
-  const [isAdmin, setIsAdmin] = useState(false)
+  const [adminRole, setAdminRole] = useState<'admin' | 'superadmin' | null>(null)
+  const isAdmin = adminRole !== null
   const [authChecked, setAuthChecked] = useState(false)
   const [now, setNow] = useState(new Date())
 
@@ -188,18 +192,25 @@ function App() {
 
   useEffect(() => {
     let requestId = 0
+    let previousUid: string | null | undefined
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       const currentRequest = ++requestId
       setUser(currentUser)
-      setIsAdmin(false)
+      setAdminRole(null)
       setAuthChecked(!currentUser)
+      const uid = currentUser?.uid ?? null
+      if (uid !== previousUid) {
+        previousUid = uid
+        void recordProfessorAccess(currentUser)
+      }
       if (!currentUser) return
 
       try {
         const adminRecord = await getDoc(doc(db, 'admins', currentUser.uid))
-        if (currentRequest === requestId) setIsAdmin(['admin', 'superadmin'].includes(adminRecord.data()?.role))
+        const role = adminRecord.data()?.role
+        if (currentRequest === requestId && (role === 'admin' || role === 'superadmin')) setAdminRole(role)
       } catch {
-        if (currentRequest === requestId) setIsAdmin(false)
+        // Keep administrative access closed if the role cannot be verified.
       } finally {
         if (currentRequest === requestId) setAuthChecked(true)
       }
@@ -353,6 +364,7 @@ function App() {
           schedules={schedules}
           user={user}
           isAdmin={isAdmin}
+          canViewAccess={SQL_ENABLED && adminRole === 'superadmin'}
           authChecked={authChecked}
           onClose={closeAdmin}
         />
@@ -461,11 +473,12 @@ type AdminDialogProps = {
   schedules: Schedule[]
   user: User | null
   isAdmin: boolean
+  canViewAccess: boolean
   authChecked: boolean
   onClose: () => void
 }
 
-function AdminDialog({ schedules, user, isAdmin, authChecked, onClose }: AdminDialogProps) {
+function AdminDialog({ schedules, user, isAdmin, canViewAccess, authChecked, onClose }: AdminDialogProps) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [authError, setAuthError] = useState('')
@@ -476,7 +489,8 @@ function AdminDialog({ schedules, user, isAdmin, authChecked, onClose }: AdminDi
   const [saveError, setSaveError] = useState('')
   const [notice, setNotice] = useState('')
   const [adminSearch, setAdminSearch] = useState('')
-  const [adminSection, setAdminSection] = useState<'schedules' | 'import'>('schedules')
+  const [selectedSection, setAdminSection] = useState<'schedules' | 'import' | 'access'>('schedules')
+  const adminSection = selectedSection === 'access' && !canViewAccess ? 'schedules' : selectedSection
   const [adminPage, setAdminPage] = useState(1)
   const [importRows, setImportRows] = useState<ScheduleInput[]>([])
   const [importError, setImportError] = useState('')
@@ -693,7 +707,9 @@ function AdminDialog({ schedules, user, isAdmin, authChecked, onClose }: AdminDi
             <nav className="professor-admin-sections" aria-label="Seções da administração">
               <button type="button" aria-pressed={adminSection === 'schedules'} onClick={() => setAdminSection('schedules')}><CalendarDays size={17} /> Horários</button>
               <button type="button" aria-pressed={adminSection === 'import'} onClick={() => setAdminSection('import')}><Upload size={17} /> Importar JSON</button>
+              {canViewAccess && <button type="button" aria-pressed={adminSection === 'access'} onClick={() => setAdminSection('access')}><BarChart3 size={17} /> Acessos</button>}
             </nav>
+            {adminSection === 'access' && canViewAccess && <SiteAccessPanel key={user.uid} user={user} />}
             <div hidden={adminSection !== 'import'}>
             <section className="import-panel" aria-label="Importar horários por JSON">
               <div className="import-copy"><strong>Importar horários por JSON</strong><span>Os horários ativos ficam visíveis mesmo sem localização. Reimportar atualiza o status dos horários já cadastrados.</span></div>
@@ -752,6 +768,24 @@ function AdminDialog({ schedules, user, isAdmin, authChecked, onClose }: AdminDi
       </section>
     </div>
   )
+}
+
+async function recordProfessorAccess(user: User | null) {
+  if (!SQL_ENABLED) return
+  try {
+    const token = await user?.getIdToken()
+    if (auth.currentUser?.uid !== user?.uid) return
+    await fetch(SQL_BASE + '/api/professor-access', {
+      method: 'POST',
+      ...(token ? { headers: { Authorization: 'Bearer ' + token } } : {}),
+      credentials: 'omit',
+      redirect: 'error',
+      keepalive: true,
+      signal: AbortSignal.timeout(15000),
+    })
+  } catch {
+    // Access reporting must not interrupt the timetable.
+  }
 }
 
 export default App
