@@ -73,6 +73,7 @@ const emptyForm: Omit<ActivityInput, 'turmaId'> = {
 }
 
 function App() {
+  const [preferredTurma, setPreferredTurma] = useState<string | null>(readPreferredTurma)
   const [turmaId, setTurmaId] = useState<string | null>(readPreferredTurma)
   const [classNames, setClassNames] = useState<string[]>([...CLASS_NAMES])
   const [classRequestOpen, setClassRequestOpen] = useState(false)
@@ -126,7 +127,7 @@ function App() {
   useEffect(() => {
     function syncPreferences(event: StorageEvent) {
       if (event.key === null || event.key === 'tech-2d:preferredClass' || event.key === 'agenda:turma') {
-        setTurmaId(readPreferredTurma())
+        setPreferredTurma(readPreferredTurma())
       }
       if (event.key === null || event.key === MENU_SHORTCUTS_KEY) setMenuShortcuts(readMenuShortcuts())
       if (event.key === null || ['agenda:theme', 'agenda:neon', 'agenda:fontScale', 'agenda:highContrast', 'agenda:reduceMotion'].includes(event.key)) {
@@ -273,6 +274,11 @@ function App() {
   }, [linkedMenuDialog, openMenuDialog, turmaId])
 
   function chooseTurma(value: string) {
+    setTurmaId(value)
+  }
+
+  function choosePreferredTurma(value: string) {
+    setPreferredTurma(value)
     setTurmaId(value)
     savePreferredTurma(value)
   }
@@ -510,7 +516,9 @@ function App() {
         </Suspense></DialogLoadBoundary>
       ) : moreOptionsOpen ? (
         <MoreOptionsPage
-          turmaId={turmaId}
+          turmaId={preferredTurma}
+          classNames={classNames}
+          onChooseTurma={choosePreferredTurma}
           onBack={closeMoreOptions}
           sections={menuSections}
           shortcuts={menuShortcuts}
@@ -676,7 +684,7 @@ function App() {
 
       {linkedActivityId && <ActivityLinkDialog key={linkedActivityId} id={linkedActivityId} onClose={closeLinkedActivity} onViewCalendar={viewLinkedActivity} />}
 
-      {!turmaId && !kanbanOpen && !linkedActivityId && !activeMenuDialog && !adminOpen && <TurmaPickerModal classNames={classNames} onChoose={chooseTurma} onRequest={() => setClassRequestOpen(true)} onHelp={() => setDocsOpen(true)} />}
+      {!turmaId && !kanbanOpen && !linkedActivityId && !activeMenuDialog && !adminOpen && <TurmaPickerModal classNames={classNames} onChoose={choosePreferredTurma} onRequest={() => setClassRequestOpen(true)} onHelp={() => setDocsOpen(true)} />}
 
       {menuOpen && (
         <IntegratedMenu
@@ -810,8 +818,10 @@ function VLibrasWidget() {
   )
 }
 
-function MoreOptionsPage({ turmaId, onBack, sections, shortcuts, onToggleShortcut, onResetShortcuts, onOpenGuide }: {
+function MoreOptionsPage({ turmaId, classNames, onChooseTurma, onBack, sections, shortcuts, onToggleShortcut, onResetShortcuts, onOpenGuide }: {
   turmaId: string | null
+  classNames: string[]
+  onChooseTurma: (turmaId: string) => void
   onBack: () => void
   sections: MoreOptionSection[]
   shortcuts: MenuShortcutId[]
@@ -831,6 +841,18 @@ function MoreOptionsPage({ turmaId, onBack, sections, shortcuts, onToggleShortcu
         </div>
         <span className="more-options-turma">{turmaId ?? 'Nenhuma turma selecionada'}</span>
       </header>
+      <section className="menu-customize-note" aria-labelledby="preferred-class-title">
+        <div><h2 id="preferred-class-title">Sua turma</h2>
+          <p>Escolha sua turma para abrir a Agenda nela neste navegador. O filtro da Agenda pode ser alterado sem mudar esta preferência.</p>
+        </div>
+        <label className="turma-select-inline" aria-label="Sua turma">
+          <select value={turmaId ?? ''} onChange={(event) => onChooseTurma(event.target.value)}>
+            <option value="" disabled>Selecione uma turma</option>
+            {turmaId && !classNames.includes(turmaId) && <option value={turmaId}>{turmaId}</option>}
+            {classNames.map((name) => <option key={name} value={name}>{name}</option>)}
+          </select>
+        </label>
+      </section>
       <section className="menu-customize-note" aria-labelledby="customize-menu-title">
         <div><h2 id="customize-menu-title">Seu menu lateral</h2>
           <p>Marque nos cartões os atalhos que quer no menu. A seleção e a ordem valem para a Agenda e o Cadê o professor? neste navegador.</p>
@@ -1001,7 +1023,7 @@ function TurmaPickerModal({ classNames, onChoose, onRequest, onHelp }: { classNa
       <section className="turma-picker" role="dialog" aria-modal="true" aria-labelledby="turma-picker-title">
         <div className="login-symbol"><Calendar /></div>
         <h3 id="turma-picker-title">Qual é a sua turma?</h3>
-        <p>Escolha uma turma para consultar as atividades sem login. Você pode trocar de turma no topo da página.</p>
+        <p>Escolha uma turma para consultar as atividades sem login. Você pode alterar sua turma em Mais opções e filtrar outras turmas no topo da página.</p>
         <button type="button" className="text-button agenda-first-visit-guide" onClick={onHelp}>O que posso fazer na Agenda?</button>
         <input
           aria-label="Buscar turma"
