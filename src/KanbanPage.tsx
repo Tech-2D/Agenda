@@ -11,9 +11,10 @@ import { BoardForm, ColumnForm, TaskForm, EditorDialog } from './KanbanForms'
 import { KanbanBoardView } from './KanbanBoardView'
 import { SharedKanban } from './SharedKanban'
 import { kanbanInvite } from './kanbanSharing'
+import type { Activity } from './types'
 import './kanban.css'
 
-export default function KanbanPage({ onBack }: { onBack: () => void }) {
+export default function KanbanPage({ onBack, activities }: { onBack: () => void; activities: Activity[] }) {
   const [user, setUser] = useState<User | null>(null)
   const [checked, setChecked] = useState(false)
   const [invite,setInvite]=useState(()=>kanbanInvite(window.location.hash))
@@ -26,7 +27,7 @@ export default function KanbanPage({ onBack }: { onBack: () => void }) {
     {!checked ? <p role="status">Conferindo sua conta…</p> : user ? <div key={user.uid}>
       <div className="kb-account"><span><LockKeyhole size={14}/>{user.email || 'Sua conta'}</span><button className="kb-link" onClick={()=>void signOut(auth).catch(()=>window.alert('Não foi possível sair. Tente novamente.'))}><LogOut size={14}/>Sair</button></div>
       <div className="kb-tabs" role="group" aria-label="Tipo de quadro"><button aria-pressed={mode==='personal'} onClick={()=>setMode('personal')}><LockKeyhole size={16}/> Pessoais</button><button aria-pressed={mode==='shared'} onClick={()=>setMode('shared')}><Users size={16}/> Compartilhados</button></div>
-      {mode==='personal' ? <Workspace user={user}/> : <SharedKanban user={user} invite={invite}/>}
+      {mode==='personal' ? <Workspace user={user} activities={activities}/> : <SharedKanban user={user} invite={invite} activities={activities}/>}
     </div> : <>{invite && <p className="kb-invite-note">Você recebeu um convite para um quadro compartilhado. Entre ou crie sua conta para pedir acesso ao dono.</p>}<KanbanLogin /></>}
   </main>
 }
@@ -63,7 +64,7 @@ function KanbanLogin() {
 type WorkspaceData = { ownerId:string; schemaVersion:1; boards:KanbanBoard[]; createdAt?:unknown }
 type Editor = { kind:'board'; board?:KanbanBoard } | { kind:'column'; column?:KanbanColumn } | { kind:'task'; columnId:string; task?:KanbanTask }
 
-function Workspace({user}:{user:User}) {
+function Workspace({user,activities}:{user:User;activities:Activity[]}) {
   const [workspace,setWorkspace] = useState<WorkspaceData | null>(null), [loading,setLoading] = useState(true), [error,setError] = useState(''), [notice,setNotice] = useState('')
   const busy=false
   const [stale,setStale] = useState(false), [reload,setReload] = useState(0)
@@ -147,7 +148,7 @@ function Workspace({user}:{user:User}) {
         if (await save(editor.board ? replaceBoard(workspace.boards,next) : [...workspace.boards,next])) {setSelected(next.id);setEditor(null)}
       }}/> : editor.kind==='column' && board ? <ColumnForm key={editor.column?.id || 'new'} column={editor.column} disabled={disabled} onDelete={async()=>{
         try {const next=removeColumn(board,editor.column!.id);if(window.confirm(`Excluir a coluna “${editor.column!.name}”?`) && await changeBoard(next))setEditor(null)} catch(e){setError((e as Error).message)}
-      }} onSave={async column=>{if(await changeBoard({...board,columns:editor.column ? board.columns.map(c=>c.id===column.id ? column : c) : [...board.columns,column]}))setEditor(null)}}/> : editor.kind==='task' && board ? <TaskForm key={editor.task?.id || 'new'} task={editor.task} columnId={editor.columnId} columns={board.columns} disabled={disabled} onDelete={async()=>{if(window.confirm(`Excluir a tarefa “${editor.task!.title}”?`) && await changeBoard({...board,tasks:board.tasks.filter(t=>t.id!==editor.task!.id)}))setEditor(null)}} onSave={async task=>{if(await changeBoard({...board,tasks:editor.task ? board.tasks.map(t=>t.id===task.id ? task : t) : [...board.tasks,task]}))setEditor(null)}}/> : null}
+      }} onSave={async column=>{if(await changeBoard({...board,columns:editor.column ? board.columns.map(c=>c.id===column.id ? column : c) : [...board.columns,column]}))setEditor(null)}}/> : editor.kind==='task' && board ? <TaskForm activities={activities} files={{scope:'personal',board:board.id}} key={editor.task?.id || 'new'} task={editor.task} columnId={editor.columnId} columns={board.columns} disabled={disabled} onDelete={async()=>{if(window.confirm(`Excluir a tarefa “${editor.task!.title}”?`) && await changeBoard({...board,tasks:board.tasks.filter(t=>t.id!==editor.task!.id)}))setEditor(null)}} onSave={async task=>{if(await changeBoard({...board,tasks:editor.task ? board.tasks.map(t=>t.id===task.id ? task : t) : [...board.tasks,task]}))setEditor(null)}}/> : null}
     </EditorDialog>}
   </>
 }

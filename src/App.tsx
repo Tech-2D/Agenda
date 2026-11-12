@@ -521,7 +521,7 @@ function App() {
 
       {kanbanOpen ? (
         <DialogLoadBoundary><Suspense fallback={<div className="state-card" role="status"><LoaderCircle className="spin" /><p>Carregando seu Kanban…</p></div>}>
-          <KanbanPage onBack={() => { setKanbanOpen(false); window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}`) }} />
+          <KanbanPage activities={[...turmaActivities, ...globalActivities]} onBack={() => { setKanbanOpen(false); window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}`) }} />
         </Suspense></DialogLoadBoundary>
       ) : moreOptionsOpen ? (
         <MoreOptionsPage

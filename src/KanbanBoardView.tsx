@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { DndContext, DragOverlay, KeyboardSensor, PointerSensor, closestCenter, pointerWithin, rectIntersection, useSensor, useSensors, type CollisionDetection, type DragEndEvent, type DragOverEvent, type DragStartEvent } from '@dnd-kit/core'
 import { SortableContext, horizontalListSortingStrategy, verticalListSortingStrategy, sortableKeyboardCoordinates, useSortable, defaultAnimateLayoutChanges } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { ArrowLeft, ArrowRight, CalendarDays, CheckSquare, GripVertical, Plus, Settings2, UserRound } from 'lucide-react'
+import { ArrowLeft, ArrowRight, CalendarDays, CheckSquare, GripVertical, Link2, Plus, Settings2, UserRound } from 'lucide-react'
 import { dateKey } from './calendar'
 import { moveTask, reorder, taskMatches, taskOverdue, PRIORITIES, type KanbanBoard, type KanbanColumn, type KanbanTask } from './kanban'
 
@@ -96,5 +96,5 @@ function SortableCard({task,disabled,reduce,children}:{task:KanbanTask;disabled:
 }
 function CardFace({task,column,assignees}:{task:KanbanTask;column:KanbanColumn;assignees:{uid:string;name:string}[]}) {
   const overdue=taskOverdue(task,column,dateKey(new Date()))
-  return <div className="kb-card-face"><span className="kb-card-labels">{task.labels.map((label,i)=><span key={i}>{label}</span>)}</span><strong>{task.title}</strong>{task.description && <p>{task.description}</p>}<span className="kb-card-meta">{task.assigneeId && <span className="kb-assignee"><UserRound size={13}/>{assignees.find(p=>p.uid===task.assigneeId)?.name || 'Participante indisponível'}</span>}{task.priority!=='none' && <span className={`kb-priority kb-priority-${task.priority}`}>{PRIORITIES[task.priority]}</span>}{task.dueDate && <span className={overdue ? 'kb-overdue' : ''}><CalendarDays size={13}/>{new Date(task.dueDate+'T12:00:00').toLocaleDateString('pt-BR')}{overdue ? ' · atrasada' : ''}</span>}{task.checklist.length>0 && <span><CheckSquare size={13}/>{task.checklist.filter(i=>i.done).length}/{task.checklist.length}</span>}</span></div>
+  return <div className="kb-card-face"><span className="kb-card-labels">{task.labels.map((label,i)=><span key={i}>{label}</span>)}</span><strong>{task.title}</strong>{task.description && <p>{task.description}</p>}<span className="kb-card-meta">{task.assigneeId && <span className="kb-assignee"><UserRound size={13}/>{assignees.find(p=>p.uid===task.assigneeId)?.name || 'Participante indisponível'}</span>}{task.priority!=='none' && <span className={`kb-priority kb-priority-${task.priority}`}>{PRIORITIES[task.priority]}</span>}{task.dueDate && <span className={overdue ? 'kb-overdue' : ''}><CalendarDays size={13}/>{new Date(task.dueDate+'T12:00:00').toLocaleDateString('pt-BR')}{overdue ? ' · atrasada' : ''}</span>}{Boolean(task.activityIds?.length) && <span><Link2 size={13}/>{task.activityIds!.length} {task.activityIds!.length===1 ? 'atividade vinculada' : 'atividades vinculadas'}</span>}{task.checklist.length>0 && <span><CheckSquare size={13}/>{task.checklist.filter(i=>i.done).length}/{task.checklist.length}</span>}</span></div>
 }
