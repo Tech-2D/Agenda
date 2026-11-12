@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDown, ExternalLink, GraduationCap, LayoutGrid, Search } from "lucide-react";
+import { ChevronDown, Search } from "lucide-react";
 import { calculateSemesters, DEFAULT_N1_WEIGHT, type InputMode, type Modes, type Situation } from "./lib/grades";
 import { useInView } from "./lib/useInView";
 import { SUBJECTS_BY_YEAR, type Year } from "./data/subjects";
@@ -10,12 +10,12 @@ import { GRID, SITUATION, SubjectRow, toGrade, type Grades } from "./components/
 import { SubjectDetail } from "./components/SubjectDetail";
 import { ExportPdf } from "./components/ExportPdf";
 import { Segmented } from "./components/Segmented";
+import { AppHeader } from "./components/AppHeader";
 import { ClearGrades } from "./components/ClearGrades";
 
 const YEAR_KEY = "aprovae:year";
 const MODE_KEY = "aprovae:mode"; // modo antigo, um só para os dois semestres
 const MODES_KEY = "aprovae:modes";
-const REPORT_CARD_URL = "https://alunos.igerminare.org.br/aluno/minhas-notas/4";
 const gradesKey = (y: Year) => `aprovae:v4:grades:${y}`;
 const EMPTY: Grades = {
   s1n1: "",
@@ -153,36 +153,7 @@ function GradesView({ year, onChangeYear }: { year: Year; onChangeYear: () => vo
 
   return (
     <div className="min-h-dvh">
-      <header className="sticky top-0 z-20 animate-slide-down bg-brand text-white shadow-md">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-4">
-          <div className="flex items-center gap-2 text-lg font-semibold">
-            <GraduationCap aria-hidden size={28} /> <span className="hidden min-[400px]:inline">Pegaki</span>
-          </div>
-          <nav className="flex items-center gap-4 text-sm sm:gap-6">
-            <span className="flex items-center gap-2 border-b-2 border-white pb-1 font-medium">
-              <LayoutGrid size={18} aria-hidden /> Disciplinas
-            </span>
-            <a
-              href={REPORT_CARD_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1.5 border-b-2 border-transparent pb-1 text-white/80 outline-none transition-colors hover:border-white/50 hover:text-white focus-visible:border-white focus-visible:text-white"
-            >
-              Boletim <ExternalLink size={14} aria-hidden />
-              <span className="sr-only">(abre o boletim na Odette em nova aba)</span>
-            </a>
-          </nav>
-          <button
-            onClick={onChangeYear}
-            className="flex h-11 cursor-pointer items-center gap-2 rounded-full bg-white/10 pr-3 pl-1.5 text-sm outline-none transition-[background-color,transform] hover:bg-white/20 active:scale-95 focus-visible:ring-2 focus-visible:ring-white"
-            aria-label={`${year}º ano Tech. Trocar de ano`}
-          >
-            <span className="grid size-8 place-items-center rounded-full bg-white text-sm font-bold text-brand">{year}º</span>
-            <span className="hidden sm:inline">Tech</span>
-            <ChevronDown size={16} aria-hidden />
-          </button>
-        </div>
-      </header>
+      <AppHeader year={year} onChangeYear={onChangeYear} />
 
       <main className="mx-auto max-w-7xl space-y-5 px-4 py-6 sm:py-8">
         <div className="flex animate-fade-up flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -198,7 +169,7 @@ function GradesView({ year, onChangeYear }: { year: Year; onChangeYear: () => vo
           {/* No celular os dois seletores viram um painel com título; no desktop ficam soltos ao lado do título. */}
           <section
             aria-label="Como lançar as notas"
-            className="shrink-0 rounded-2xl bg-white p-3 shadow-card sm:bg-transparent sm:p-0 sm:shadow-none"
+            className="shrink-0 rounded-2xl bg-surface p-3 shadow-card sm:bg-transparent sm:p-0 sm:shadow-none"
           >
             <h2 className="mb-2 px-1 text-xs font-semibold text-muted sm:hidden">Como lançar as notas</h2>
             <div className="grid gap-2 sm:grid-cols-2">
@@ -215,7 +186,7 @@ function GradesView({ year, onChangeYear }: { year: Year; onChangeYear: () => vo
                       setModeTouched(true);
                       setModes((x) => ({ ...x, [sem]: v }));
                     }}
-                    className="w-44 shrink-0 rounded-full bg-page p-1 sm:w-auto sm:bg-white sm:shadow-card"
+                    className="w-44 shrink-0 rounded-full bg-page p-1 sm:w-auto sm:bg-surface sm:shadow-card"
                     buttonClassName="h-9 flex-1 rounded-full px-3 text-xs font-medium sm:flex-none"
                   />
                 </div>
@@ -256,7 +227,7 @@ function GradesView({ year, onChangeYear }: { year: Year; onChangeYear: () => vo
                   onClick={() => setFilter(f)}
                   aria-pressed={active}
                   className={`h-9 shrink-0 cursor-pointer rounded-full px-3.5 text-xs font-medium outline-none transition-[background-color,color,transform] duration-200 active:scale-95 focus-visible:ring-2 focus-visible:ring-brand ${
-                    active ? "bg-brand text-white shadow-lift" : "bg-white text-ink shadow-card hover:bg-brand-soft"
+                    active ? "bg-brand text-white shadow-lift" : "bg-surface text-ink shadow-card hover:bg-brand-soft"
                   }`}
                 >
                   {f === "todas" ? "Todas" : SITUATION[f].text}{" "}
@@ -275,12 +246,12 @@ function GradesView({ year, onChangeYear }: { year: Year; onChangeYear: () => vo
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Buscar disciplina"
-              className="h-11 w-full rounded-lg border border-line bg-white pr-3 pl-9 text-sm outline-none transition-shadow focus:border-brand focus:ring-4 focus:ring-brand/15"
+              className="h-11 w-full rounded-lg border border-line bg-surface pr-3 pl-9 text-sm outline-none transition-shadow focus:border-brand focus:ring-4 focus:ring-brand/15"
             />
           </label>
         </div>
 
-        <section className="lg:overflow-hidden lg:rounded-2xl lg:bg-white lg:shadow-card">
+        <section className="lg:overflow-hidden lg:rounded-2xl lg:bg-surface lg:shadow-card">
           <div className={`hidden border-b border-line px-4 py-3 pl-5 text-xs font-semibold lg:grid ${GRID}`}>
             <span>Disciplinas</span>
             <span>
@@ -318,7 +289,7 @@ function GradesView({ year, onChangeYear }: { year: Year; onChangeYear: () => vo
           </ul>
 
           {visible.length === 0 && (
-            <p className="animate-fade-up rounded-xl bg-white p-8 text-center text-sm text-muted shadow-card lg:rounded-none lg:shadow-none">
+            <p className="animate-fade-up rounded-xl bg-surface p-8 text-center text-sm text-muted shadow-card lg:rounded-none lg:shadow-none">
               Nenhuma disciplina com esse filtro.
             </p>
           )}
@@ -326,7 +297,7 @@ function GradesView({ year, onChangeYear }: { year: Year; onChangeYear: () => vo
 
         <details
           ref={formulasRef}
-          className={`reveal group rounded-2xl bg-white shadow-card [&_summary::-webkit-details-marker]:hidden ${formulasIn ? "in" : ""}`}
+          className={`reveal group rounded-2xl bg-surface shadow-card [&_summary::-webkit-details-marker]:hidden ${formulasIn ? "in" : ""}`}
           open
         >
           <summary className="flex h-14 cursor-pointer list-none items-center justify-between rounded-2xl px-5 font-semibold outline-none focus-visible:ring-2 focus-visible:ring-brand">

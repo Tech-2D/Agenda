@@ -85,14 +85,14 @@ export function Summary({ rows, action }: { rows: SummaryRow[]; action?: ReactNo
 
   return (
     <section
-      className="animate-fade-up rounded-2xl bg-white p-4 shadow-card sm:p-6"
+      className="animate-fade-up rounded-2xl bg-surface p-4 shadow-card sm:p-6"
       style={{ animationDelay: "60ms" }}
       aria-label="Resumo do ano"
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div key={verdict.title} className="flex min-w-0 animate-fade-up items-start gap-3">
           <span
-            className={`grid size-10 shrink-0 place-items-center rounded-xl ${passed ? "animate-glow bg-chip-green-ink text-white" : "bg-brand-soft text-brand"}`}
+            className={`grid size-10 shrink-0 place-items-center rounded-xl ${passed ? "animate-glow bg-chip-green-ink text-surface" : "bg-brand-soft text-brand-ink"}`}
           >
             <verdict.Icon size={20} aria-hidden />
           </span>

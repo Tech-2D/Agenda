@@ -238,13 +238,13 @@ export function ExportPdf({ year, rows }: { year: Year; rows: ReportRow[] }) {
   const issued = new Date().toLocaleDateString("pt-BR");
   const rooms = CLASSROOMS_BY_YEAR[year];
   const field =
-    "h-11 w-full rounded-lg border border-line bg-white px-3 text-sm outline-none transition-shadow focus:border-brand focus:ring-4 focus:ring-brand/15";
+    "h-11 w-full rounded-lg border border-line bg-surface px-3 text-sm outline-none transition-shadow focus:border-brand focus:ring-4 focus:ring-brand/15";
 
   return (
     <>
       <button
         onClick={() => setOpen(true)}
-        className="group/export inline-flex h-11 shrink-0 cursor-pointer items-center gap-2.5 rounded-xl border border-line bg-white pr-4 pl-1.5 text-sm font-medium text-ink outline-none transition-[border-color,background-color,box-shadow,transform] duration-200 hover:border-brand/30 hover:bg-brand-soft/40 hover:shadow-card active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-brand"
+        className="group/export inline-flex h-11 shrink-0 cursor-pointer items-center gap-2.5 rounded-xl border border-line bg-surface pr-4 pl-1.5 text-sm font-medium text-ink outline-none transition-[border-color,background-color,box-shadow,transform] duration-200 hover:border-brand/30 hover:bg-brand-soft/40 hover:shadow-card active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-brand"
       >
         <span className="grid size-8 place-items-center rounded-lg bg-brand text-white transition-transform duration-200 group-hover/export:-translate-y-0.5">
           <FileDown size={16} aria-hidden />
@@ -271,7 +271,7 @@ export function ExportPdf({ year, rows }: { year: Year; rows: ReportRow[] }) {
                 e.preventDefault();
                 exportPdf();
               }}
-              className="w-full max-w-sm space-y-4 rounded-2xl bg-white p-5 shadow-lift"
+              className="w-full max-w-sm space-y-4 rounded-2xl bg-surface p-5 shadow-lift"
             >
               <div className="flex items-start justify-between gap-3">
                 <div>
@@ -284,7 +284,7 @@ export function ExportPdf({ year, rows }: { year: Year; rows: ReportRow[] }) {
                   type="button"
                   onClick={() => setOpen(false)}
                   aria-label="Fechar"
-                  className="grid size-9 shrink-0 cursor-pointer place-items-center rounded-full text-muted outline-none hover:bg-black/5 focus-visible:ring-2 focus-visible:ring-brand"
+                  className="grid size-9 shrink-0 cursor-pointer place-items-center rounded-full text-muted outline-none hover:bg-ink/5 focus-visible:ring-2 focus-visible:ring-brand"
                 >
                   <X size={18} aria-hidden />
                 </button>

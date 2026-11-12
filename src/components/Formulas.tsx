@@ -54,7 +54,7 @@ function Card({
     <section
       ref={ref}
       style={{ transitionDelay: inView ? `${delay}ms` : undefined }}
-      className={`reveal rounded-xl border bg-white p-3 transition-[opacity,transform,border-color,box-shadow] sm:p-4 ${inView ? "in" : ""} ${
+      className={`reveal rounded-xl border bg-surface p-3 transition-[opacity,transform,border-color,box-shadow] sm:p-4 ${inView ? "in" : ""} ${
         dim ? "border-line [&.in]:opacity-55" : "border-line hover:border-brand/30 hover:shadow-md"
       } ${className}`}
     >
@@ -105,7 +105,7 @@ export function Formulas() {
               ["2º semestre", "s2n1", "s2n2"],
             ] as const
           ).map(([title, k1, k2]) => (
-            <fieldset key={title} className="min-w-0 rounded-lg bg-white/70 p-2">
+            <fieldset key={title} className="min-w-0 rounded-lg bg-surface/70 p-2">
               <legend className="sr-only">{title}</legend>
               <span aria-hidden className="mb-1 block text-[11px] font-medium text-muted">
                 {title}
@@ -124,7 +124,7 @@ export function Formulas() {
               </div>
             </fieldset>
           ))}
-          <label className="min-w-0 rounded-lg bg-white/70 p-2">
+          <label className="min-w-0 rounded-lg bg-surface/70 p-2">
             <span className="mb-1 block text-[11px] font-medium text-muted">Rec. Final</span>
             <GradeInput
               label="Simulação: Recuperação final"

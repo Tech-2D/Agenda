@@ -5,16 +5,24 @@
   --color-brand: #0a2dc4;
   --color-brand-dark: #0821a0;
   --color-brand-soft: #eef1fd;
+  /* Azul da marca como texto (no escuro fica mais claro para manter o contraste). */
+  --color-brand-ink: #0a2dc4;
   --color-ink: #2f2f2f;
   --color-muted: #6b6b6b;
   --color-line: #e8e8e8;
   --color-page: #f6f7fb;
+  /* Fundo de cards, campos e diálogos (branco no claro, cinza-azulado no escuro). */
+  --color-surface: #ffffff;
   --color-chip-blue: #e3f2fd;
   --color-chip-blue-ink: #1565c0;
   --color-chip-orange: #fff3e0;
   --color-chip-orange-ink: #c25700;
-  /* Preenchimento (barras) da recuperação: mais claro que o texto, para não se confundir com o vermelho. */
+  /* Preenchimento das barras de situação (validado para daltonismo); a recuperação é âmbar para não se confundir com o vermelho. */
+  --color-chip-green-bar: #2e7d32;
+  --color-chip-purple-bar: #7b1fa2;
+  --color-chip-blue-bar: #1565c0;
   --color-chip-orange-bar: #e08a00;
+  --color-chip-red-bar: #c62828;
   --color-chip-green: #e8f5e9;
   --color-chip-green-ink: #2e7d32;
   --color-chip-purple: #f3e5f5;
@@ -32,6 +40,16 @@
   --animate-shimmer: shimmer 2.4s linear infinite;
   --animate-flash: flash 700ms ease-out;
   --animate-shake: shake 360ms ease-in-out;
+  --animate-sheet-down: sheet-down 240ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+
+  /* Painel do menu do celular: desce de baixo do cabeçalho. */
+  @keyframes sheet-down {
+    from {
+      opacity: 0;
+      transform: translateY(-16px);
+    }
+  }
+
   --animate-swap-in-left: swap-in-left 560ms cubic-bezier(0.3, 1.4, 0.55, 1) both;
   --animate-swap-in-right: swap-in-right 560ms cubic-bezier(0.3, 1.4, 0.55, 1) both;
   --animate-swap-out-left: swap-out-left 260ms cubic-bezier(0.5, 0, 0.75, 0) both;
@@ -148,6 +166,39 @@
   }
 }
 
+/* Modo noturno: [data-theme="dark"] no <html>, posto antes da pintura pelo script do index.html. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --color-brand: #3f5ef0;
+  --color-brand-dark: #3352e0;
+  --color-brand-soft: #1a2350;
+  --color-brand-ink: #8ea2ff;
+  --color-ink: #e6e8ee;
+  --color-muted: #9aa2b1;
+  --color-line: #2a303b;
+  --color-page: #0d1016;
+  --color-surface: #161a22;
+  --color-chip-blue: #12253d;
+  --color-chip-blue-ink: #86bbff;
+  --color-chip-orange: #33220e;
+  --color-chip-orange-ink: #ffb466;
+  --color-chip-green: #112a1b;
+  --color-chip-green-ink: #78d698;
+  --color-chip-purple: #2a1837;
+  --color-chip-purple-ink: #d9a6f3;
+  --color-chip-red: #3b1618;
+  --color-chip-red-ink: #ff9393;
+  --color-chip-green-bar: #3a9e57;
+  --color-chip-purple-bar: #cc5bc6;
+  --color-chip-blue-bar: #3c78ee;
+  --color-chip-orange-bar: #c98000;
+  --color-chip-red-bar: #e8487a;
+  --shadow-card: 0 1px 3px rgb(0 0 0 / 0.5), 0 0 0 1px rgb(255 255 255 / 0.04);
+  --shadow-lift: 0 10px 30px -10px rgb(0 0 0 / 0.7);
+}
+
 @keyframes fade {
   from {
     opacity: 0;
@@ -158,6 +209,19 @@ body {
   font-family: var(--font-sans);
   color: var(--color-ink);
   background: var(--color-page);
+}
+
+/* Troca de tema: as cores cruzam por um instante (a classe sai sozinha depois de 320ms). */
+.theme-transition,
+.theme-transition *,
+.theme-transition *::before,
+.theme-transition *::after {
+  transition:
+    background-color 280ms ease,
+    border-color 280ms ease,
+    color 280ms ease,
+    fill 280ms ease,
+    box-shadow 280ms ease !important;
 }
 
 /* Boletim em PDF (ver ExportPdf): só aparece na impressão, numa folha A4 sem margem, como o original. */

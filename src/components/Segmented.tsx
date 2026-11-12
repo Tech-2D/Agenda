@@ -20,6 +20,9 @@ interface Props<T extends string> {
   /** Forma do indicador que desliza (deve casar com os cantos dos botões). */
   indicatorClassName?: string;
   buttonClassName?: string;
+  /** Cor do texto da opção escolhida e das outras (o padrão serve para fundo claro). */
+  activeClassName?: string;
+  inactiveClassName?: string;
 }
 
 // Efeito "líquido": a borda da frente sai rápido e a de trás vem depois, com um quique no fim.
@@ -41,6 +44,8 @@ export function Segmented<T extends string>({
   className = "",
   indicatorClassName = "rounded-full bg-brand shadow-lift",
   buttonClassName = "",
+  activeClassName = "text-white",
+  inactiveClassName = "text-ink hover:text-brand-ink",
 }: Props<T>) {
   const track = useRef<HTMLDivElement>(null);
   const buttons = useRef(new Map<T, HTMLButtonElement>());
@@ -108,7 +113,7 @@ export function Segmented<T extends string>({
             aria-label={o.ariaLabel}
             onClick={() => onChange(o.value)}
             className={`relative cursor-pointer whitespace-nowrap outline-none transition-[color,transform] duration-300 active:scale-95 focus-visible:ring-2 focus-visible:ring-brand ${
-              active ? "text-white" : "text-ink hover:text-brand"
+              active ? activeClassName : inactiveClassName
             } ${buttonClassName}`}
           >
             {/* O rótulo escolhido dá um "pulo" quando o fundo chega nele. */}

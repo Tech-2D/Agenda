@@ -30,7 +30,7 @@ function SemesterCard({ title, subject, mode, weight, n1, n2, avgInput, avg, onN
   return (
     <section
       onFocusCapture={onSelect}
-      className={`rounded-2xl bg-white p-4 shadow-card ring-2 transition-shadow duration-300 sm:p-5 ${
+      className={`rounded-2xl bg-surface p-4 shadow-card ring-2 transition-shadow duration-300 sm:p-5 ${
         selected && mode === "notas" ? "ring-brand/40" : "ring-transparent"
       }`}
     >
@@ -51,7 +51,7 @@ function SemesterCard({ title, subject, mode, weight, n1, n2, avgInput, avg, onN
         <>
           <div className="mt-3 grid grid-cols-2 gap-3">
             <label>
-              <span key={weight} className="mb-1 block animate-pop text-xs font-medium text-brand">
+              <span key={weight} className="mb-1 block animate-pop text-xs font-medium text-brand-ink">
                 N1 · {weight}%
               </span>
               <GradeInput label={`N1 do ${title} de ${subject}`} placeholder="N1" value={n1} onChange={onN1} className="w-full" />
@@ -127,15 +127,15 @@ function WeightCard({ weights, enabled, semester, onSemester, onChange }: Weight
   };
 
   return (
-    <section className="rounded-2xl bg-white p-4 shadow-card sm:p-5">
+    <section className="rounded-2xl bg-surface p-4 shadow-card sm:p-5">
       <div className="flex items-center justify-between gap-2">
         <h2 className="flex items-center gap-2 font-semibold">
-          <Scale size={18} aria-hidden className="text-brand" /> Peso das notas
+          <Scale size={18} aria-hidden className="text-brand-ink" /> Peso das notas
         </h2>
         {value !== DEFAULT_N1_WEIGHT && (
           <button
             onClick={() => set(DEFAULT_N1_WEIGHT)}
-            className="flex h-8 animate-pop cursor-pointer items-center gap-1.5 rounded-lg bg-black/5 px-2.5 text-xs font-medium text-muted outline-none transition-colors hover:bg-black/10 focus-visible:ring-2 focus-visible:ring-brand"
+            className="flex h-8 animate-pop cursor-pointer items-center gap-1.5 rounded-lg bg-ink/5 px-2.5 text-xs font-medium text-muted outline-none transition-colors hover:bg-ink/10 focus-visible:ring-2 focus-visible:ring-brand"
           >
             <RotateCcw size={13} aria-hidden /> Voltar para 50/50
           </button>
@@ -147,7 +147,7 @@ function WeightCard({ weights, enabled, semester, onSemester, onChange }: Weight
       <div className="relative mt-4 grid grid-cols-2 rounded-xl bg-page p-1" role="tablist" aria-label="Semestre do peso">
         <span
           aria-hidden
-          className={`absolute inset-y-1 left-1 w-[calc(50%-0.25rem)] rounded-lg bg-white shadow-card transition-transform ${SPRING}`}
+          className={`absolute inset-y-1 left-1 w-[calc(50%-0.25rem)] rounded-lg bg-surface shadow-card transition-transform ${SPRING}`}
           style={{ transform: `translateX(${semester * 100}%)` }}
         />
         {SEMESTERS.map((title, i) => {
@@ -165,7 +165,7 @@ function WeightCard({ weights, enabled, semester, onSemester, onChange }: Weight
             >
               {title}
               <span
-                className={`text-[11px] font-medium tabular-nums ${enabled[i] && w !== DEFAULT_N1_WEIGHT ? "text-brand" : "text-muted"}`}
+                className={`text-[11px] font-medium tabular-nums ${enabled[i] && w !== DEFAULT_N1_WEIGHT ? "text-brand-ink" : "text-muted"}`}
               >
                 {enabled[i] ? `N1 ${w}% · N2 ${100 - w}%` : "Lançado pela média"}
               </span>
@@ -179,7 +179,7 @@ function WeightCard({ weights, enabled, semester, onSemester, onChange }: Weight
         <div>
           <span className="block text-xs font-semibold text-muted">N1</span>
           <span
-            className="inline-block origin-bottom-left text-4xl font-bold text-brand tabular-nums transition-transform duration-300"
+            className="inline-block origin-bottom-left text-4xl font-bold text-brand-ink tabular-nums transition-transform duration-300"
             style={{ transform: `scale(${0.8 + (value / 100) * 0.4})` }}
           >
             {shown}%
@@ -217,7 +217,7 @@ function WeightCard({ weights, enabled, semester, onSemester, onChange }: Weight
           >
             {value >= 20 && "N1"}
           </div>
-          <div className="relative flex flex-1 items-center justify-end overflow-hidden bg-chip-orange-ink pr-3 text-xs font-semibold whitespace-nowrap text-white">
+          <div className="relative flex flex-1 items-center justify-end overflow-hidden bg-chip-orange-ink pr-3 text-xs font-semibold whitespace-nowrap text-surface">
             {value <= 80 && "N2"}
           </div>
           {/* Brilho que passa pela barra enquanto arrasta. */}
@@ -239,15 +239,15 @@ function WeightCard({ weights, enabled, semester, onSemester, onChange }: Weight
           aria-valuenow={value}
           aria-valuetext={`N1 ${value}%, N2 ${100 - value}%`}
           onKeyDown={onKey}
-          className={`absolute top-1/2 grid size-9 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border-4 border-white bg-ink shadow-lg outline-none transition-[left,scale] focus-visible:ring-4 focus-visible:ring-brand/30 ${motion} ${
+          className={`absolute top-1/2 grid size-9 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border-4 border-surface bg-ink shadow-lg outline-none transition-[left,scale] focus-visible:ring-4 focus-visible:ring-brand/30 ${motion} ${
             dragging ? "scale-125" : "hover:scale-110"
           }`}
           style={{ left: `${value}%` }}
         >
-          <span aria-hidden className="h-3.5 w-0.5 rounded-full bg-white/80" />
+          <span aria-hidden className="h-3.5 w-0.5 rounded-full bg-page/80" />
           <span
             aria-hidden
-            className={`pointer-events-none absolute bottom-full mb-2.5 rounded-md bg-ink px-2 py-1 text-[11px] font-semibold whitespace-nowrap text-white tabular-nums shadow-md transition-[opacity,translate] duration-200 ${
+            className={`pointer-events-none absolute bottom-full mb-2.5 rounded-md bg-ink px-2 py-1 text-[11px] font-semibold whitespace-nowrap text-page tabular-nums shadow-md transition-[opacity,translate] duration-200 ${
               dragging ? "translate-y-0 opacity-100" : "translate-y-1 opacity-0"
             }`}
           >
@@ -276,7 +276,7 @@ function WeightCard({ weights, enabled, semester, onSemester, onChange }: Weight
       {enabled[otherSemester] && value !== weights[otherSemester] && (
         <button
           onClick={() => onChange(otherSemester, value)}
-          className="mt-3 flex h-10 w-full animate-fade-up cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-dashed border-brand/40 text-xs font-medium text-brand outline-none transition-colors hover:bg-brand-soft focus-visible:ring-2 focus-visible:ring-brand"
+          className="mt-3 flex h-10 w-full animate-fade-up cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-dashed border-brand/40 text-xs font-medium text-brand-ink outline-none transition-colors hover:bg-brand-soft focus-visible:ring-2 focus-visible:ring-brand"
         >
           <Copy size={13} aria-hidden /> Usar {value}/{100 - value} também no {SEMESTERS[otherSemester]}
         </button>
@@ -322,7 +322,7 @@ export function SubjectDetail({ name, modes, grades: g, result: r, onChange, onC
 
   return (
     <div role="dialog" aria-modal="true" aria-label={name} className="fixed inset-0 z-30 overflow-y-auto bg-page">
-      <header className="sticky top-0 z-10 bg-brand text-white shadow-md">
+      <header className="sticky top-0 z-10 bg-brand text-white shadow-md dark:border-b dark:border-line dark:bg-surface dark:shadow-none">
         <div className="mx-auto flex h-16 max-w-3xl items-center gap-2 px-4">
           <button
             ref={back}
@@ -337,7 +337,7 @@ export function SubjectDetail({ name, modes, grades: g, result: r, onChange, onC
       </header>
 
       <main className="mx-auto flex max-w-3xl animate-fade-up flex-col gap-4 px-4 py-6">
-        <section className="relative overflow-hidden rounded-2xl bg-white p-5 shadow-card">
+        <section className="relative overflow-hidden rounded-2xl bg-surface p-5 shadow-card">
           <span aria-hidden className={`absolute inset-y-0 left-0 w-1.5 ${sit.bar}`} />
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
@@ -391,7 +391,7 @@ export function SubjectDetail({ name, modes, grades: g, result: r, onChange, onC
               onChange={(s, w) => onChange(s === 0 ? { s1Weight: w } : { s2Weight: w })}
             />
           ) : (
-            <p className="rounded-2xl bg-white p-4 text-sm text-muted shadow-card">
+            <p className="rounded-2xl bg-surface p-4 text-sm text-muted shadow-card">
               O peso da N1 e da N2 só vale nos semestres lançados como "N1 e N2".
             </p>
           )}
@@ -430,7 +430,7 @@ export function SubjectDetail({ name, modes, grades: g, result: r, onChange, onC
           />
         </div>
 
-        <section className="rounded-2xl bg-white p-4 shadow-card sm:p-5">
+        <section className="rounded-2xl bg-surface p-4 shadow-card sm:p-5">
           <h2 className="font-semibold">Recuperação final</h2>
           {showRec ? (
             <div className="mt-3 flex flex-wrap items-end gap-4">

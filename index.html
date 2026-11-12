@@ -6,6 +6,17 @@
     <title>Pegaki</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="theme-color" content="#0a2dc4" />
+    <!-- Aplica o tema salvo (ou o do sistema) antes da primeira pintura, para não piscar claro. -->
+    <script>
+      (function () {
+        try {
+          var p = localStorage.getItem("aprovae:theme");
+          var dark = p === "dark" || (p !== "light" && matchMedia("(prefers-color-scheme: dark)").matches);
+          document.documentElement.dataset.theme = dark ? "dark" : "light";
+          if (dark) document.querySelector('meta[name="theme-color"]').setAttribute("content", "#161a22");
+        } catch (e) {}
+      })();
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" />

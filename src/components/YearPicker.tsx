@@ -32,13 +32,13 @@ export function YearPicker({ onPick }: { onPick: (y: Year) => void }) {
               onClick={() => ready && onPick(y)}
               disabled={!ready}
               style={{ animationDelay: `${150 + i * 90}ms` }}
-              className="group flex animate-fade-up items-center gap-4 rounded-2xl bg-white p-5 text-left shadow-card outline-none transition-[transform,box-shadow] duration-200 focus-visible:ring-4 focus-visible:ring-brand/40 enabled:cursor-pointer enabled:hover:-translate-y-1.5 enabled:hover:shadow-lift enabled:active:scale-[0.98] disabled:cursor-not-allowed sm:flex-col sm:items-start sm:p-6"
+              className="group flex animate-fade-up items-center gap-4 rounded-2xl bg-surface p-5 text-left shadow-card outline-none transition-[transform,box-shadow] duration-200 focus-visible:ring-4 focus-visible:ring-brand/40 enabled:cursor-pointer enabled:hover:-translate-y-1.5 enabled:hover:shadow-lift enabled:active:scale-[0.98] disabled:cursor-not-allowed sm:flex-col sm:items-start sm:p-6"
             >
               <span
                 className={`grid size-14 shrink-0 place-items-center rounded-xl text-2xl font-bold transition-[background-color,color,transform] duration-300 sm:size-16 sm:text-3xl ${
                   ready
-                    ? "bg-brand-soft text-brand group-hover:rotate-[-6deg] group-hover:bg-brand group-hover:text-white"
-                    : "bg-black/5 text-muted"
+                    ? "bg-brand-soft text-brand-ink group-hover:rotate-[-6deg] group-hover:bg-brand group-hover:text-white"
+                    : "bg-ink/5 text-muted"
                 }`}
               >
                 {y}º
@@ -51,7 +51,7 @@ export function YearPicker({ onPick }: { onPick: (y: Year) => void }) {
                 <ArrowRight
                   size={20}
                   aria-hidden
-                  className="text-muted transition-transform duration-200 group-hover:translate-x-1.5 group-hover:text-brand sm:self-end"
+                  className="text-muted transition-transform duration-200 group-hover:translate-x-1.5 group-hover:text-brand-ink sm:self-end"
                 />
               ) : (
                 <Lock size={18} aria-hidden className="text-muted sm:self-end" />

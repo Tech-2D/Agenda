@@ -30,12 +30,12 @@ export const GRID =
   "lg:grid-cols-[minmax(0,1.75fr)_minmax(0,2fr)_minmax(0,2fr)_minmax(0,1.05fr)_minmax(0,1fr)_minmax(0,0.8fr)_minmax(0,1.3fr)] lg:items-center lg:gap-4";
 
 export const SITUATION: Record<Situation, { text: string; chip: string; bar: string; Icon: typeof Clock }> = {
-  aprovado: { text: "Aprovado", chip: "bg-chip-green text-chip-green-ink", bar: "bg-chip-green-ink", Icon: CheckCircle2 },
-  "aprovado-rec": { text: "Aprovado na rec.", chip: "bg-chip-purple text-chip-purple-ink", bar: "bg-chip-purple-ink", Icon: ShieldCheck },
+  aprovado: { text: "Aprovado", chip: "bg-chip-green text-chip-green-ink", bar: "bg-chip-green-bar", Icon: CheckCircle2 },
+  "aprovado-rec": { text: "Aprovado na rec.", chip: "bg-chip-purple text-chip-purple-ink", bar: "bg-chip-purple-bar", Icon: ShieldCheck },
   recuperacao: { text: "Recuperação", chip: "bg-chip-orange text-chip-orange-ink", bar: "bg-chip-orange-bar", Icon: AlertTriangle },
-  reprovado: { text: "Reprovado", chip: "bg-chip-red text-chip-red-ink", bar: "bg-chip-red-ink", Icon: XCircle },
-  andamento: { text: "Em andamento", chip: "bg-chip-blue text-chip-blue-ink", bar: "bg-chip-blue-ink", Icon: Clock },
-  "sem-notas": { text: "Sem notas", chip: "bg-black/5 text-muted", bar: "bg-line", Icon: Clock },
+  reprovado: { text: "Reprovado", chip: "bg-chip-red text-chip-red-ink", bar: "bg-chip-red-bar", Icon: XCircle },
+  andamento: { text: "Em andamento", chip: "bg-chip-blue text-chip-blue-ink", bar: "bg-chip-blue-bar", Icon: Clock },
+  "sem-notas": { text: "Sem notas", chip: "bg-ink/5 text-muted", bar: "bg-line", Icon: Clock },
 };
 
 export const toGrade = (v: string) => (v === "" ? null : parseGrade(v));
@@ -87,7 +87,7 @@ export function GradeInput({ value, onChange, label, placeholder = "-", classNam
           const n = toGrade(value);
           if (n !== null) onChange(n.toFixed(2).replace(".", ","));
         }}
-        className={`h-11 w-full rounded-lg border bg-white px-1 text-center text-sm tabular-nums outline-none transition-[border-color,box-shadow,transform] duration-200 placeholder:text-muted/60 focus:scale-105 ${
+        className={`h-11 w-full rounded-lg border bg-surface px-1 text-center text-sm tabular-nums outline-none transition-[border-color,box-shadow,transform] duration-200 placeholder:text-muted/60 focus:scale-105 ${
           error
             ? "animate-shake border-chip-red-ink ring-4 ring-chip-red-ink/15"
             : "border-line hover:border-brand/40 focus:border-brand focus:ring-4 focus:ring-brand/15"
@@ -104,7 +104,7 @@ export function GradeInput({ value, onChange, label, placeholder = "-", classNam
       {error && (
         <span
           role="alert"
-          className="absolute top-full left-1/2 z-10 mt-1 -translate-x-1/2 animate-pop whitespace-nowrap rounded-md bg-chip-red-ink px-2 py-1 text-[11px] font-medium text-white shadow-md"
+          className="absolute top-full left-1/2 z-10 mt-1 -translate-x-1/2 animate-pop whitespace-nowrap rounded-md bg-chip-red-ink px-2 py-1 text-[11px] font-medium text-surface shadow-md"
         >
           Nota máxima é 10
         </span>
@@ -321,7 +321,7 @@ export function SubjectRow({ name, modes, grades: g, result: r, index, onChange,
   return (
     <li
       style={{ animationDelay: `${Math.min(index * 40, 600)}ms` }}
-      className={`group relative grid animate-fade-up grid-cols-3 gap-x-3 gap-y-3 overflow-hidden rounded-xl bg-white p-4 pl-5 shadow-card transition-[box-shadow,transform,background-color] duration-200 hover:-translate-y-0.5 hover:shadow-md lg:rounded-none lg:px-4 lg:py-2 lg:pl-5 lg:shadow-none lg:hover:translate-y-0 lg:hover:bg-brand-soft/60 lg:hover:shadow-none ${GRID}`}
+      className={`group relative grid animate-fade-up grid-cols-3 gap-x-3 gap-y-3 overflow-hidden rounded-xl bg-surface p-4 pl-5 shadow-card transition-[box-shadow,transform,background-color] duration-200 hover:-translate-y-0.5 hover:shadow-md lg:rounded-none lg:px-4 lg:py-2 lg:pl-5 lg:shadow-none lg:hover:translate-y-0 lg:hover:bg-brand-soft/60 lg:hover:shadow-none ${GRID}`}
     >
       <span
         aria-hidden
@@ -332,13 +332,13 @@ export function SubjectRow({ name, modes, grades: g, result: r, index, onChange,
         <h3 className="text-[15px] leading-snug font-semibold lg:text-sm lg:font-medium">
           <button
             onClick={onOpen}
-            className="group/name -mx-1 -my-0.5 cursor-pointer rounded-md px-1 py-0.5 text-left outline-none transition-colors hover:text-brand focus-visible:ring-2 focus-visible:ring-brand"
+            className="group/name -mx-1 -my-0.5 cursor-pointer rounded-md px-1 py-0.5 text-left outline-none transition-colors hover:text-brand-ink focus-visible:ring-2 focus-visible:ring-brand"
           >
             {name}
             <ChevronRight
               size={16}
               aria-hidden
-              className="ml-0.5 inline align-[-3px] text-muted transition-transform group-hover/name:translate-x-0.5 group-hover/name:text-brand"
+              className="ml-0.5 inline align-[-3px] text-muted transition-transform group-hover/name:translate-x-0.5 group-hover/name:text-brand-ink"
             />
           </button>
         </h3>
@@ -359,7 +359,7 @@ export function SubjectRow({ name, modes, grades: g, result: r, index, onChange,
               <button
                 onClick={onOpen}
                 title="Peso da N1 e da N2: toque para ajustar"
-                className="inline-flex h-7 animate-pop cursor-pointer items-center gap-1 rounded-lg bg-brand-soft px-2 text-[11px] font-medium text-brand tabular-nums outline-none hover:bg-brand/15 focus-visible:ring-2 focus-visible:ring-brand"
+                className="inline-flex h-7 animate-pop cursor-pointer items-center gap-1 rounded-lg bg-brand-soft px-2 text-[11px] font-medium text-brand-ink tabular-nums outline-none hover:bg-brand/15 focus-visible:ring-2 focus-visible:ring-brand"
               >
                 <Scale size={13} aria-hidden />
                 {modes.s1 === "media"
@@ -446,7 +446,7 @@ export function SubjectRow({ name, modes, grades: g, result: r, index, onChange,
           ) : (
             <span
               title="Libera quando a média anual ficar abaixo de 7"
-              className="flex h-11 w-full items-center justify-center gap-1 rounded-lg border border-dashed border-line bg-white/60 text-muted lg:max-w-24"
+              className="flex h-11 w-full items-center justify-center gap-1 rounded-lg border border-dashed border-line bg-surface/60 text-muted lg:max-w-24"
             >
               <Lock size={14} aria-hidden />
               <span className="sr-only">Recuperação bloqueada: libera quando a média anual ficar abaixo de 7</span>

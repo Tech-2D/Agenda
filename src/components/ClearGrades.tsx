@@ -41,7 +41,7 @@ export function ClearGrades({ year, filled, onClear }: Props) {
         onClick={() => setConfirming(true)}
         disabled={filled === 0}
         title={filled === 0 ? "Nenhuma nota lançada" : undefined}
-        className="inline-flex h-11 shrink-0 cursor-pointer items-center justify-center gap-2 rounded-xl border border-line bg-white px-3.5 text-sm font-medium text-muted outline-none transition-[border-color,background-color,color,transform] duration-200 hover:border-chip-red-ink/30 hover:bg-chip-red/50 hover:text-chip-red-ink active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-brand disabled:pointer-events-none disabled:opacity-50"
+        className="inline-flex h-11 shrink-0 cursor-pointer items-center justify-center gap-2 rounded-xl border border-line bg-surface px-3.5 text-sm font-medium text-muted outline-none transition-[border-color,background-color,color,transform] duration-200 hover:border-chip-red-ink/30 hover:bg-chip-red/50 hover:text-chip-red-ink active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-brand disabled:pointer-events-none disabled:opacity-50"
       >
         <Trash2 size={16} aria-hidden />
         <span className="sm:hidden">Limpar</span>
@@ -59,7 +59,7 @@ export function ClearGrades({ year, filled, onClear }: Props) {
             onClick={(e) => e.target === e.currentTarget && setConfirming(false)}
             onKeyDown={(e) => e.key === "Escape" && setConfirming(false)}
           >
-            <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-lift">
+            <div className="w-full max-w-sm rounded-2xl bg-surface p-5 shadow-lift">
               <div className="flex items-start gap-3">
                 <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-chip-red text-chip-red-ink">
                   <Trash2 size={20} aria-hidden />
@@ -78,13 +78,13 @@ export function ClearGrades({ year, filled, onClear }: Props) {
                 <button
                   ref={cancelRef}
                   onClick={() => setConfirming(false)}
-                  className="h-11 cursor-pointer rounded-lg border border-line bg-white text-sm font-medium text-ink outline-none transition-colors hover:bg-page focus-visible:ring-2 focus-visible:ring-brand"
+                  className="h-11 cursor-pointer rounded-lg border border-line bg-surface text-sm font-medium text-ink outline-none transition-colors hover:bg-page focus-visible:ring-2 focus-visible:ring-brand"
                 >
                   Cancelar
                 </button>
                 <button
                   onClick={clear}
-                  className="flex h-11 cursor-pointer items-center justify-center gap-2 rounded-lg bg-chip-red-ink text-sm font-medium text-white outline-none transition-[background-color,transform] hover:brightness-110 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-chip-red-ink focus-visible:ring-offset-2"
+                  className="flex h-11 cursor-pointer items-center justify-center gap-2 rounded-lg bg-chip-red-ink text-sm font-medium text-surface outline-none transition-[background-color,transform] hover:brightness-110 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-chip-red-ink focus-visible:ring-offset-2"
                 >
                   <Trash2 size={16} aria-hidden /> Limpar notas
                 </button>
@@ -98,7 +98,7 @@ export function ClearGrades({ year, filled, onClear }: Props) {
         createPortal(
           <div
             role="status"
-            className="fixed inset-x-4 bottom-4 z-40 mx-auto flex max-w-md animate-fade-up items-center gap-3 rounded-xl bg-ink py-2 pr-2 pl-4 text-sm text-white shadow-lift"
+            className="fixed inset-x-4 bottom-4 z-40 mx-auto flex max-w-md animate-fade-up items-center gap-3 rounded-xl bg-ink py-2 pr-2 pl-4 text-sm text-page shadow-lift"
           >
             <span className="flex-1">Notas apagadas.</span>
             <button
@@ -106,14 +106,14 @@ export function ClearGrades({ year, filled, onClear }: Props) {
                 undo();
                 setUndo(null);
               }}
-              className="flex h-9 cursor-pointer items-center gap-1.5 rounded-lg px-3 font-semibold text-white outline-none transition-colors hover:bg-white/15 focus-visible:ring-2 focus-visible:ring-white"
+              className="flex h-9 cursor-pointer items-center gap-1.5 rounded-lg px-3 font-semibold text-page outline-none transition-colors hover:bg-page/15 focus-visible:ring-2 focus-visible:ring-page"
             >
               <RotateCcw size={15} aria-hidden /> Desfazer
             </button>
             <button
               onClick={() => setUndo(null)}
               aria-label="Fechar aviso"
-              className="grid size-9 cursor-pointer place-items-center rounded-lg text-white/70 outline-none transition-colors hover:bg-white/15 hover:text-white focus-visible:ring-2 focus-visible:ring-white"
+              className="grid size-9 cursor-pointer place-items-center rounded-lg text-page/70 outline-none transition-colors hover:bg-page/15 hover:text-page focus-visible:ring-2 focus-visible:ring-page"
             >
               <X size={16} aria-hidden />
             </button>
