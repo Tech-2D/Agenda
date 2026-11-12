@@ -173,6 +173,14 @@ export function describeTarget(t: PassTarget, short = false): string {
 
 export const fmt = (n: number | null) => (n === null ? "-" : n.toFixed(2).replace(".", ","));
 
+/**
+ * Número inteiro acima de 10 digitado sem vírgula (ex.: 87) vira decimal com a vírgula depois
+ * do primeiro dígito (8,7), já que nenhuma nota passa de 10. O resto fica como veio.
+ */
+export function autoComma(raw: string): string {
+  return /^\d{2,}$/.test(raw) && Number(raw) > 10 ? `${raw[0]},${raw.slice(1)}` : raw;
+}
+
 export function parseGrade(raw: string): number | null {
   const n = parseFloat(raw.replace(",", "."));
   if (Number.isNaN(n)) return null;

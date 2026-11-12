@@ -27,3 +27,8 @@ export const SUBJECTS_BY_YEAR: Record<Year, string[]> = {
   ],
   3: [],
 };
+
+/** Salas de cada ano, para escolher a turma ao exportar o boletim. Anos sem lista usam texto livre. */
+export const CLASSROOMS_BY_YEAR: Partial<Record<Year, string[]>> = {
+  2: ["D", "E", "F", "G", "H", "I"],
+};

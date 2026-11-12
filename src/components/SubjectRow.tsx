@@ -1,6 +1,17 @@
-import { useRef, useState } from "react";
-import { AlertTriangle, CheckCircle2, ChevronRight, Clock, Lock, Scale, ShieldCheck, Target, XCircle } from "lucide-react";
-import { DEFAULT_N1_WEIGHT, describeTarget, fmt, parseGrade, type InputMode, type Modes, type NotesResult, type PassTarget, type Situation } from "../lib/grades";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { AlertTriangle, CheckCircle2, ChevronRight, Clock, Lock, RotateCcw, Scale, ShieldCheck, Target, XCircle } from "lucide-react";
+import {
+  autoComma,
+  DEFAULT_N1_WEIGHT,
+  describeTarget,
+  fmt,
+  parseGrade,
+  type InputMode,
+  type Modes,
+  type NotesResult,
+  type PassTarget,
+  type Situation,
+} from "../lib/grades";
 
 export interface Grades {
   s1n1: string;
@@ -21,7 +32,7 @@ export const GRID =
 export const SITUATION: Record<Situation, { text: string; chip: string; bar: string; Icon: typeof Clock }> = {
   aprovado: { text: "Aprovado", chip: "bg-chip-green text-chip-green-ink", bar: "bg-chip-green-ink", Icon: CheckCircle2 },
   "aprovado-rec": { text: "Aprovado na rec.", chip: "bg-chip-purple text-chip-purple-ink", bar: "bg-chip-purple-ink", Icon: ShieldCheck },
-  recuperacao: { text: "Recuperação", chip: "bg-chip-orange text-chip-orange-ink", bar: "bg-chip-orange-ink", Icon: AlertTriangle },
+  recuperacao: { text: "Recuperação", chip: "bg-chip-orange text-chip-orange-ink", bar: "bg-chip-orange-bar", Icon: AlertTriangle },
   reprovado: { text: "Reprovado", chip: "bg-chip-red text-chip-red-ink", bar: "bg-chip-red-ink", Icon: XCircle },
   andamento: { text: "Em andamento", chip: "bg-chip-blue text-chip-blue-ink", bar: "bg-chip-blue-ink", Icon: Clock },
   "sem-notas": { text: "Sem notas", chip: "bg-black/5 text-muted", bar: "bg-line", Icon: Clock },
@@ -40,9 +51,10 @@ interface GradeInputProps {
   className?: string;
   /** Rótulo pequeno no canto do campo, para saber qual nota é mesmo depois de preenchida (só no celular). */
   tag?: string;
+  style?: CSSProperties;
 }
 
-export function GradeInput({ value, onChange, label, placeholder = "-", className = "w-full lg:max-w-24", tag }: GradeInputProps) {
+export function GradeInput({ value, onChange, label, placeholder = "-", className = "w-full lg:max-w-24", tag, style }: GradeInputProps) {
   const [error, setError] = useState(false);
   const timer = useRef<number>(undefined);
 
@@ -55,7 +67,7 @@ export function GradeInput({ value, onChange, label, placeholder = "-", classNam
   };
 
   return (
-    <span className={`relative block ${className}`}>
+    <span className={`relative block ${className}`} style={style}>
       <input
         aria-label={label}
         aria-invalid={error}
@@ -63,7 +75,8 @@ export function GradeInput({ value, onChange, label, placeholder = "-", classNam
         placeholder={placeholder}
         value={value}
         onChange={(e) => {
-          const next = e.target.value.replace(/\s/g, "");
+          // 87 vira 8,7: sem vírgula, nada acima de 10 é nota, então a vírgula entra sozinha.
+          const next = autoComma(e.target.value.replace(/\s/g, ""));
           const n = parseFloat(next.replace(",", "."));
           // Nota vai de 0 a 10: qualquer coisa acima disso é recusada já na digitação.
           if (!GRADE_FORMAT.test(next) || n > 10) return reject();
@@ -81,7 +94,10 @@ export function GradeInput({ value, onChange, label, placeholder = "-", classNam
         }`}
       />
       {tag && value !== "" && (
-        <span aria-hidden className="pointer-events-none absolute top-1 left-1.5 text-[9px] leading-none font-semibold text-muted lg:hidden">
+        <span
+          aria-hidden
+          className="pointer-events-none absolute top-1 left-1.5 text-[9px] leading-none font-semibold text-muted lg:hidden"
+        >
           {tag}
         </span>
       )}
@@ -121,38 +137,121 @@ interface SemesterProps {
   onN2: (v: string) => void;
   onAvg: (v: string) => void;
   className?: string;
+  /** Atraso da animação de troca de modo, para as linhas entrarem em cascata. */
+  delay?: number;
 }
 
-/** N1, N2 e a média do semestre (ou só a média, no modo "media"): caixa própria no celular, célula da tabela no desktop. */
-function Semester({ title, subject, mode, n1, n2, avgInput, avg, onN1, onN2, onAvg, className = "" }: SemesterProps) {
+type Anim = (i: number) => { className: string; style?: CSSProperties };
+const still: Anim = () => ({ className: "" });
+
+/** Campos do semestre num modo; "anim" dá a animação de cada campo pela ordem (i). */
+function SemesterFields({ title, subject, mode, n1, n2, avgInput, avg, onN1, onN2, onAvg, anim }: SemesterProps & { anim: Anim }) {
   const avgCls = avg !== null && avg < 7 ? "text-chip-red-ink" : avg === null ? "text-muted" : "text-ink";
   const short = title.replace("semestre", "sem.");
   if (mode === "media") {
+    const a = anim(0);
     return (
-      <div className={`min-w-0 rounded-xl bg-page p-2 lg:bg-transparent lg:p-0 ${className}`}>
-        <div className="mb-1.5 px-0.5 text-[11px] font-semibold whitespace-nowrap text-muted lg:hidden">{short}</div>
-        <GradeInput label={`Média do ${title} de ${subject}`} placeholder="Média" value={avgInput} onChange={onAvg} className="w-full lg:w-[9rem]" />
-      </div>
+      <>
+        <div className="mb-1.5 flex h-5 items-center px-0.5 text-[11px] font-semibold whitespace-nowrap text-muted lg:hidden">{short}</div>
+        <GradeInput
+          label={`Média do ${title} de ${subject}`}
+          placeholder="Média"
+          value={avgInput}
+          onChange={onAvg}
+          className={`w-full lg:w-[9rem] ${a.className}`}
+          style={a.style}
+        />
+      </>
     );
   }
+  const [a0, a1, a2] = [anim(0), anim(1), anim(2)];
   return (
-    <div className={`min-w-0 rounded-xl bg-page p-2 lg:bg-transparent lg:p-0 ${className}`}>
-      <div className="mb-1.5 flex items-center justify-between gap-1 px-0.5 whitespace-nowrap lg:hidden">
+    <>
+      <div className="mb-1.5 flex h-5 items-center justify-between gap-1 px-0.5 whitespace-nowrap lg:hidden">
         <span className="text-[11px] font-semibold text-muted">{short}</span>
-        <span key={fmt(avg)} className={`animate-pop text-sm font-bold tabular-nums ${avgCls}`}>
+        <span key={fmt(avg)} className={`text-sm font-bold tabular-nums ${avgCls} ${a2.className || "animate-pop"}`} style={a2.style}>
           {fmt(avg)}
         </span>
       </div>
       <div className="grid grid-cols-2 gap-1.5 lg:flex lg:items-center lg:gap-1.5">
-        <GradeInput label={`N1 do ${title} de ${subject}`} tag="N1" placeholder="N1" value={n1} onChange={onN1} className="min-w-0 lg:w-[4.25rem]" />
-        <GradeInput label={`N2 do ${title} de ${subject}`} tag="N2" placeholder="N2" value={n2} onChange={onN2} className="min-w-0 lg:w-[4.25rem]" />
+        <GradeInput
+          label={`N1 do ${title} de ${subject}`}
+          tag="N1"
+          placeholder="N1"
+          value={n1}
+          onChange={onN1}
+          className={`min-w-0 lg:w-[4.25rem] ${a0.className}`}
+          style={a0.style}
+        />
+        <GradeInput
+          label={`N2 do ${title} de ${subject}`}
+          tag="N2"
+          placeholder="N2"
+          value={n2}
+          onChange={onN2}
+          className={`min-w-0 lg:w-[4.25rem] ${a1.className}`}
+          style={a1.style}
+        />
         <span
           key={fmt(avg)}
-          className={`hidden animate-pop text-sm font-semibold tabular-nums lg:ml-1 lg:inline ${avgCls}`}
+          className={`hidden text-sm font-semibold tabular-nums lg:ml-1 lg:inline-block ${avgCls} ${a2.className || "animate-pop"}`}
+          style={a2.style}
           aria-label={`Média do ${title}`}
         >
           {fmt(avg)}
         </span>
+      </div>
+    </>
+  );
+}
+
+const EXIT_MS = 260;
+
+/**
+ * N1, N2 e a média do semestre (ou só a média, no modo "media"): caixa própria no celular, célula da tabela no desktop.
+ * Ao trocar de modo, os campos antigos saem para um lado e os novos entram, um a um, pelo outro
+ * (N1/N2 ficam à esquerda do seletor e a Média à direita). Nada anima na montagem.
+ */
+function Semester(props: SemesterProps) {
+  const { mode, className = "", delay = 0 } = props;
+  const shown = useRef(mode);
+  const [leaving, setLeaving] = useState<InputMode | null>(null);
+  const [changed, setChanged] = useState(false);
+
+  useEffect(() => {
+    if (shown.current === mode) return;
+    setLeaving(shown.current);
+    setChanged(true);
+    shown.current = mode;
+    const t = window.setTimeout(() => setLeaving(null), EXIT_MS + delay);
+    return () => window.clearTimeout(t);
+  }, [mode, delay]);
+
+  // Indo para a Média, tudo anda para a esquerda (sai pela esquerda, entra pela direita); voltando, o contrário.
+  const toRight = mode === "media";
+  const enter: Anim = (i) => ({
+    className: toRight ? "animate-swap-in-right" : "animate-swap-in-left",
+    style: { animationDelay: `${delay + 110 + i * 70}ms` },
+  });
+  const exit: Anim = () => ({ className: "" });
+
+  return (
+    <div className={`min-w-0 rounded-xl bg-page p-2 lg:bg-transparent lg:p-0 ${className}`}>
+      <div className="relative">
+        {/* A key remonta os campos a cada troca, para a animação de entrada rodar de novo. */}
+        <div key={mode}>
+          <SemesterFields {...props} anim={changed ? enter : still} />
+        </div>
+        {leaving && (
+          <div
+            aria-hidden
+            inert
+            className={`pointer-events-none absolute inset-0 ${toRight ? "animate-swap-out-left" : "animate-swap-out-right"}`}
+            style={{ animationDelay: `${delay}ms` }}
+          >
+            <SemesterFields {...props} mode={leaving} anim={exit} />
+          </div>
+        )}
       </div>
     </div>
   );
@@ -233,9 +332,18 @@ export function SubjectRow({ name, modes, grades: g, result: r, index, onChange,
             />
           </button>
         </h3>
-        {(r.situation !== "sem-notas" || customWeight) && (
+        {(r.situation !== "sem-notas" || customWeight || r.recovered !== null) && (
           <div className="flex flex-wrap items-center gap-2">
             {r.situation !== "sem-notas" && <div className="lg:hidden">{chip}</div>}
+            {/* No celular a média recuperada vira uma etiqueta aqui; no desktop fica embaixo da média anual. */}
+            {r.recovered !== null && (
+              <span
+                title="O 2º semestre superou o 1º: a média dos dois (até 7,00) entra no lugar do 1º semestre na média anual"
+                className="inline-flex h-7 animate-pop items-center gap-1 rounded-lg bg-chip-red px-2 text-[11px] font-medium whitespace-nowrap text-chip-red-ink tabular-nums lg:hidden"
+              >
+                <RotateCcw size={12} aria-hidden /> Média recuperada {fmt(r.recovered)}
+              </span>
+            )}
             {/* Só aparece quando o peso foi mudado; o ajuste em si fica na tela da disciplina. */}
             {customWeight && (
               <button
@@ -269,7 +377,10 @@ export function SubjectRow({ name, modes, grades: g, result: r, index, onChange,
           {fmt(r.annual)}
         </span>
         {r.recovered !== null && (
-          <span title="O 2º semestre superou o 1º: a média dos dois (até 7,00) entra no lugar do 1º semestre na média anual" className="animate-pop text-[11px] leading-tight text-chip-red-ink lg:-mt-2">
+          <span
+            title="O 2º semestre superou o 1º: a média dos dois (até 7,00) entra no lugar do 1º semestre na média anual"
+            className="hidden animate-pop text-[11px] leading-tight text-chip-red-ink lg:-mt-2 lg:block"
+          >
             média recuperada {fmt(r.recovered)}
           </span>
         )}
@@ -288,6 +399,7 @@ export function SubjectRow({ name, modes, grades: g, result: r, index, onChange,
           onN2={(v) => onChange({ s1n2: v })}
           onAvg={(v) => onChange({ s1avg: v })}
           className="lg:order-2"
+          delay={Math.min(index * 25, 300)}
         />
         <Semester
           title="2º semestre"
@@ -301,12 +413,16 @@ export function SubjectRow({ name, modes, grades: g, result: r, index, onChange,
           onN2={(v) => onChange({ s2n2: v })}
           onAvg={(v) => onChange({ s2avg: v })}
           className="lg:order-3"
+          delay={Math.min(index * 25, 300) + 40}
         />
       </div>
 
       {/* Recuperação final: libera só quando a média anual fica abaixo de 7. */}
-      <div className="col-span-3 flex items-center justify-between gap-3 rounded-xl bg-page p-2 pl-3 lg:order-5 lg:col-span-1 lg:block lg:bg-transparent lg:p-0">
-        <span className="text-xs font-semibold text-muted lg:hidden">Recuperação final</span>
+      {/* No celular só aparece quando liberada (sem ocupar espaço com o cadeado); na tabela a coluna fica sempre. */}
+      <div
+        className={`col-span-3 items-center justify-between gap-3 rounded-xl bg-page p-2 pl-3 lg:order-5 lg:col-span-1 lg:block lg:bg-transparent lg:p-0 ${showRec ? "flex" : "hidden"}`}
+      >
+        <span className="text-xs font-semibold whitespace-nowrap text-muted lg:hidden">Recuperação final</span>
         <div className="w-28 lg:w-auto">
           {showRec ? (
             <div className="animate-pop">

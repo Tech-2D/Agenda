@@ -38,7 +38,17 @@ function Fraction({ top, bottom }: { top: ReactNode; bottom: ReactNode }) {
   );
 }
 
-function Card({ className = "", delay = 0, dim = false, children }: { className?: string; delay?: number; dim?: boolean; children: ReactNode }) {
+function Card({
+  className = "",
+  delay = 0,
+  dim = false,
+  children,
+}: {
+  className?: string;
+  delay?: number;
+  dim?: boolean;
+  children: ReactNode;
+}) {
   const [ref, inView] = useInView<HTMLElement>();
   return (
     <section
@@ -88,14 +98,14 @@ export function Formulas() {
           <p className="text-base font-semibold">Simule uma disciplina</p>
           <p className="text-sm text-muted">Digite as notas e veja a fórmula sendo preenchida.</p>
         </div>
-        <div className="flex flex-wrap items-end justify-center gap-3">
+        <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:items-end sm:justify-center sm:gap-3">
           {(
             [
               ["1º semestre", "s1n1", "s1n2"],
               ["2º semestre", "s2n1", "s2n2"],
             ] as const
           ).map(([title, k1, k2]) => (
-            <fieldset key={title} className="rounded-lg bg-white/70 p-2">
+            <fieldset key={title} className="min-w-0 rounded-lg bg-white/70 p-2">
               <legend className="sr-only">{title}</legend>
               <span aria-hidden className="mb-1 block text-[11px] font-medium text-muted">
                 {title}
@@ -108,18 +118,26 @@ export function Formulas() {
                     placeholder={`N${i + 1}`}
                     value={sim[k]}
                     onChange={(v) => setSim((s) => ({ ...s, [k]: v }))}
-                    className="w-16"
+                    className="min-w-0 flex-1 sm:w-16 sm:flex-none"
                   />
                 ))}
               </div>
             </fieldset>
           ))}
-          <label className="rounded-lg bg-white/70 p-2">
+          <label className="min-w-0 rounded-lg bg-white/70 p-2">
             <span className="mb-1 block text-[11px] font-medium text-muted">Rec. Final</span>
-            <GradeInput label="Simulação: Recuperação final" value={sim.rec} onChange={(v) => setSim((s) => ({ ...s, rec: v }))} className="w-16" />
+            <GradeInput
+              label="Simulação: Recuperação final"
+              value={sim.rec}
+              onChange={(v) => setSim((s) => ({ ...s, rec: v }))}
+              className="w-full sm:w-16"
+            />
           </label>
           {active && (
-            <span key={r.situation} className={`inline-flex h-11 animate-pop items-center gap-1.5 rounded-lg px-3 text-xs font-medium ${sit.chip}`}>
+            <span
+              key={r.situation}
+              className={`inline-flex h-11 animate-pop items-center justify-center gap-1.5 self-end rounded-lg px-3 text-xs font-medium ${sit.chip}`}
+            >
               <sit.Icon size={14} aria-hidden /> {sit.text}
             </span>
           )}
@@ -165,8 +183,8 @@ export function Formulas() {
             ))}
           </div>
           <p className="mt-2 text-sm">
-            Por padrão, a média de cada semestre é a média simples entre a N1 e a N2. Se o professor usa pesos diferentes
-            (por exemplo, N1 30% e N2 70%), toque no nome da disciplina e arraste o peso de cada semestre.
+            Por padrão, a média de cada semestre é a média simples entre a N1 e a N2. Se o professor usa pesos diferentes (por exemplo, N1
+            30% e N2 70%), toque no nome da disciplina e arraste o peso de cada semestre.
           </p>
         </Card>
         <Card delay={60}>
@@ -249,8 +267,8 @@ export function Formulas() {
             }
           />
           <p className="mt-2 text-sm">
-            A média recuperada ocorre quando a nota do 2º semestre supera a do 1º, passando a compor a média anual. O
-            valor máximo da média recuperada é 7,00.
+            A média recuperada ocorre quando a nota do 2º semestre supera a do 1º, passando a compor a média anual. O valor máximo da média
+            recuperada é 7,00.
             {usedRec && (
               <span className="mt-1 block animate-fade-up font-medium text-chip-red-ink">
                 Aplicada: ela substitui o 1º semestre no cálculo da média anual.

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { calculate, calculateFromAverages, calculateFromNotes, calculateSemesters, describeTarget, semesterAverage } from "./grades.ts";
+import { autoComma, calculate, calculateFromAverages, calculateFromNotes, calculateSemesters, describeTarget, semesterAverage } from "./grades.ts";
 
 const notes = (s1n1: number | null, s1n2: number | null, s2n1: number | null, s2n2: number | null, rec: number | null = null) =>
   calculateFromNotes({ s1n1, s1n2, s2n1, s2n2, rec });
@@ -126,4 +126,14 @@ test("nota mínima: impossível e já garantido", () => {
 test("sem nota nenhuma ou com tudo lançado não há nota mínima", () => {
   assert.equal(calculateSemesters(media(null), nn(null, null), null).target, null);
   assert.equal(notes(10, 9, 7, 8).target, null);
+});
+
+test("número acima de 10 sem vírgula ganha a vírgula depois do primeiro dígito", () => {
+  assert.equal(autoComma("87"), "8,7");
+  assert.equal(autoComma("875"), "8,75");
+  assert.equal(autoComma("11"), "1,1");
+  assert.equal(autoComma("10"), "10");
+  assert.equal(autoComma("9"), "9");
+  assert.equal(autoComma("8,7"), "8,7");
+  assert.equal(autoComma("05"), "05");
 });

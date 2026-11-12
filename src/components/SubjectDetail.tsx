@@ -164,7 +164,9 @@ function WeightCard({ weights, enabled, semester, onSemester, onChange }: Weight
               }`}
             >
               {title}
-              <span className={`text-[11px] font-medium tabular-nums ${enabled[i] && w !== DEFAULT_N1_WEIGHT ? "text-brand" : "text-muted"}`}>
+              <span
+                className={`text-[11px] font-medium tabular-nums ${enabled[i] && w !== DEFAULT_N1_WEIGHT ? "text-brand" : "text-muted"}`}
+              >
                 {enabled[i] ? `N1 ${w}% · N2 ${100 - w}%` : "Lançado pela média"}
               </span>
             </button>
@@ -220,7 +222,10 @@ function WeightCard({ weights, enabled, semester, onSemester, onChange }: Weight
           </div>
           {/* Brilho que passa pela barra enquanto arrasta. */}
           {dragging && (
-            <span aria-hidden className="pointer-events-none absolute inset-y-0 left-0 w-1/3 animate-shimmer bg-gradient-to-r from-transparent via-white/30 to-transparent" />
+            <span
+              aria-hidden
+              className="pointer-events-none absolute inset-y-0 left-0 w-1/3 animate-shimmer bg-gradient-to-r from-transparent via-white/30 to-transparent"
+            />
           )}
         </div>
 
@@ -331,7 +336,7 @@ export function SubjectDetail({ name, modes, grades: g, result: r, onChange, onC
         </div>
       </header>
 
-      <main className="mx-auto max-w-3xl animate-fade-up space-y-4 px-4 py-6">
+      <main className="mx-auto flex max-w-3xl animate-fade-up flex-col gap-4 px-4 py-6">
         <section className="relative overflow-hidden rounded-2xl bg-white p-5 shadow-card">
           <span aria-hidden className={`absolute inset-y-0 left-0 w-1.5 ${sit.bar}`} />
           <div className="flex items-start justify-between gap-4">
@@ -350,7 +355,10 @@ export function SubjectDetail({ name, modes, grades: g, result: r, onChange, onC
                 {fmt(r.annual)}
               </span>
               {r.recovered !== null && (
-                <span title="O 2º semestre superou o 1º: a média dos dois (até 7,00) entra no lugar do 1º semestre na média anual" className="text-xs text-chip-red-ink">
+                <span
+                  title="O 2º semestre superou o 1º: a média dos dois (até 7,00) entra no lugar do 1º semestre na média anual"
+                  className="text-xs text-chip-red-ink"
+                >
                   média recuperada {fmt(r.recovered)}
                 </span>
               )}
@@ -372,19 +380,22 @@ export function SubjectDetail({ name, modes, grades: g, result: r, onChange, onC
           </section>
         )}
 
-        {enabled[0] || enabled[1] ? (
-          <WeightCard
-            weights={[g.s1Weight, g.s2Weight]}
-            enabled={enabled}
-            semester={semester}
-            onSemester={setSemester}
-            onChange={(s, w) => onChange(s === 0 ? { s1Weight: w } : { s2Weight: w })}
-          />
-        ) : (
-          <p className="rounded-2xl bg-white p-4 text-sm text-muted shadow-card">
-            O peso da N1 e da N2 só vale nos semestres lançados como "N1 e N2".
-          </p>
-        )}
+        {/* No celular as notas vêm primeiro e o ajuste de peso desce para o fim. */}
+        <div className="order-last sm:order-none">
+          {enabled[0] || enabled[1] ? (
+            <WeightCard
+              weights={[g.s1Weight, g.s2Weight]}
+              enabled={enabled}
+              semester={semester}
+              onSemester={setSemester}
+              onChange={(s, w) => onChange(s === 0 ? { s1Weight: w } : { s2Weight: w })}
+            />
+          ) : (
+            <p className="rounded-2xl bg-white p-4 text-sm text-muted shadow-card">
+              O peso da N1 e da N2 só vale nos semestres lançados como "N1 e N2".
+            </p>
+          )}
+        </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
           <SemesterCard
@@ -425,7 +436,12 @@ export function SubjectDetail({ name, modes, grades: g, result: r, onChange, onC
             <div className="mt-3 flex flex-wrap items-end gap-4">
               <label className="w-32">
                 <span className="mb-1 block text-xs font-medium text-muted">Nota da rec.</span>
-                <GradeInput label={`Recuperação final de ${name}`} value={g.rec} onChange={(v) => onChange({ rec: v })} className="w-full" />
+                <GradeInput
+                  label={`Recuperação final de ${name}`}
+                  value={g.rec}
+                  onChange={(v) => onChange({ rec: v })}
+                  className="w-full"
+                />
               </label>
               <div className="pb-2 text-sm">
                 {r.final !== null ? (
@@ -440,8 +456,8 @@ export function SubjectDetail({ name, modes, grades: g, result: r, onChange, onC
               </div>
             </div>
           ) : (
-            <p className="mt-2 flex items-center gap-2 text-sm text-muted">
-              <Lock size={14} aria-hidden /> Libera quando a média anual ficar abaixo de 7.
+            <p className="mt-2 flex items-start gap-2 text-sm text-muted">
+              <Lock size={14} aria-hidden className="mt-0.5 shrink-0" /> Libera quando a média anual ficar abaixo de 7.
             </p>
           )}
         </section>

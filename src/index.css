@@ -13,6 +13,8 @@
   --color-chip-blue-ink: #1565c0;
   --color-chip-orange: #fff3e0;
   --color-chip-orange-ink: #c25700;
+  /* Preenchimento (barras) da recuperação: mais claro que o texto, para não se confundir com o vermelho. */
+  --color-chip-orange-bar: #e08a00;
   --color-chip-green: #e8f5e9;
   --color-chip-green-ink: #2e7d32;
   --color-chip-purple: #f3e5f5;
@@ -30,6 +32,43 @@
   --animate-shimmer: shimmer 2.4s linear infinite;
   --animate-flash: flash 700ms ease-out;
   --animate-shake: shake 360ms ease-in-out;
+  --animate-swap-in-left: swap-in-left 560ms cubic-bezier(0.3, 1.4, 0.55, 1) both;
+  --animate-swap-in-right: swap-in-right 560ms cubic-bezier(0.3, 1.4, 0.55, 1) both;
+  --animate-swap-out-left: swap-out-left 260ms cubic-bezier(0.5, 0, 0.75, 0) both;
+  --animate-swap-out-right: swap-out-right 260ms cubic-bezier(0.5, 0, 0.75, 0) both;
+
+  /*
+   * Troca de modo (N1/N2 ↔ Média): os campos antigos saem para um lado e os novos entram pelo outro,
+   * com mola e um leve desfoque. Não entra no bloco de "reduzir movimento": é curto e só acontece no clique.
+   */
+  @keyframes swap-in-left {
+    from {
+      opacity: 0;
+      transform: translateX(-36px) scale(0.85);
+      filter: blur(6px);
+    }
+  }
+  @keyframes swap-in-right {
+    from {
+      opacity: 0;
+      transform: translateX(36px) scale(0.85);
+      filter: blur(6px);
+    }
+  }
+  @keyframes swap-out-left {
+    to {
+      opacity: 0;
+      transform: translateX(-36px) scale(0.85);
+      filter: blur(6px);
+    }
+  }
+  @keyframes swap-out-right {
+    to {
+      opacity: 0;
+      transform: translateX(36px) scale(0.85);
+      filter: blur(6px);
+    }
+  }
 
   @keyframes shake {
     0%,
@@ -119,6 +158,29 @@ body {
   font-family: var(--font-sans);
   color: var(--color-ink);
   background: var(--color-page);
+}
+
+/* Boletim em PDF (ver ExportPdf): só aparece na impressão, numa folha A4 sem margem, como o original. */
+.boletim-print {
+  display: none;
+}
+@media print {
+  @page {
+    size: 595.92pt 841.92pt; /* exatamente o tamanho do PDF original */
+    margin: 0;
+  }
+  html,
+  body {
+    background: #fff !important;
+  }
+  #root {
+    display: none !important;
+  }
+  .boletim-print {
+    display: block;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
 }
 
 /* Elementos revelados ao rolar a página (ver useInView). */

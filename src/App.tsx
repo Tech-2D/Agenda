@@ -8,13 +8,26 @@ import { YearPicker } from "./components/YearPicker";
 import { Summary } from "./components/Summary";
 import { GRID, SITUATION, SubjectRow, toGrade, type Grades } from "./components/SubjectRow";
 import { SubjectDetail } from "./components/SubjectDetail";
+import { ExportPdf } from "./components/ExportPdf";
+import { Segmented } from "./components/Segmented";
+import { ClearGrades } from "./components/ClearGrades";
 
 const YEAR_KEY = "aprovae:year";
 const MODE_KEY = "aprovae:mode"; // modo antigo, um só para os dois semestres
 const MODES_KEY = "aprovae:modes";
 const REPORT_CARD_URL = "https://alunos.igerminare.org.br/aluno/minhas-notas/4";
 const gradesKey = (y: Year) => `aprovae:v4:grades:${y}`;
-const EMPTY: Grades = { s1n1: "", s1n2: "", s2n1: "", s2n2: "", s1avg: "", s2avg: "", rec: "", s1Weight: DEFAULT_N1_WEIGHT, s2Weight: DEFAULT_N1_WEIGHT };
+const EMPTY: Grades = {
+  s1n1: "",
+  s1n2: "",
+  s2n1: "",
+  s2n2: "",
+  s1avg: "",
+  s2avg: "",
+  rec: "",
+  s1Weight: DEFAULT_N1_WEIGHT,
+  s2Weight: DEFAULT_N1_WEIGHT,
+};
 
 function read<T>(key: string): T | null {
   try {
@@ -53,6 +66,10 @@ function readModes(): Modes {
 }
 
 const modeHint = (m: InputMode) => (m === "media" ? "Média" : "N1 · N2 · Média");
+const swapIn = (m: InputMode) => (m === "media" ? "animate-swap-in-right" : "animate-swap-in-left");
+
+// Campos que são nota (o resto, como os pesos, é configuração).
+const GRADE_FIELDS = ["s1n1", "s1n2", "s2n1", "s2n2", "s1avg", "s2avg", "rec"] as const;
 
 const hasSubjects = (y: Year | null): y is Year => y !== null && SUBJECTS_BY_YEAR[y]?.length > 0;
 
@@ -80,6 +97,8 @@ function GradesView({ year, onChangeYear }: { year: Year; onChangeYear: () => vo
   const [query, setQuery] = useState("");
   // Modo de cada semestre, para todas as disciplinas; as notas de cada modo ficam guardadas separadas.
   const [modes, setModes] = useState<Modes>(readModes);
+  // Só anima o cabeçalho da tabela depois que o modo foi trocado (não ao abrir a página).
+  const [modeTouched, setModeTouched] = useState(false);
   const [formulasRef, formulasIn] = useInView<HTMLDetailsElement>();
 
   useEffect(() => write(gradesKey(year), grades), [year, grades]);
@@ -98,8 +117,21 @@ function GradesView({ year, onChangeYear }: { year: Year; onChangeYear: () => vo
   };
   const closeSubject = () => history.back();
 
-  const update = (name: string, patch: Partial<Grades>) =>
-    setGrades((g) => ({ ...g, [name]: { ...EMPTY, ...g[name], ...patch } }));
+  const update = (name: string, patch: Partial<Grades>) => setGrades((g) => ({ ...g, [name]: { ...EMPTY, ...g[name], ...patch } }));
+
+  // Apaga as notas do ano (mantém os pesos, que são configuração) e devolve como desfazer.
+  const clearGrades = () => {
+    const before = grades;
+    setGrades((g) =>
+      Object.fromEntries(
+        Object.entries(g).map(([k, v]) => [
+          k,
+          { ...EMPTY, s1Weight: v.s1Weight ?? DEFAULT_N1_WEIGHT, s2Weight: v.s2Weight ?? DEFAULT_N1_WEIGHT },
+        ]),
+      ),
+    );
+    return () => setGrades(before);
+  };
 
   const rows = useMemo(
     () =>
@@ -117,9 +149,7 @@ function GradesView({ year, onChangeYear }: { year: Year; onChangeYear: () => vo
   );
   const detail = rows.find((x) => x.name === open);
   const q = query.trim().toLowerCase();
-  const visible = rows.filter(
-    ({ name, r }) => (filter === "todas" || r.situation === filter) && (!q || name.toLowerCase().includes(q)),
-  );
+  const visible = rows.filter(({ name, r }) => (filter === "todas" || r.situation === filter) && (!q || name.toLowerCase().includes(q)));
 
   return (
     <div className="min-h-dvh">
@@ -155,46 +185,68 @@ function GradesView({ year, onChangeYear }: { year: Year; onChangeYear: () => vo
       </header>
 
       <main className="mx-auto max-w-7xl space-y-5 px-4 py-6 sm:py-8">
-        <div className="flex animate-fade-up flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div className="flex animate-fade-up flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h1 className="text-xl font-semibold sm:text-2xl">Disciplinas do {year}º ano</h1>
             <p className="text-sm text-muted">
-              Escolha, em cada semestre, se vai lançar a N1 e a N2 ou só a média. Tudo fica salvo neste navegador.
+              <span className="sm:hidden">Tudo fica salvo neste navegador.</span>
+              <span className="hidden sm:inline">
+                Escolha, em cada semestre, se vai lançar a N1 e a N2 ou só a média. Tudo fica salvo neste navegador.
+              </span>
             </p>
           </div>
-          <div className="grid shrink-0 grid-cols-2 gap-2">
-            {(["s1", "s2"] as const).map((sem, i) => (
-              <div key={sem} className="min-w-0">
-                <span className="mb-1 block px-1 text-[11px] font-semibold text-muted">{i + 1}º semestre</span>
-                <div className="flex rounded-full bg-white p-1 shadow-card" role="group" aria-label={`Como lançar as notas do ${i + 1}º semestre`}>
-                  {MODES.map((m) => {
-                    const active = modes[sem] === m.value;
-                    return (
-                      <button
-                        key={m.value}
-                        onClick={() => setModes((x) => ({ ...x, [sem]: m.value }))}
-                        aria-pressed={active}
-                        className={`h-9 flex-1 cursor-pointer rounded-full px-3 text-xs font-medium whitespace-nowrap outline-none transition-[background-color,color,transform] duration-200 active:scale-95 focus-visible:ring-2 focus-visible:ring-brand sm:flex-none ${
-                          active ? "bg-brand text-white shadow-lift" : "text-ink hover:bg-brand-soft"
-                        }`}
-                      >
-                        {m.label}
-                      </button>
-                    );
-                  })}
+          {/* No celular os dois seletores viram um painel com título; no desktop ficam soltos ao lado do título. */}
+          <section
+            aria-label="Como lançar as notas"
+            className="shrink-0 rounded-2xl bg-white p-3 shadow-card sm:bg-transparent sm:p-0 sm:shadow-none"
+          >
+            <h2 className="mb-2 px-1 text-xs font-semibold text-muted sm:hidden">Como lançar as notas</h2>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {(["s1", "s2"] as const).map((sem, i) => (
+                <div key={sem} className="flex min-w-0 items-center justify-between gap-3 sm:block">
+                  <span className="px-1 text-sm font-medium text-ink sm:mb-1 sm:block sm:text-[11px] sm:font-semibold sm:text-muted">
+                    {i + 1}º semestre
+                  </span>
+                  <Segmented
+                    ariaLabel={`Como lançar as notas do ${i + 1}º semestre`}
+                    options={MODES}
+                    value={modes[sem]}
+                    onChange={(v) => {
+                      setModeTouched(true);
+                      setModes((x) => ({ ...x, [sem]: v }));
+                    }}
+                    className="w-44 shrink-0 rounded-full bg-page p-1 sm:w-auto sm:bg-white sm:shadow-card"
+                    buttonClassName="h-9 flex-1 rounded-full px-3 text-xs font-medium sm:flex-none"
+                  />
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          </section>
         </div>
 
-        <Summary results={rows.map((x) => x.r)} />
+        <Summary
+          rows={rows}
+          action={
+            <>
+              <ClearGrades
+                year={year}
+                filled={rows.filter(({ g }) => GRADE_FIELDS.some((f) => g[f] !== "")).length}
+                onClear={clearGrades}
+              />
+              <ExportPdf year={year} rows={rows.map(({ name, g, r }) => ({ name, r, rec: toGrade(g.rec) }))} />
+            </>
+          }
+        />
 
         <div
           className="flex animate-fade-up flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
           style={{ animationDelay: "120ms" }}
         >
-          <div className="-mx-4 flex gap-2 overflow-x-auto px-4 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:px-0" role="group" aria-label="Filtrar por situação">
+          <div
+            className="-mx-4 flex gap-2 overflow-x-auto px-4 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:px-0"
+            role="group"
+            aria-label="Filtrar por situação"
+          >
             {FILTERS.map((f) => {
               const active = filter === f;
               const n = f === "todas" ? rows.length : rows.filter((x) => x.r.situation === f).length;
@@ -232,10 +284,16 @@ function GradesView({ year, onChangeYear }: { year: Year; onChangeYear: () => vo
           <div className={`hidden border-b border-line px-4 py-3 pl-5 text-xs font-semibold lg:grid ${GRID}`}>
             <span>Disciplinas</span>
             <span>
-              1º Semestre <span className="block font-normal text-muted">{modeHint(modes.s1)}</span>
+              1º Semestre{" "}
+              <span key={modes.s1} className={`block font-normal text-muted ${modeTouched ? swapIn(modes.s1) : ""}`}>
+                {modeHint(modes.s1)}
+              </span>
             </span>
             <span>
-              2º Semestre <span className="block font-normal text-muted">{modeHint(modes.s2)}</span>
+              2º Semestre{" "}
+              <span key={modes.s2} className={`block font-normal text-muted ${modeTouched ? swapIn(modes.s2) : ""}`}>
+                {modeHint(modes.s2)}
+              </span>
             </span>
             <span>Média Anual</span>
             <span>Rec. Final</span>
