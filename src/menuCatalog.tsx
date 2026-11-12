@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { Bell, BookOpen, CalendarClock, History, KeyRound, LayoutGrid, Lightbulb, ListChecks, MapPin, MessageSquarePlus, Plus, Settings, StickyNote, UserRound, Vote } from 'lucide-react'
+import { Bell, BookOpen, Calculator, CalendarClock, History, KeyRound, LayoutGrid, Lightbulb, ListChecks, MapPin, MessageSquarePlus, Plus, Settings, StickyNote, UserRound, Vote } from 'lucide-react'
 import type { MenuShortcutId } from './menuShortcuts'
 
 export type MoreOption = {
@@ -62,6 +62,7 @@ export function menuOptionSections({ hasTurma, actions, todayClassesUrl, unreadC
       description: 'Acesse outras ferramentas da comunidade 2ºD Tech.',
       items: [
         { id: 'teachers', title: 'Cadê o professor?', description: 'Pesquise professores, matérias e salas.', icon: <MapPin />, href: 'https://tech-2d.github.io/professores/' },
+        { id: 'pegaki', title: 'Pegaki', description: 'Calcule suas médias e simule notas do Tech.', icon: <Calculator />, href: 'https://dvarakaki.github.io/pegaki/' },
         { id: 'pong', title: 'Liga Germinare Pong', description: 'Acesse a liga de tênis de mesa.', icon: <TableTennisPaddle />, href: 'https://ligagerminare-pong.vercel.app/' },
       ],
     },
