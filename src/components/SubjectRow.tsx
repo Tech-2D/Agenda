@@ -16,7 +16,7 @@ export interface Grades {
 }
 
 export const GRID =
-  "lg:grid-cols-[minmax(0,2fr)_minmax(0,2fr)_minmax(0,2fr)_minmax(0,0.8fr)_minmax(0,1fr)_minmax(0,0.8fr)_minmax(0,1.3fr)] lg:items-center lg:gap-4";
+  "lg:grid-cols-[minmax(0,1.75fr)_minmax(0,2fr)_minmax(0,2fr)_minmax(0,1.05fr)_minmax(0,1fr)_minmax(0,0.8fr)_minmax(0,1.3fr)] lg:items-center lg:gap-4";
 
 export const SITUATION: Record<Situation, { text: string; chip: string; bar: string; Icon: typeof Clock }> = {
   aprovado: { text: "Aprovado", chip: "bg-chip-green text-chip-green-ink", bar: "bg-chip-green-ink", Icon: CheckCircle2 },
@@ -269,7 +269,9 @@ export function SubjectRow({ name, modes, grades: g, result: r, index, onChange,
           {fmt(r.annual)}
         </span>
         {r.recovered !== null && (
-          <span className="animate-pop text-[11px] text-chip-red-ink lg:-mt-2">rec. {fmt(r.recovered)}</span>
+          <span title="O 2º semestre superou o 1º: a média dos dois (até 7,00) entra no lugar do 1º semestre na média anual" className="animate-pop text-[11px] leading-tight text-chip-red-ink lg:-mt-2">
+            média recuperada {fmt(r.recovered)}
+          </span>
         )}
       </div>
 

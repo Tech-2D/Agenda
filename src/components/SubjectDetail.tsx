@@ -349,7 +349,11 @@ export function SubjectDetail({ name, modes, grades: g, result: r, onChange, onC
               <span key={fmt(r.annual)} className={`block animate-pop text-4xl font-bold tabular-nums ${annualCls}`}>
                 {fmt(r.annual)}
               </span>
-              {r.recovered !== null && <span className="text-xs text-chip-red-ink">rec. {fmt(r.recovered)}</span>}
+              {r.recovered !== null && (
+                <span title="O 2º semestre superou o 1º: a média dos dois (até 7,00) entra no lugar do 1º semestre na média anual" className="text-xs text-chip-red-ink">
+                  média recuperada {fmt(r.recovered)}
+                </span>
+              )}
             </div>
           </div>
         </section>
