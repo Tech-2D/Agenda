@@ -1,10 +1,10 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import type { User } from 'firebase/auth'
-import { RefreshCw, ShieldBan } from 'lucide-react'
+import { ArrowLeft, RefreshCw, ShieldBan, ShieldCheck } from 'lucide-react'
 import { SQL_BASE } from './dataBackend'
 import { auth } from './firebase'
 
-type AgendaAccount = { uid: string; email: string | null; lastSeen: string | null; protected: boolean; emailBlocked: boolean; networkBlocked: boolean; hasNetwork: boolean }
+type AgendaAccount = { uid: string; email: string | null; lastSeen: string | null; protected: boolean; emailBlocked: boolean; emailBlockId?: string | null; networkBlocked: boolean; networkBlockId?: string | null; hasNetwork: boolean }
 type Block = { id: string; kind: 'email' | 'ip'; label: string; createdAt: string }
 type UsersResult = { users: AgendaAccount[]; hasMore: boolean; blocks: Block[]; hasMoreBlocks: boolean }
 type Kind = 'email' | 'ip' | 'recent-network'
@@ -41,6 +41,8 @@ export function AgendaUsersPanel({ user }: { user: User }) {
   const [busy, setBusy] = useState(false)
   const [kind, setKind] = useState<'email' | 'ip'>('email')
   const [target, setTarget] = useState('')
+  const usersHeading = useRef<HTMLHeadingElement>(null)
+  const blocksHeading = useRef<HTMLHeadingElement>(null)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -76,6 +78,10 @@ export function AgendaUsersPanel({ user }: { user: User }) {
     if (window.confirm(explanation + '\n\n' + label)) void changeAccess({ action: 'block', kind: nextKind, value })
   }
 
+  function unblock(id: string, label: string) {
+    if (window.confirm('Remover o bloqueio de ' + label + '?')) void changeAccess({ action: 'unblock', id })
+  }
+
   function searchUsers(event: FormEvent) {
     event.preventDefault()
     setOffset(0)
@@ -85,8 +91,11 @@ export function AgendaUsersPanel({ user }: { user: User }) {
   return (
     <section className="storage-admin agenda-users" aria-labelledby="agenda-users-title">
       <div className="storage-admin-heading">
-        <div><h3 id="agenda-users-title">Usuários e bloqueios</h3><p>Todos os usuários cadastrados. O último acesso mostra quando a conta abriu a Agenda, quando houver registro.</p></div>
-        <button type="button" className="secondary-button" disabled={busy} onClick={() => refresh(n => n + 1)}><RefreshCw size={16} /> Atualizar</button>
+        <div><h3 id="agenda-users-title" tabIndex={-1} ref={usersHeading}>Usuários e bloqueios</h3><p>Todos os usuários cadastrados. O último acesso mostra quando a conta abriu a Agenda, quando houver registro.</p></div>
+        <div className="agenda-user-actions">
+          <button type="button" className="secondary-button" onClick={() => blocksHeading.current?.focus()}><ShieldBan size={16} /> Ver bloqueios ativos</button>
+          <button type="button" className="secondary-button" disabled={busy} onClick={() => refresh(n => n + 1)}><RefreshCw size={16} /> Atualizar</button>
+        </div>
       </div>
       {notice && <p className="storage-admin-success" role="status">{notice}</p>}
       {error && <p className="form-error" role="alert">{error}</p>}
@@ -104,12 +113,16 @@ export function AgendaUsersPanel({ user }: { user: User }) {
                 <strong>{item.email || 'Conta sem e-mail registrado'}</strong>
                 <small>UID {item.uid}</small>
                 <small>{item.lastSeen ? <>Último acesso <time dateTime={item.lastSeen}>{date.format(new Date(item.lastSeen))}</time></> : 'Sem acesso registrado na Agenda'}</small>
-                {(item.emailBlocked || item.networkBlocked) && <small>{item.emailBlocked ? 'E-mail bloqueado' : 'Última rede bloqueada'}</small>}
+                {item.emailBlocked && <small>E-mail bloqueado</small>}
+                {item.networkBlocked && <small>Última rede bloqueada</small>}
               </div>
-              {item.protected ? <small>Superadministrador</small> : <div className="agenda-user-actions">
-                {item.email && !item.emailBlocked && <button type="button" className="secondary-button" disabled={busy} onClick={() => block('email', item.email!, item.email!)}>Bloquear e-mail</button>}
-                {item.hasNetwork && !item.networkBlocked && <button type="button" className="secondary-button" disabled={busy} onClick={() => block('recent-network', item.uid, item.email || item.uid)}>Bloquear última rede</button>}
-              </div>}
+              <div className="agenda-user-actions">
+                {item.protected && <small>Superadministrador</small>}
+                {item.emailBlockId && <button type="button" className="secondary-button" disabled={busy} onClick={() => unblock(item.emailBlockId!, item.email || 'e-mail desta conta')}><ShieldCheck size={16} /> Desbloquear e-mail</button>}
+                {item.networkBlockId && <button type="button" className="secondary-button" disabled={busy} onClick={() => unblock(item.networkBlockId!, 'última rede desta conta')}><ShieldCheck size={16} /> Desbloquear última rede</button>}
+                {!item.protected && item.email && !item.emailBlocked && <button type="button" className="secondary-button" disabled={busy} onClick={() => block('email', item.email!, item.email!)}>Bloquear e-mail</button>}
+                {!item.protected && item.hasNetwork && !item.networkBlocked && <button type="button" className="secondary-button" disabled={busy} onClick={() => block('recent-network', item.uid, item.email || item.uid)}>Bloquear última rede</button>}
+              </div>
             </article>
           ))}
         </div>
@@ -119,7 +132,10 @@ export function AgendaUsersPanel({ user }: { user: User }) {
         </nav>}
       </>}
       <section className="agenda-users-blocks" aria-labelledby="agenda-blocks-title">
-        <h4 id="agenda-blocks-title">Bloqueios de acesso</h4>
+        <div className="storage-admin-heading">
+          <h4 id="agenda-blocks-title" tabIndex={-1} ref={blocksHeading}>Bloqueios ativos</h4>
+          <button type="button" className="secondary-button" onClick={() => usersHeading.current?.focus()}><ArrowLeft size={16} /> Voltar aos usuários</button>
+        </div>
         <form className="agenda-users-form" onSubmit={event => { event.preventDefault(); block(kind, target, target) }}>
           <label>Bloquear por<select value={kind} onChange={event => { setKind(event.target.value as typeof kind); setTarget('') }}>
             <option value="email">E-mail</option><option value="ip">Endereço IP</option>
@@ -132,9 +148,7 @@ export function AgendaUsersPanel({ user }: { user: User }) {
           {result.blocks.length === 0 && <p className="admin-empty">Nenhum bloqueio nesta página.</p>}
           {result.blocks.map(item => <article className="storage-admin-file" key={item.id}>
             <div className="agenda-user-details"><strong>{item.label}</strong><small>{item.kind === 'ip' ? 'IP' : 'E-mail'} · {date.format(new Date(item.createdAt))}</small></div>
-            <button type="button" className="secondary-button" disabled={busy} onClick={() => {
-              if (window.confirm('Remover o bloqueio de ' + item.label + '?')) void changeAccess({ action: 'unblock', id: item.id })
-            }}>Desbloquear</button>
+            <button type="button" className="secondary-button" disabled={busy} onClick={() => unblock(item.id, item.label)}><ShieldCheck size={16} /> Desbloquear</button>
           </article>)}
         </div>}
         {result && (blockOffset > 0 || result.hasMoreBlocks) && <nav className="agenda-user-actions" aria-label="Páginas de bloqueios">
