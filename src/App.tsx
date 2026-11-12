@@ -8,6 +8,7 @@ import { WeeklyDigestSettings } from './WeeklyDigestSettings'
 import { AttachmentLinks } from './AttachmentLinks'
 import { ATTACHMENTS_ENABLED } from './attachments'
 import { FirebaseError } from 'firebase/app'
+import { PageHeading } from './PageHeading'
 import { addDoc, collection, doc, getDoc, onSnapshot, serverTimestamp } from './dataClient'
 import { auth, db } from './firebase'
 import { CLASS_NAMES } from './classNames'
@@ -543,9 +544,9 @@ function App() {
       </main>
       ) : (
       <main id="inicio" className="main-content">
-        <div className="agenda-toolbar">
+        <div className="agenda-toolbar interface-panel">
           <div className="agenda-heading">
-            <h1>Sua agenda</h1>
+            <PageHeading icon={Calendar} title="Sua agenda" />
             <label className="turma-select-inline" aria-label="Turma selecionada">
               <select value={turmaId ?? ''} onChange={(event) => chooseTurma(event.target.value)}>
                 <option value="" disabled>Selecione uma turma</option>
@@ -570,7 +571,7 @@ function App() {
 
           <div className="agenda-controls">
           <div className="calendar-view-tools">
-          <div className="calendar-view-switch" role="group" aria-label="Visualização da agenda">
+          <div className="calendar-view-switch interface-segments" role="group" aria-label="Visualização da agenda">
             {CALENDAR_VIEWS.map(view => <button key={view.id} type="button" aria-pressed={calendarView === view.id} onClick={() => { setCalendarView(view.id); setDayPreview(null) }}>{view.label}</button>)}
           </div>
           <div className="month-nav">

@@ -1,0 +1,164 @@
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities) source(none);
+
+@theme {
+  --font-interface: "Poppins", system-ui, sans-serif;
+  --radius-interface-control: .625rem;
+  --radius-interface-panel: 1rem;
+}
+
+:root {
+  font-family: var(--font-interface);
+  --interface-accent: var(--accent, var(--neon-ink, var(--ink)));
+  --interface-on-accent: var(--accent-contrast, var(--accent-text, #fff));
+  --interface-surface: var(--paper);
+  --interface-subtle: var(--surface-alt, var(--surface, var(--neon-soft, #eef1fd)));
+  --interface-text: var(--text, #202e47);
+  --interface-elevation: 0 2px 5px rgb(18 34 77 / .045), 0 10px 24px rgb(18 34 77 / .04);
+}
+
+:root:not([data-contrast="alto"]):is(:not([data-theme]), [data-theme="padrao"]) {
+  --bg: #f6f7fb;
+  --app-bg: #f6f7fb;
+  --paper: #fff;
+  --surface-alt: #eef1fd;
+  --surface: #eef1fd;
+  --text: #202e47;
+  --ink: #0a2dc4;
+  --ink-soft: #54627a;
+  --accent: #0a2dc4;
+  --accent-hover: #0821a0;
+  --line: #dfe5f0;
+}
+
+.interface-heading {
+  @apply flex min-w-0 items-center gap-3;
+}
+
+.interface-heading-icon {
+  @apply grid shrink-0 place-items-center rounded-interface-control;
+  width: 2.875rem;
+  height: 2.875rem;
+  background: var(--interface-subtle);
+  color: var(--interface-accent);
+}
+
+.interface-heading h1 {
+  margin: 0;
+  max-width: none;
+  color: var(--interface-text);
+  font-size: clamp(1.375rem, 1.07rem + 1.05vw, 1.875rem);
+  font-weight: 700;
+  letter-spacing: -.045em;
+  line-height: 1.16;
+}
+
+.interface-heading p {
+  margin: .3rem 0 0;
+  color: var(--ink-soft);
+  font-size: .8125rem;
+  line-height: 1.5;
+}
+
+.interface-panel {
+  @apply rounded-interface-panel border border-solid;
+  min-width: 0;
+  border-color: var(--line);
+  background: var(--interface-surface);
+  box-shadow: var(--interface-elevation);
+  padding: clamp(.75rem, 2vw, 1.125rem);
+}
+
+.app-shell .interface-segments {
+  @apply flex items-stretch rounded-interface-control border border-solid;
+  gap: .25rem;
+  padding: .25rem;
+  border-color: var(--line);
+  background: var(--interface-subtle);
+}
+
+.app-shell .interface-segments button {
+  border: 0;
+  border-radius: .4375rem;
+  min-height: 2rem;
+  padding: .35rem .75rem;
+  background: transparent;
+  color: var(--ink-soft);
+  font-size: .75rem;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.app-shell .interface-segments button:not([aria-pressed="true"]):hover {
+  background: var(--interface-surface);
+  color: var(--interface-accent);
+}
+
+.app-shell .interface-segments button[aria-pressed="true"] {
+  background: var(--interface-accent);
+  color: var(--interface-on-accent);
+  box-shadow: 0 1px 3px rgb(18 34 77 / .12);
+}
+
+.app-shell .menu-trigger {
+  z-index: 16;
+  border-radius: var(--radius-interface-control);
+  box-shadow: var(--interface-elevation);
+}
+
+:is(.primary-button, .secondary-button, .icon-button, .side-menu-list button, .side-menu-list a) {
+  border-radius: var(--radius-interface-control);
+}
+
+.app-shell .state-card {
+  border-radius: var(--radius-interface-panel);
+}
+
+@media (min-width: 641px) {
+  :is(.admin-dialog, .config-dialog, .profile-dialog, .day-dialog, .polls-dialog) {
+    border-radius: var(--radius-interface-panel);
+  }
+}
+
+@media (max-width: 640px) {
+  .interface-heading-icon {
+    width: 2.5rem;
+    height: 2.5rem;
+  }
+
+  .interface-heading p {
+    font-size: .75rem;
+  }
+}
+
+.agenda-toolbar .agenda-heading { gap: .625rem; padding-inline-end: 0; }
+.agenda-toolbar .agenda-controls { border-top: 1px solid var(--line); padding-top: .875rem; }
+.agenda-heading .interface-heading { margin-inline-end: .375rem; }
+.agenda-heading .interface-heading h1 { font-size: clamp(1.375rem, 1.07rem + 1.05vw, 1.875rem); }
+.agenda-heading :is(select, .compare-link),
+.agenda-actions .action-button,
+.month-nav > button,
+.month-nav .today-button { border-radius: var(--radius-interface-control); }
+.agenda-heading :is(select, .compare-link) { min-height: 2.375rem; }
+.agenda-heading select { max-width: min(100%, 17.5rem); }
+.agenda-heading .compare-link { border-style: solid; }
+.agenda-heading .compare-link:hover { background: var(--interface-subtle); }
+.app-shell :is(.calendar-grid, .period-agenda, .more-option-item) {
+  border-radius: var(--radius-interface-panel);
+  box-shadow: var(--interface-elevation);
+}
+.calendar-weekdays span { letter-spacing: .055em; }
+.day-number { font-variant-numeric: tabular-nums; }
+@media (max-width: 1400px) {
+  .agenda-heading .interface-heading { flex: 1 0 100%; padding-inline-end: 2.875rem; }
+}
+@media (max-width: 640px) {
+  .agenda-toolbar .agenda-heading { justify-content: flex-start; }
+  .agenda-heading label { min-width: 0; max-width: 100%; }
+  .agenda-heading select { font-size: .75rem; }
+  .agenda-toolbar .calendar-view-tools { gap: .5rem; }
+  .agenda-toolbar .calendar-view-tools .month-nav { flex: 1 0 auto; }
+  .agenda-toolbar .agenda-actions .action-button { width: 2.5rem; height: 2.5rem; }
+}
+
+.app-shell :is(.compare-link, .action-button, .turma-select-inline select, .schedule-filters label, .schedule-filters select) { font-weight: 600; }
