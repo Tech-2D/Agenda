@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { CalendarDays, Download, Link2, Paperclip, Trash2, X } from 'lucide-react'
+import { CalendarDays, Download, FileText, Link2, Paperclip, Trash2, Upload, X } from 'lucide-react'
 import { formatAttachmentSize, validateAttachment } from './attachments'
 import { auth } from './firebase'
 import { SQL_BASE, SQL_ENABLED } from './dataBackend'
@@ -8,6 +8,7 @@ import type { Activity } from './types'
 type FileTarget = { scope: 'personal' | 'shared'; board: string; task: string }
 type StudyFile = { id: string; name: string; size: number }
 const accept = '.pdf,.docx,.pptx,.zip,.jpg,.jpeg,.png,.webp'
+const maxFiles = 5
 
 async function requestFile(target: FileTarget, method = 'GET', file?: StudyFile, upload?: File, signal?: AbortSignal) {
   const account = auth.currentUser
@@ -37,7 +38,8 @@ async function requestFile(target: FileTarget, method = 'GET', file?: StudyFile,
 export function KanbanFiles({scope, board, task}: FileTarget) {
   const [files, setFiles] = useState<StudyFile[]>([])
   const [loading, setLoading] = useState(true)
-  const [busy, setBusy] = useState(false)
+  const [operation, setOperation] = useState('')
+  const busy = Boolean(operation)
   const [error, setError] = useState('')
   const [reload, setReload] = useState(0)
   useEffect(() => {
@@ -76,28 +78,44 @@ export function KanbanFiles({scope, board, task}: FileTarget) {
     await requestFile({scope, board, task}, 'DELETE', file)
     setFiles(list => list.filter(item => item.id !== file.id))
   }
-  async function perform(action: () => Promise<void>) {
-    setBusy(true)
+  async function perform(message: string, action: () => Promise<void>) {
+    setOperation(message)
     setError('')
     try { await action() }
     catch (error) { setError(error instanceof Error ? error.message : 'Tente novamente.') }
-    finally { setBusy(false) }
+    finally { setOperation('') }
   }
-  return <div className="kb-material-group">
-    <h4><Paperclip size={16}/> Arquivos de estudo</h4>
-    <small>Até 5 arquivos de 10 MB por cartão. Limite de 100 MB por quadro. {scope === 'shared' ? 'Os participantes do quadro podem baixar os arquivos.' : 'Só sua conta pode baixar os arquivos.'}</small>
-    {loading && <p role="status">Carregando arquivos…</p>}
-    {files.length > 0 && <ul className="kb-material-list">{files.map(file => <li key={file.id}>
-      <div><strong>{file.name}</strong><small>{formatAttachmentSize(file.size)}</small></div>
-      <button type="button" className="kb-icon" aria-label={'Baixar ' + file.name} disabled={busy} onClick={() => void perform(() => download(file))}><Download size={16}/></button>
-      <button type="button" className="kb-icon" aria-label={'Remover ' + file.name} disabled={busy} onClick={() => void perform(() => remove(file))}><Trash2 size={16}/></button>
+  return <div className="kb-material-group kb-study-files">
+    <div className="kb-study-heading">
+      <h4><Paperclip size={17} aria-hidden="true"/> Arquivos de estudo</h4>
+      {!loading && <span className="kb-study-count">{files.length} de {maxFiles} arquivos</span>}
+    </div>
+    <small>{scope === 'shared' ? 'Disponíveis para os participantes do quadro.' : 'Disponíveis apenas para você.'}</small>
+    {files.length > 0 && <ul className="kb-material-list kb-study-list">{files.map(file => <li key={file.id}>
+      <div className="kb-study-file">
+        <FileText size={18} aria-hidden="true"/>
+        <div><strong>{file.name}</strong><small>{formatAttachmentSize(file.size)}</small></div>
+      </div>
+      <button type="button" className="kb-icon" aria-label={'Baixar ' + file.name} disabled={busy} onClick={() => void perform('Preparando o download de ' + file.name + '…', () => download(file))}><Download size={16}/></button>
+      <button type="button" className="kb-icon" aria-label={'Remover ' + file.name} disabled={busy} onClick={() => void perform('Removendo ' + file.name + '…', () => remove(file))}><Trash2 size={16}/></button>
     </li>)}</ul>}
-    <label className="kb-file-input">Adicionar arquivo<input type="file" accept={accept} disabled={busy || loading || files.length >= 5} onChange={event => {
-      const file = event.currentTarget.files?.[0]
-      event.currentTarget.value = ''
-      if (file) void perform(() => upload(file))
-    }}/></label>
-    {busy && <p role="status">Processando arquivo…</p>}
+    <div className="kb-study-upload">
+      <div className="kb-study-formats" id="kb-study-formats">
+        <strong>PDF, Word, PowerPoint, ZIP ou imagem</strong>
+        <small>Até 10 MB por arquivo · 100 MB por quadro</small>
+      </div>
+      <label className="kb-study-picker secondary-button">
+        <Upload size={16} aria-hidden="true"/> Escolher arquivo
+        <input type="file" accept={accept} aria-describedby="kb-study-formats" disabled={busy || loading || files.length >= maxFiles} onChange={event => {
+          const file = event.currentTarget.files?.[0]
+          event.currentTarget.value = ''
+          if (file) void perform('Enviando ' + file.name + '…', () => upload(file))
+        }}/>
+      </label>
+    </div>
+    <div className="kb-study-status" role="status">
+      {loading ? 'Carregando arquivos…' : operation || (files.length >= maxFiles ? 'Limite de arquivos atingido. Remova um para adicionar outro.' : '')}
+    </div>
     {error && <p className="kb-error" role="alert">{error} <button type="button" className="kb-link" disabled={busy} onClick={() => {
       setError(''); setLoading(true); setReload(value => value + 1)
     }}>Atualizar arquivos</button></p>}
