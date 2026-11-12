@@ -131,34 +131,52 @@
   }
 }
 
-.agenda-toolbar .agenda-heading { gap: .625rem; padding-inline-end: 0; }
-.agenda-toolbar .agenda-controls { border-top: 1px solid var(--line); padding-top: .875rem; }
-.agenda-heading .interface-heading { margin-inline-end: .375rem; }
-.agenda-heading .interface-heading h1 { font-size: clamp(1.375rem, 1.07rem + 1.05vw, 1.875rem); }
+.agenda-toolbar.interface-panel { gap: .625rem; padding: .75rem; }
+.agenda-toolbar .agenda-heading { display: grid; grid-template-columns: auto minmax(8rem, .8fr) minmax(10rem, 1.4fr) auto auto; align-items: center; gap: .5rem; padding-inline-end: 0; min-height: 0; }
+.agenda-toolbar .agenda-controls { gap: .5rem; border-top: 1px solid var(--line); padding-top: .625rem; }
+.agenda-heading .interface-heading { gap: .5rem; margin-inline-end: .5rem; padding: 0; }
+.agenda-heading .interface-heading-icon { width: 2rem; height: 2rem; }
+.agenda-heading .interface-heading-icon svg { width: 1.125rem; height: 1.125rem; }
+.agenda-heading .interface-heading h1 { font-size: 1.25rem; white-space: nowrap; }
+.agenda-heading .turma-select-inline { min-width: 0; max-width: none; }
 .agenda-heading :is(select, .compare-link),
 .agenda-actions .action-button,
 .month-nav > button,
 .month-nav .today-button { border-radius: var(--radius-interface-control); }
-.agenda-heading :is(select, .compare-link) { min-height: 2.375rem; }
-.agenda-heading select { max-width: min(100%, 17.5rem); }
-.agenda-heading .compare-link { border-style: solid; }
+.agenda-heading :is(select, .compare-link) { min-height: 2.125rem; height: 2.125rem; font-size: .6875rem; }
+.agenda-heading select { width: 100%; max-width: none; }
+.agenda-heading .compare-link { padding-inline: .625rem; border-style: solid; justify-content: center; }
 .agenda-heading .compare-link:hover { background: var(--interface-subtle); }
+.agenda-toolbar .calendar-view-tools { gap: .625rem; flex-wrap: nowrap; min-width: 0; }
+.agenda-toolbar .interface-segments { padding: .1875rem; }
+.agenda-toolbar .interface-segments button { min-height: 1.75rem; padding: .25rem .625rem; font-size: .6875rem; }
+.agenda-toolbar .month-nav { gap: .375rem; }
+.agenda-toolbar .month-nav-title { gap: .5rem; }
+.agenda-toolbar .month-nav-title strong { min-width: 0; font-size: .75rem; }
+.agenda-toolbar .month-nav > button { width: 1.875rem; height: 1.875rem; }
+.agenda-toolbar .month-nav > button svg { width: 1rem; height: 1rem; }
+.agenda-toolbar .agenda-actions { gap: .375rem; }
+.agenda-toolbar .action-button { height: 2rem; padding-inline: .5rem; font-size: .6875rem; }
 .app-shell :is(.calendar-grid, .period-agenda, .more-option-item) {
   border-radius: var(--radius-interface-panel);
   box-shadow: var(--interface-elevation);
 }
 .calendar-weekdays span { letter-spacing: .055em; }
 .day-number { font-variant-numeric: tabular-nums; }
-@media (max-width: 1400px) {
-  .agenda-heading .interface-heading { flex: 1 0 100%; padding-inline-end: 2.875rem; }
+@media (max-width: 900px) {
+  .agenda-toolbar .agenda-heading { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .agenda-heading .interface-heading { grid-column: 1 / -1; padding-inline-end: 2.875rem; }
+  .agenda-toolbar .calendar-view-tools { flex-wrap: wrap; }
 }
 @media (max-width: 640px) {
-  .agenda-toolbar .agenda-heading { justify-content: flex-start; }
-  .agenda-heading label { min-width: 0; max-width: 100%; }
+  .agenda-toolbar.interface-panel { padding: .625rem; }
   .agenda-heading select { font-size: .75rem; }
-  .agenda-toolbar .calendar-view-tools { gap: .5rem; }
-  .agenda-toolbar .calendar-view-tools .month-nav { flex: 1 0 auto; }
-  .agenda-toolbar .agenda-actions .action-button { width: 2.5rem; height: 2.5rem; }
+  .agenda-heading :is(select, .compare-link) { min-height: 2.5rem; height: auto; }
+  .agenda-toolbar .calendar-view-tools { width: 100%; gap: .5rem; }
+  .agenda-toolbar .calendar-view-tools .month-nav { flex: 1 0 100%; width: 100%; }
+  .agenda-toolbar .calendar-view-tools .month-nav-title { flex: 1; flex-wrap: wrap; justify-content: center; }
+  .agenda-toolbar .agenda-actions { width: 100%; justify-content: flex-end; }
+  .agenda-toolbar .agenda-actions .action-button { width: 2.5rem; height: 2.5rem; padding: 0; }
 }
 
 .app-shell :is(.compare-link, .action-button, .turma-select-inline select, .schedule-filters label, .schedule-filters select) { font-weight: 600; }
