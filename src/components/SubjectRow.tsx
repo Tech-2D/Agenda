@@ -307,6 +307,16 @@ export function SubjectRow({ name, modes, grades: g, result: r, index, onChange,
       <sit.Icon size={14} aria-hidden /> {sit.text}
     </span>
   );
+  // Na tabela a coluna "Situação" é estreita entre 1024 e 1280px: o chip esconde o ícone, aperta o
+  // espaçamento e, se ainda não couber, quebra a linha dentro dele em vez de vazar da coluna.
+  const tableChip = (
+    <span
+      key={r.situation}
+      className={`inline-flex min-h-8 max-w-full animate-pop items-center gap-1.5 rounded-lg px-2 py-1 text-xs leading-tight font-medium xl:px-2.5 xl:whitespace-nowrap ${sit.chip}`}
+    >
+      <sit.Icon size={14} aria-hidden className="hidden shrink-0 xl:block" /> {sit.text}
+    </span>
+  );
 
   return (
     <li
@@ -464,7 +474,7 @@ export function SubjectRow({ name, modes, grades: g, result: r, index, onChange,
         <Value n={r.final} min={6} />
       </div>
       <div className="hidden lg:order-7 lg:block">
-        {r.situation === "sem-notas" ? <span className="text-sm">-</span> : chip}
+        {r.situation === "sem-notas" ? <span className="text-sm">-</span> : tableChip}
         {target && (
           <span
             key={describeTarget(target)}
