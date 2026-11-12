@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { calculateFromNotes, fmt } from "../lib/grades";
+import { calculateFromNotes, describeTarget, fmt } from "../lib/grades";
 import { useInView } from "../lib/useInView";
 import { GradeInput, SITUATION, toGrade } from "./SubjectRow";
 
@@ -124,6 +124,11 @@ export function Formulas() {
             </span>
           )}
         </div>
+        {r.situation === "andamento" && r.target && (
+          <p key={describeTarget(r.target)} className="animate-fade-up text-sm font-medium text-chip-blue-ink">
+            {describeTarget(r.target)}
+          </p>
+        )}
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">

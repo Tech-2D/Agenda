@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
-import { AlertTriangle, CheckCircle2, ChevronRight, Clock, Lock, Scale, ShieldCheck, XCircle } from "lucide-react";
-import { DEFAULT_N1_WEIGHT, fmt, parseGrade, type InputMode, type NotesResult, type Situation } from "../lib/grades";
+import { AlertTriangle, CheckCircle2, ChevronRight, Clock, Lock, Scale, ShieldCheck, Target, XCircle } from "lucide-react";
+import { DEFAULT_N1_WEIGHT, describeTarget, fmt, parseGrade, type InputMode, type Modes, type NotesResult, type PassTarget, type Situation } from "../lib/grades";
 
 export interface Grades {
   s1n1: string;
@@ -158,9 +158,13 @@ function Semester({ title, subject, mode, n1, n2, avgInput, avg, onN1, onN2, onA
   );
 }
 
+/** Cor da frase da nota mínima: verde se já garantiu, vermelho se nem com 10, azul no resto. */
+export const targetTone = (t: PassTarget) =>
+  t.min === null ? "bg-chip-red text-chip-red-ink" : t.min === 0 ? "bg-chip-green text-chip-green-ink" : "bg-chip-blue text-chip-blue-ink";
+
 interface Props {
   name: string;
-  mode: InputMode;
+  modes: Modes;
   grades: Grades;
   result: NotesResult;
   index: number;
@@ -175,11 +179,16 @@ interface Props {
  *   a recuperação embaixo e um rodapé de status;
  * - desktop (lg): linha da tabela, reordenada com lg:order-*.
  */
-export function SubjectRow({ name, mode, grades: g, result: r, index, onChange, onOpen }: Props) {
+export function SubjectRow({ name, modes, grades: g, result: r, index, onChange, onOpen }: Props) {
   const sit = SITUATION[r.situation];
   const showRec = r.situation === "recuperacao" || r.situation === "reprovado" || r.final !== null;
   const lowAnnual = r.annual !== null && r.annual < 7;
-  const customWeight = mode === "notas" && (g.s1Weight !== DEFAULT_N1_WEIGHT || g.s2Weight !== DEFAULT_N1_WEIGHT);
+  // Peso só conta nos semestres lançados como N1 e N2.
+  const w1 = modes.s1 === "notas" ? g.s1Weight : DEFAULT_N1_WEIGHT;
+  const w2 = modes.s2 === "notas" ? g.s2Weight : DEFAULT_N1_WEIGHT;
+  const customWeight = w1 !== DEFAULT_N1_WEIGHT || w2 !== DEFAULT_N1_WEIGHT;
+  // Nota mínima para passar direto, enquanto ainda falta nota.
+  const target = r.situation === "andamento" ? r.target : null;
 
   const footer =
     r.final !== null
@@ -235,9 +244,13 @@ export function SubjectRow({ name, mode, grades: g, result: r, index, onChange, 
                 className="inline-flex h-7 animate-pop cursor-pointer items-center gap-1 rounded-lg bg-brand-soft px-2 text-[11px] font-medium text-brand tabular-nums outline-none hover:bg-brand/15 focus-visible:ring-2 focus-visible:ring-brand"
               >
                 <Scale size={13} aria-hidden />
-                {g.s1Weight === g.s2Weight
-                  ? `N1 ${g.s1Weight}% · N2 ${100 - g.s1Weight}%`
-                  : `1º ${g.s1Weight}/${100 - g.s1Weight} · 2º ${g.s2Weight}/${100 - g.s2Weight}`}
+                {modes.s1 === "media"
+                  ? `2º N1 ${w2}% · N2 ${100 - w2}%`
+                  : modes.s2 === "media"
+                    ? `1º N1 ${w1}% · N2 ${100 - w1}%`
+                    : w1 === w2
+                      ? `N1 ${w1}% · N2 ${100 - w1}%`
+                      : `1º ${w1}/${100 - w1} · 2º ${w2}/${100 - w2}`}
               </button>
             )}
           </div>
@@ -264,7 +277,7 @@ export function SubjectRow({ name, mode, grades: g, result: r, index, onChange, 
         <Semester
           title="1º semestre"
           subject={name}
-          mode={mode}
+          mode={modes.s1}
           n1={g.s1n1}
           n2={g.s1n2}
           avgInput={g.s1avg}
@@ -277,7 +290,7 @@ export function SubjectRow({ name, mode, grades: g, result: r, index, onChange, 
         <Semester
           title="2º semestre"
           subject={name}
-          mode={mode}
+          mode={modes.s2}
           n1={g.s2n1}
           n2={g.s2n2}
           avgInput={g.s2avg}
@@ -315,6 +328,14 @@ export function SubjectRow({ name, mode, grades: g, result: r, index, onChange, 
       </div>
 
       {/* Rodapé de status só no celular. */}
+      {target && (
+        <p
+          key={describeTarget(target)}
+          className={`col-span-3 flex animate-fade-up items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium lg:hidden ${targetTone(target)}`}
+        >
+          <Target size={14} aria-hidden className="shrink-0" /> {describeTarget(target)}
+        </p>
+      )}
       {footer && (
         <p key={footer.text} className={`col-span-3 animate-fade-up rounded-lg px-3 py-2 text-xs font-medium lg:hidden ${footer.cls}`}>
           {footer.text}
@@ -324,7 +345,20 @@ export function SubjectRow({ name, mode, grades: g, result: r, index, onChange, 
       <div className="hidden lg:order-6 lg:block">
         <Value n={r.final} min={6} />
       </div>
-      <div className="hidden lg:order-7 lg:block">{r.situation === "sem-notas" ? <span className="text-sm">-</span> : chip}</div>
+      <div className="hidden lg:order-7 lg:block">
+        {r.situation === "sem-notas" ? <span className="text-sm">-</span> : chip}
+        {target && (
+          <span
+            key={describeTarget(target)}
+            title={`Falta: ${target.missing.join(", ")}`}
+            className={`mt-1 flex animate-pop items-start gap-1 text-[11px] leading-tight font-medium ${
+              target.min === null ? "text-chip-red-ink" : target.min === 0 ? "text-chip-green-ink" : "text-chip-blue-ink"
+            }`}
+          >
+            <Target size={12} aria-hidden className="mt-px shrink-0" /> {describeTarget(target, true)}
+          </span>
+        )}
+      </div>
     </li>
   );
 }

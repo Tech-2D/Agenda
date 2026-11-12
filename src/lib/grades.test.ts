@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { calculate, calculateFromAverages, calculateFromNotes, semesterAverage } from "./grades.ts";
+import { calculate, calculateFromAverages, calculateFromNotes, calculateSemesters, describeTarget, semesterAverage } from "./grades.ts";
 
 const notes = (s1n1: number | null, s1n2: number | null, s2n1: number | null, s2n2: number | null, rec: number | null = null) =>
   calculateFromNotes({ s1n1, s1n2, s2n1, s2n2, rec });
@@ -86,4 +86,44 @@ test("recuperação final", () => {
   assert.equal(r.needed, 8);
   assert.equal(calculate(4, 4, 8).situation, "aprovado-rec");
   assert.equal(calculate(4, 4, 7).situation, "reprovado");
+});
+
+const media = (avg: number | null) => ({ mode: "media" as const, n1: null, n2: null, avg });
+const nn = (n1: number | null, n2: number | null, weight?: number) => ({ mode: "notas" as const, n1, n2, avg: null, weight });
+
+test("média no 1º semestre e N1/N2 no 2º", () => {
+  const r = calculateSemesters(media(9.5), nn(7, 8), null);
+  assert.equal(r.m1, 9.5);
+  assert.equal(r.m2, 7.5);
+  assert.equal(r.annual, 8.17);
+  assert.equal(r.situation, "aprovado");
+  assert.equal(r.target, null);
+});
+test("sem o 1º semestre o ano fica em andamento, sem contar ele como zero", () => {
+  const r = calculateSemesters(media(null), nn(8, 8), null);
+  assert.equal(r.situation, "andamento");
+  assert.equal(r.annual, null);
+  assert.deepEqual(r.target?.missing, ["média do 1º sem."]);
+});
+test("nota mínima na única nota que falta", () => {
+  // M1 = 8: precisa de M2 = 6,5 → (6 + N2)/2 = 6,5 → N2 = 7 (6,99 já dá 6,495, que arredonda para 6,50)
+  const r = calculateSemesters(media(8), nn(6, null), null);
+  assert.equal(r.situation, "andamento");
+  assert.deepEqual(r.target, { min: 6.99, missing: ["N2 do 2º sem."] });
+  assert.equal(describeTarget(r.target!), "Precisa de 6,99 na N2 do 2º sem. para passar");
+});
+test("nota mínima é a menor que fecha com 7, contando a média recuperada", () => {
+  const r = calculateSemesters(media(5), nn(null, null), null);
+  const min = r.target!.min!;
+  assert.deepEqual(r.target!.missing, ["média do 2º sem."]);
+  assert.ok(calculate(5, min, null).annual! >= 7);
+  assert.ok(calculate(5, Math.round((min - 0.01) * 100) / 100, null).annual! < 7);
+});
+test("nota mínima: impossível e já garantido", () => {
+  assert.equal(calculateSemesters(media(0), nn(0, null, 90), null).target!.min, null);
+  assert.equal(calculateSemesters(media(10), nn(10, null, 90), null).target!.min, 0);
+});
+test("sem nota nenhuma ou com tudo lançado não há nota mínima", () => {
+  assert.equal(calculateSemesters(media(null), nn(null, null), null).target, null);
+  assert.equal(notes(10, 9, 7, 8).target, null);
 });

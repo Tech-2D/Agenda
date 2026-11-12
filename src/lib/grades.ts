@@ -51,8 +51,23 @@ export function semesterAverage(n1: number | null, n2: number | null, n1Weight =
   return n1 === null || n2 === null ? null : round2((n1 * n1Weight + n2 * (100 - n1Weight)) / 100);
 }
 
-/** Como as notas são lançadas: N1 e N2 de cada semestre, ou a média do semestre já pronta. */
+/** Como as notas de um semestre são lançadas: N1 e N2, ou a média do semestre já pronta. */
 export type InputMode = "notas" | "media";
+
+/** Modo de cada semestre: dá para lançar a média do 1º e a N1/N2 do 2º, por exemplo. */
+export interface Modes {
+  s1: InputMode;
+  s2: InputMode;
+}
+
+export interface SemesterInput {
+  mode: InputMode;
+  n1: number | null;
+  n2: number | null;
+  avg: number | null;
+  /** Peso da N1 em % (só no modo "notas"). */
+  weight?: number;
+}
 
 export interface Notes {
   s1n1: number | null;
@@ -65,28 +80,98 @@ export interface Notes {
   s2Weight?: number;
 }
 
+/** Nota mínima para fechar a média anual com 7 sem ir para a recuperação. */
+export interface PassTarget {
+  /** Nota que cada nota que falta precisa ter; null quando nem com 10 dá. */
+  min: number | null;
+  /** O que falta lançar, já agrupado (as duas notas de um semestre viram "média do Xº sem."). */
+  missing: string[];
+}
+
 export interface NotesResult extends Result {
   m1: number | null;
   m2: number | null;
+  /** Só existe com alguma nota lançada e alguma faltando. */
+  target: PassTarget | null;
+}
+
+const semesterValue = (s: SemesterInput) => (s.mode === "media" ? s.avg : semesterAverage(s.n1, s.n2, s.weight));
+
+/** As notas ainda vazias do semestre; "fill" preenche cada uma delas com o mesmo valor. */
+function blanks(s: SemesterInput) {
+  return s.mode === "media" ? [s.avg] : [s.n1, s.n2];
+}
+function fill(s: SemesterInput, x: number): SemesterInput {
+  return { ...s, n1: s.n1 ?? x, n2: s.n2 ?? x, avg: s.avg ?? x };
+}
+
+function missingLabels(s: SemesterInput, ord: string): string[] {
+  if (s.mode === "media") return s.avg === null ? [`média do ${ord} sem.`] : [];
+  // Sem nenhuma das duas, tirar x nas duas é o mesmo que ter média x, qualquer que seja o peso.
+  if (s.n1 === null && s.n2 === null) return [`média do ${ord} sem.`];
+  return [s.n1 === null ? `N1 do ${ord} sem.` : null, s.n2 === null ? `N2 do ${ord} sem.` : null].filter((v): v is string => v !== null);
+}
+
+/**
+ * Menor nota (de 0,01 em 0,01) que, tirada em todas as notas que faltam, fecha a anual com 7.
+ * A anual só cresce com cada nota, então dá para achar por busca binária.
+ */
+function passTarget(s1: SemesterInput, s2: SemesterInput): PassTarget | null {
+  const all = [...blanks(s1), ...blanks(s2)];
+  if (all.every((v) => v === null) || all.every((v) => v !== null)) return null;
+  const annualWith = (x: number) => calculate(semesterValue(fill(s1, x)), semesterValue(fill(s2, x)), null).annual!;
+  const missing = [...missingLabels(s1, "1º"), ...missingLabels(s2, "2º")];
+  if (annualWith(10) < ANNUAL_PASS) return { min: null, missing };
+  let lo = 0;
+  let hi = 1000;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (annualWith(mid / 100) >= ANNUAL_PASS) hi = mid;
+    else lo = mid + 1;
+  }
+  return { min: lo / 100, missing };
+}
+
+/** Calcula tudo, com cada semestre no seu modo (N1/N2 ou média). */
+export function calculateSemesters(s1: SemesterInput, s2: SemesterInput, rec: number | null): NotesResult {
+  const m1 = semesterValue(s1);
+  const m2 = semesterValue(s2);
+  const target = passTarget(s1, s2);
+  const anyNote = [...blanks(s1), ...blanks(s2)].some((v) => v !== null);
+  // Sem o 1º semestre ainda não dá para fechar o ano: não conta ele como zero.
+  if (m1 === null && m2 !== null) {
+    return { recovered: null, annual: null, needed: null, final: null, situation: "andamento", m1, m2, target };
+  }
+  const result = calculate(m1, m2, rec);
+  // Com alguma nota lançada mas nenhum semestre completo, o ano está em andamento.
+  if (result.situation === "sem-notas" && anyNote) result.situation = "andamento";
+  return { ...result, m1, m2, target };
 }
 
 /** Calcula tudo a partir das notas N1/N2 de cada semestre. */
 export function calculateFromNotes(n: Notes): NotesResult {
-  const m1 = semesterAverage(n.s1n1, n.s1n2, n.s1Weight);
-  const m2 = semesterAverage(n.s2n1, n.s2n2, n.s2Weight);
-  const result = calculate(m1, m2, n.rec);
-  // Com alguma nota lançada mas nenhum semestre completo, o ano está em andamento.
-  const anyNote = [n.s1n1, n.s1n2, n.s2n1, n.s2n2].some((v) => v !== null);
-  if (result.situation === "sem-notas" && anyNote) result.situation = "andamento";
-  return { ...result, m1, m2 };
+  return calculateSemesters(
+    { mode: "notas", n1: n.s1n1, n2: n.s1n2, avg: null, weight: n.s1Weight },
+    { mode: "notas", n1: n.s2n1, n2: n.s2n2, avg: null, weight: n.s2Weight },
+    n.rec,
+  );
 }
 
 /** Calcula a partir das médias semestrais digitadas direto, sem N1/N2. */
 export function calculateFromAverages(m1: number | null, m2: number | null, rec: number | null): NotesResult {
-  return { ...calculate(m1, m2, rec), m1, m2 };
+  return calculateSemesters({ mode: "media", n1: null, n2: null, avg: m1 }, { mode: "media", n1: null, n2: null, avg: m2 }, rec);
 }
 
-export const fmt =(n: number | null) => (n === null ? "-" : n.toFixed(2).replace(".", ","));
+/** Frase da nota mínima para passar direto, para mostrar na tela. */
+export function describeTarget(t: PassTarget, short = false): string {
+  if (t.min === null) return short ? "Nem com 10 fecha com 7" : "Nem com 10 fecha com 7: vai para a recuperação";
+  if (t.min === 0) return short ? "Já garantiu o 7" : "Já garantiu o 7, mesmo tirando 0 no que falta";
+  const end = short ? "" : " para passar";
+  if (t.missing.length === 1) return `Precisa de ${fmt(t.min)} na ${t.missing[0]}${end}`;
+  return `Precisa de ${fmt(t.min)} em cada nota que falta${end}`;
+}
+
+export const fmt = (n: number | null) => (n === null ? "-" : n.toFixed(2).replace(".", ","));
 
 export function parseGrade(raw: string): number | null {
   const n = parseFloat(raw.replace(",", "."));

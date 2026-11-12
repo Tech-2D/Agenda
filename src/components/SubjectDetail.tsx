@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
-import { ArrowLeft, Copy, Lock, RotateCcw, Scale } from "lucide-react";
-import { DEFAULT_N1_WEIGHT, fmt, type InputMode, type NotesResult } from "../lib/grades";
+import { ArrowLeft, Copy, Lock, RotateCcw, Scale, Target } from "lucide-react";
+import { DEFAULT_N1_WEIGHT, describeTarget, fmt, type InputMode, type Modes, type NotesResult } from "../lib/grades";
 import { useTween } from "../lib/useTween";
-import { GradeInput, SITUATION, type Grades } from "./SubjectRow";
+import { GradeInput, SITUATION, targetTone, type Grades } from "./SubjectRow";
 
 const MIN_WEIGHT = 10;
 const MAX_WEIGHT = 90;
@@ -80,6 +80,8 @@ const SPRING = "duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]";
 
 interface WeightCardProps {
   weights: [number, number];
+  /** Semestres lançados como N1 e N2; os de média não têm peso. */
+  enabled: [boolean, boolean];
   semester: 0 | 1;
   onSemester: (s: 0 | 1) => void;
   onChange: (semester: 0 | 1, v: number) => void;
@@ -89,7 +91,7 @@ interface WeightCardProps {
  * Barra do peso: o pedaço azul é a N1 e o laranja a N2, cada um do tamanho do seu peso.
  * Arrasta (ou usa as setas do teclado) para mudar; as abas escolhem qual semestre está sendo ajustado.
  */
-function WeightCard({ weights, semester, onSemester, onChange }: WeightCardProps) {
+function WeightCard({ weights, enabled, semester, onSemester, onChange }: WeightCardProps) {
   const value = weights[semester];
   const otherSemester = semester === 0 ? 1 : 0;
   const shown = Math.round(useTween(value));
@@ -155,14 +157,15 @@ function WeightCard({ weights, semester, onSemester, onChange }: WeightCardProps
               key={title}
               role="tab"
               aria-selected={semester === i}
+              disabled={!enabled[i]}
               onClick={() => onSemester(i as 0 | 1)}
-              className={`relative flex h-12 cursor-pointer flex-col items-center justify-center rounded-lg text-xs font-semibold outline-none transition-colors focus-visible:ring-2 focus-visible:ring-brand ${
+              className={`relative flex h-12 cursor-pointer flex-col items-center justify-center rounded-lg text-xs font-semibold outline-none transition-colors focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-50 ${
                 semester === i ? "text-ink" : "text-muted hover:text-ink"
               }`}
             >
               {title}
-              <span className={`text-[11px] font-medium tabular-nums ${w !== DEFAULT_N1_WEIGHT ? "text-brand" : "text-muted"}`}>
-                N1 {w}% · N2 {100 - w}%
+              <span className={`text-[11px] font-medium tabular-nums ${enabled[i] && w !== DEFAULT_N1_WEIGHT ? "text-brand" : "text-muted"}`}>
+                {enabled[i] ? `N1 ${w}% · N2 ${100 - w}%` : "Lançado pela média"}
               </span>
             </button>
           );
@@ -265,7 +268,7 @@ function WeightCard({ weights, semester, onSemester, onChange }: WeightCardProps
         ))}
       </div>
 
-      {value !== weights[otherSemester] && (
+      {enabled[otherSemester] && value !== weights[otherSemester] && (
         <button
           onClick={() => onChange(otherSemester, value)}
           className="mt-3 flex h-10 w-full animate-fade-up cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-dashed border-brand/40 text-xs font-medium text-brand outline-none transition-colors hover:bg-brand-soft focus-visible:ring-2 focus-visible:ring-brand"
@@ -279,7 +282,7 @@ function WeightCard({ weights, semester, onSemester, onChange }: WeightCardProps
 
 interface Props {
   name: string;
-  mode: InputMode;
+  modes: Modes;
   grades: Grades;
   result: NotesResult;
   onChange: (patch: Partial<Grades>) => void;
@@ -287,7 +290,7 @@ interface Props {
 }
 
 /** Tela da disciplina: tudo da linha da tabela, maior, mais o peso da N1 e da N2. */
-export function SubjectDetail({ name, mode, grades: g, result: r, onChange, onClose }: Props) {
+export function SubjectDetail({ name, modes, grades: g, result: r, onChange, onClose }: Props) {
   const back = useRef<HTMLButtonElement>(null);
   const close = useRef(onClose);
   close.current = onClose;
@@ -305,7 +308,9 @@ export function SubjectDetail({ name, mode, grades: g, result: r, onChange, onCl
   }, []);
 
   // Semestre cujo peso aparece na barra.
-  const [semester, setSemester] = useState<0 | 1>(0);
+  const enabled: [boolean, boolean] = [modes.s1 === "notas", modes.s2 === "notas"];
+  const [semester, setSemester] = useState<0 | 1>(enabled[0] ? 0 : 1);
+  const target = r.situation === "andamento" ? r.target : null;
   const sit = SITUATION[r.situation];
   const showRec = r.situation === "recuperacao" || r.situation === "reprovado" || r.final !== null;
   const annualCls = r.annual !== null && r.annual < 7 ? "text-chip-red-ink" : r.annual === null ? "text-muted" : "text-ink";
@@ -349,16 +354,31 @@ export function SubjectDetail({ name, mode, grades: g, result: r, onChange, onCl
           </div>
         </section>
 
-        {mode === "notas" ? (
+        {target && (
+          <section className={`flex items-start gap-3 rounded-2xl p-4 shadow-card sm:p-5 ${targetTone(target)}`}>
+            <Target size={20} aria-hidden className="mt-0.5 shrink-0" />
+            <div className="min-w-0">
+              <h2 className="font-semibold">Para passar direto</h2>
+              <p key={describeTarget(target)} className="animate-fade-up text-sm">
+                {describeTarget(target)}
+                {target.min !== null && target.min > 0 && target.missing.length > 1 && ` (${target.missing.join(", ")})`}
+              </p>
+              <p className="mt-1 text-xs opacity-80">Considera a média anual 7 sem recuperação, com a média recuperada quando ela ajuda.</p>
+            </div>
+          </section>
+        )}
+
+        {enabled[0] || enabled[1] ? (
           <WeightCard
             weights={[g.s1Weight, g.s2Weight]}
+            enabled={enabled}
             semester={semester}
             onSemester={setSemester}
             onChange={(s, w) => onChange(s === 0 ? { s1Weight: w } : { s2Weight: w })}
           />
         ) : (
           <p className="rounded-2xl bg-white p-4 text-sm text-muted shadow-card">
-            O peso da N1 e da N2 só vale quando as notas são lançadas como "N1 e N2".
+            O peso da N1 e da N2 só vale nos semestres lançados como "N1 e N2".
           </p>
         )}
 
@@ -366,7 +386,7 @@ export function SubjectDetail({ name, mode, grades: g, result: r, onChange, onCl
           <SemesterCard
             title="1º semestre"
             subject={name}
-            mode={mode}
+            mode={modes.s1}
             weight={g.s1Weight}
             selected={semester === 0}
             onSelect={() => setSemester(0)}
@@ -381,7 +401,7 @@ export function SubjectDetail({ name, mode, grades: g, result: r, onChange, onCl
           <SemesterCard
             title="2º semestre"
             subject={name}
-            mode={mode}
+            mode={modes.s2}
             weight={g.s2Weight}
             selected={semester === 1}
             onSelect={() => setSemester(1)}

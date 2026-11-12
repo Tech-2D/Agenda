@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { ChevronDown, ExternalLink, GraduationCap, LayoutGrid, Search } from "lucide-react";
-import { calculateFromAverages, calculateFromNotes, DEFAULT_N1_WEIGHT, type InputMode, type Situation } from "./lib/grades";
+import { calculateSemesters, DEFAULT_N1_WEIGHT, type InputMode, type Modes, type Situation } from "./lib/grades";
 import { useInView } from "./lib/useInView";
 import { SUBJECTS_BY_YEAR, type Year } from "./data/subjects";
 import { Formulas } from "./components/Formulas";
@@ -10,7 +10,8 @@ import { GRID, SITUATION, SubjectRow, toGrade, type Grades } from "./components/
 import { SubjectDetail } from "./components/SubjectDetail";
 
 const YEAR_KEY = "aprovae:year";
-const MODE_KEY = "aprovae:mode";
+const MODE_KEY = "aprovae:mode"; // modo antigo, um só para os dois semestres
+const MODES_KEY = "aprovae:modes";
 const REPORT_CARD_URL = "https://alunos.igerminare.org.br/aluno/minhas-notas/4";
 const gradesKey = (y: Year) => `aprovae:v4:grades:${y}`;
 const EMPTY: Grades = { s1n1: "", s1n2: "", s2n1: "", s2n2: "", s1avg: "", s2avg: "", rec: "", s1Weight: DEFAULT_N1_WEIGHT, s2Weight: DEFAULT_N1_WEIGHT };
@@ -38,8 +39,20 @@ const FILTERS: Filter[] = ["todas", "aprovado", "aprovado-rec", "recuperacao", "
 
 const MODES: { value: InputMode; label: string }[] = [
   { value: "notas", label: "N1 e N2" },
-  { value: "media", label: "Média do semestre" },
+  { value: "media", label: "Média" },
 ];
+
+const asMode = (v: unknown): InputMode => (v === "media" ? "media" : "notas");
+
+function readModes(): Modes {
+  const saved = read<Partial<Modes>>(MODES_KEY);
+  if (saved) return { s1: asMode(saved.s1), s2: asMode(saved.s2) };
+  // Quem já usava o modo único começa com ele nos dois semestres.
+  const old = asMode(read<InputMode>(MODE_KEY));
+  return { s1: old, s2: old };
+}
+
+const modeHint = (m: InputMode) => (m === "media" ? "Média" : "N1 · N2 · Média");
 
 const hasSubjects = (y: Year | null): y is Year => y !== null && SUBJECTS_BY_YEAR[y]?.length > 0;
 
@@ -65,12 +78,12 @@ function GradesView({ year, onChangeYear }: { year: Year; onChangeYear: () => vo
   const [grades, setGrades] = useState<Record<string, Grades>>(() => read(gradesKey(year)) ?? {});
   const [filter, setFilter] = useState<Filter>("todas");
   const [query, setQuery] = useState("");
-  // Vale para todas as disciplinas; as notas de cada modo ficam guardadas separadas.
-  const [mode, setMode] = useState<InputMode>(() => (read<InputMode>(MODE_KEY) === "media" ? "media" : "notas"));
+  // Modo de cada semestre, para todas as disciplinas; as notas de cada modo ficam guardadas separadas.
+  const [modes, setModes] = useState<Modes>(readModes);
   const [formulasRef, formulasIn] = useInView<HTMLDetailsElement>();
 
   useEffect(() => write(gradesKey(year), grades), [year, grades]);
-  useEffect(() => write(MODE_KEY, mode), [mode]);
+  useEffect(() => write(MODES_KEY, modes), [modes]);
 
   // Disciplina aberta na tela de detalhe. Entra no histórico para o "voltar" do celular fechar a tela.
   const [open, setOpen] = useState<string | null>(null);
@@ -93,21 +106,14 @@ function GradesView({ year, onChangeYear }: { year: Year; onChangeYear: () => vo
       subjects.map((name) => {
         // Notas salvas antes do modo "media" e dos pesos não têm s1avg/s2avg nem os pesos.
         const g = { ...EMPTY, ...grades[name] };
-        const r =
-          mode === "media"
-            ? calculateFromAverages(toGrade(g.s1avg), toGrade(g.s2avg), toGrade(g.rec))
-            : calculateFromNotes({
-                s1n1: toGrade(g.s1n1),
-                s1n2: toGrade(g.s1n2),
-                s2n1: toGrade(g.s2n1),
-                s2n2: toGrade(g.s2n2),
-                rec: toGrade(g.rec),
-                s1Weight: g.s1Weight,
-                s2Weight: g.s2Weight,
-              });
+        const r = calculateSemesters(
+          { mode: modes.s1, n1: toGrade(g.s1n1), n2: toGrade(g.s1n2), avg: toGrade(g.s1avg), weight: g.s1Weight },
+          { mode: modes.s2, n1: toGrade(g.s2n1), n2: toGrade(g.s2n2), avg: toGrade(g.s2avg), weight: g.s2Weight },
+          toGrade(g.rec),
+        );
         return { name, g, r };
       }),
-    [subjects, grades, mode],
+    [subjects, grades, modes],
   );
   const detail = rows.find((x) => x.name === open);
   const q = query.trim().toLowerCase();
@@ -153,26 +159,32 @@ function GradesView({ year, onChangeYear }: { year: Year; onChangeYear: () => vo
           <div>
             <h1 className="text-xl font-semibold sm:text-2xl">Disciplinas do {year}º ano</h1>
             <p className="text-sm text-muted">
-              {mode === "media" ? "Digite a média de cada semestre." : "Digite a N1 e a N2 de cada semestre."} Tudo fica salvo neste
-              navegador.
+              Escolha, em cada semestre, se vai lançar a N1 e a N2 ou só a média. Tudo fica salvo neste navegador.
             </p>
           </div>
-          <div className="flex shrink-0 rounded-full bg-white p-1 shadow-card" role="group" aria-label="Como lançar as notas">
-            {MODES.map((m) => {
-              const active = mode === m.value;
-              return (
-                <button
-                  key={m.value}
-                  onClick={() => setMode(m.value)}
-                  aria-pressed={active}
-                  className={`h-9 flex-1 cursor-pointer rounded-full px-3.5 text-xs font-medium whitespace-nowrap outline-none transition-[background-color,color,transform] duration-200 active:scale-95 focus-visible:ring-2 focus-visible:ring-brand sm:flex-none ${
-                    active ? "bg-brand text-white shadow-lift" : "text-ink hover:bg-brand-soft"
-                  }`}
-                >
-                  {m.label}
-                </button>
-              );
-            })}
+          <div className="grid shrink-0 grid-cols-2 gap-2">
+            {(["s1", "s2"] as const).map((sem, i) => (
+              <div key={sem} className="min-w-0">
+                <span className="mb-1 block px-1 text-[11px] font-semibold text-muted">{i + 1}º semestre</span>
+                <div className="flex rounded-full bg-white p-1 shadow-card" role="group" aria-label={`Como lançar as notas do ${i + 1}º semestre`}>
+                  {MODES.map((m) => {
+                    const active = modes[sem] === m.value;
+                    return (
+                      <button
+                        key={m.value}
+                        onClick={() => setModes((x) => ({ ...x, [sem]: m.value }))}
+                        aria-pressed={active}
+                        className={`h-9 flex-1 cursor-pointer rounded-full px-3 text-xs font-medium whitespace-nowrap outline-none transition-[background-color,color,transform] duration-200 active:scale-95 focus-visible:ring-2 focus-visible:ring-brand sm:flex-none ${
+                          active ? "bg-brand text-white shadow-lift" : "text-ink hover:bg-brand-soft"
+                        }`}
+                      >
+                        {m.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 
@@ -220,10 +232,10 @@ function GradesView({ year, onChangeYear }: { year: Year; onChangeYear: () => vo
           <div className={`hidden border-b border-line px-4 py-3 pl-5 text-xs font-semibold lg:grid ${GRID}`}>
             <span>Disciplinas</span>
             <span>
-              1º Semestre <span className="block font-normal text-muted">{mode === "media" ? "Média" : "N1 · N2 · Média"}</span>
+              1º Semestre <span className="block font-normal text-muted">{modeHint(modes.s1)}</span>
             </span>
             <span>
-              2º Semestre <span className="block font-normal text-muted">{mode === "media" ? "Média" : "N1 · N2 · Média"}</span>
+              2º Semestre <span className="block font-normal text-muted">{modeHint(modes.s2)}</span>
             </span>
             <span>Média Anual</span>
             <span>Rec. Final</span>
@@ -237,7 +249,7 @@ function GradesView({ year, onChangeYear }: { year: Year; onChangeYear: () => vo
               <SubjectRow
                 key={name}
                 name={name}
-                mode={mode}
+                modes={modes}
                 grades={g}
                 result={r}
                 index={i}
@@ -272,7 +284,7 @@ function GradesView({ year, onChangeYear }: { year: Year; onChangeYear: () => vo
       {detail && (
         <SubjectDetail
           name={detail.name}
-          mode={mode}
+          modes={modes}
           grades={detail.g}
           result={detail.r}
           onChange={(p) => update(detail.name, p)}
