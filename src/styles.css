@@ -1,7 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&family=Newsreader:ital,opsz,wght@1,6..72,500&display=swap');
-
 :root {
-  font-family: 'Manrope', sans-serif;
+  font-family: "Poppins", system-ui, sans-serif;
   color: #173f3a;
   background: #f4f7f2;
   font-synthesis: none;
@@ -205,7 +203,7 @@ footer > button { border: 0; background: transparent; cursor: pointer; color: #7
 
 /* Interface de consulta: proporções e linguagem visual do horário escolar de referência. */
 :root {
-  font-family: 'Manrope', Arial, sans-serif;
+  font-family: "Poppins", system-ui, sans-serif;
   color: #24344b;
   background: #fbfcff;
   --ink: #1337b7;

@@ -5,6 +5,7 @@ import './styles.css'
 import './integratedMenu.css'
 import './sharedAppearance.css'
 import './professorAdmin.css'
+import './interface.css'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

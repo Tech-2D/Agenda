@@ -22,6 +22,7 @@ import {
 } from 'lucide-react'
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut, type User } from 'firebase/auth'
 import { FirebaseError } from 'firebase/app'
+import { PageHeading } from './PageHeading'
 import { requestPasswordReset } from './passwordReset'
 import { ProfileDialog } from './ProfileDialog'
 import { observeCatalog, invalidateCatalog } from './publicQueries'
@@ -266,39 +267,43 @@ function App() {
       </button>
 
       <main id="inicio" className="main-content">
-        <div className="page-heading">
-          <h1>Encontre seu professor</h1>
-          <p>Consulte a grade por turma ou pesquise um professor, matéria ou local.</p>
-        </div>
+        <div className="professor-controls interface-panel">
+          <PageHeading
+            icon={CalendarDays}
+            title="Encontre seu professor"
+            description="Consulte a grade por turma ou pesquise um professor, matéria ou local."
+          />
 
-        <section className="search-section" aria-label="Pesquisar professores">
-          <div className="search-box">
-            <Search size={22} aria-hidden="true" />
-            <input
-              id="main-search"
-              aria-label="Buscar professor, matéria ou turma"
-              value={search}
-              onChange={(event) => {
-                const value = event.target.value
-                setSearch(value)
-                setClassFilter(value.trim() ? '' : readPreferredClass() ?? CLASS_NAMES[0])
-              }}
-              placeholder="Buscar professor, matéria, turma ou local"
-              autoComplete="off"
-            />
-            {search && <button className="clear-search" onClick={clearSearch} aria-label="Limpar busca"><X size={18} /></button>}
-          </div>
-          <div className="view-switcher" aria-label="Filtrar horários">
-            <button className={view === 'now' ? 'active' : ''} onClick={() => setView('now')}>Agora</button>
-            <button className={view === 'today' ? 'active' : ''} onClick={() => setView('today')}>Hoje</button>
-            <button className={view === 'all' ? 'active' : ''} onClick={() => setView('all')}>Semana</button>
-          </div>
-        </section>
+          <section className="search-section" aria-label="Pesquisar professores">
+            <div className="search-box">
+              <Search size={22} aria-hidden="true" />
+              <input
+                id="main-search"
+                aria-label="Buscar professor, matéria ou turma"
+                value={search}
+                onChange={(event) => {
+                  const value = event.target.value
+                  setSearch(value)
+                  setClassFilter(value.trim() ? '' : readPreferredClass() ?? CLASS_NAMES[0])
+                }}
+                placeholder="Buscar professor, matéria, turma ou local"
+                autoComplete="off"
+              />
+              {search && <button className="clear-search" onClick={clearSearch} aria-label="Limpar busca"><X size={18} /></button>}
+            </div>
+            <div className="view-switcher interface-segments" role="group" aria-label="Filtrar horários">
+              <button type="button" aria-pressed={view === 'now'} onClick={() => setView('now')}>Agora</button>
+              <button type="button" aria-pressed={view === 'today'} onClick={() => setView('today')}>Hoje</button>
+              <button type="button" aria-pressed={view === 'all'} onClick={() => setView('all')}>Semana</button>
+            </div>
+          </section>
 
-        <div className="schedule-filters" aria-label="Filtros da grade">
-          <label>Turma<select value={classFilter} onChange={(event) => selectClass(event.target.value)}><option value="">Todas as turmas</option>{CLASS_NAMES.map((name) => <option key={name} value={name}>{name}</option>)}</select></label>
-          <label>Matéria<select value={subjectFilter} onChange={(event) => setSubjectFilter(event.target.value)}><option value="">Todas as matérias</option>{subjects.map((subject) => <option key={subject} value={subject}>{subject}</option>)}</select></label>
-          <label>Dia<select value={dayFilter} onChange={(event) => { setDayFilter(Number(event.target.value)); setView('all') }}><option value={0}>Semana inteira</option>{WEEKDAYS.map((day) => <option key={day.value} value={day.value}>{day.label}</option>)}</select></label>
+          <div className="schedule-filters" aria-label="Filtros da grade">
+            <label>Turma<select value={classFilter} onChange={(event) => selectClass(event.target.value)}><option value="">Todas as turmas</option>{CLASS_NAMES.map((name) => <option key={name} value={name}>{name}</option>)}</select></label>
+            <label>Matéria<select value={subjectFilter} onChange={(event) => setSubjectFilter(event.target.value)}><option value="">Todas as matérias</option>{subjects.map((subject) => <option key={subject} value={subject}>{subject}</option>)}</select></label>
+            <label>Dia<select value={dayFilter} onChange={(event) => { setDayFilter(Number(event.target.value)); setView('all') }}><option value={0}>Semana inteira</option>{WEEKDAYS.map((day) => <option key={day.value} value={day.value}>{day.label}</option>)}</select></label>
+          </div>
+
         </div>
 
         <section className="schedule-section" aria-labelledby="schedule-title">
