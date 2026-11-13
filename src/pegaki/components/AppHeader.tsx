@@ -1,3 +1,4 @@
+import { agendaMenuUrl } from "../../menuShortcuts";
 import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ChevronDown, ChevronRight, ExternalLink, GraduationCap, LayoutGrid, Menu, Settings, X } from "lucide-react";
@@ -65,7 +66,7 @@ export function AppHeader({ year, onChangeYear }: { year: number; onChangeYear: 
           </a>
         </nav>
         <div className="hidden items-center gap-2 md:flex">
-          <a href="/#menu=settings" className="inline-flex items-center gap-2 rounded-full px-3 py-2 text-sm" aria-label="Configurações de aparência do site"><Settings size={18} aria-hidden />Aparência</a>
+          <a href={agendaMenuUrl("settings")} className="inline-flex items-center gap-2 rounded-full px-3 py-2 text-sm" aria-label="Configurações de aparência do site"><Settings size={18} aria-hidden />Aparência</a>
           <button
             onClick={onChangeYear}
             className="flex h-11 cursor-pointer items-center gap-2 rounded-full bg-white/10 pr-3 pl-1.5 text-sm outline-none transition-[background-color,transform] hover:bg-white/20 active:scale-95 focus-visible:ring-2 focus-visible:ring-white"
@@ -166,7 +167,7 @@ export function AppHeader({ year, onChangeYear }: { year: number; onChangeYear: 
 
               <div className="mt-3 animate-fade-up px-1" style={{ animationDelay: "160ms" }}>
                 <span className="mb-2 block text-xs font-semibold text-muted">Aparência</span>
-                <a href="/#menu=settings" className="flex items-center gap-2 rounded-xl bg-page px-3 py-3 text-ink"><Settings size={18} aria-hidden />Configurações do site</a>
+                <a href={agendaMenuUrl("settings")} className="flex items-center gap-2 rounded-xl bg-page px-3 py-3 text-ink"><Settings size={18} aria-hidden />Configurações do site</a>
               </div>
             </div>
           </div>,

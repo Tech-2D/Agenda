@@ -1,6 +1,6 @@
 # Tech 2D
 
-Site principal da comunidade: Agenda de atividades, consulta de professores e Pegaki no mesmo repositório e publicação. Abra [o site](https://tech-2d.github.io/), [Professores](https://tech-2d.github.io/professores/) ou [Pegaki](https://tech-2d.github.io/pegaki/). A navegação entre as áreas fica no topo de cada página.
+Site principal da comunidade com Agenda, Professores e Pegaki no mesmo repositório. A navegação entre as áreas fica no topo de cada página. [Agenda](https://tech-2d.github.io/web/) · [Professores](https://tech-2d.github.io/web/professores/) · [Pegaki](https://tech-2d.github.io/web/pegaki/)
 
 Consulte [a estrutura e a transição dos links antigos](docs/unificacao-site.md). Para desenvolver, execute `npm ci` e `npm run dev`; `/` abre a agenda, `/professores/` abre os horários e `/pegaki/` abre a calculadora de notas. Um único `npm run build` gera todo o site.
 

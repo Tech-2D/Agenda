@@ -1,6 +1,6 @@
 # Site principal Tech 2D
 
-O repositório Agenda passa a se chamar `Tech-2D/tech-2d.github.io` e publica um único site:
+O repositório `Tech-2D/web` publica o site em [tech-2d.github.io/web/](https://tech-2d.github.io/web/). Os caminhos abaixo são relativos ao caminho base configurado pelo GitHub Pages.
 
 - `/`: agenda de atividades e recursos da turma.
 - `/professores/`: horários, localização e administração de professores.
@@ -19,7 +19,7 @@ As três páginas usam uma instalação npm, um build Vite e o mesmo workflow de
 6. Desativar o GitHub Pages do repositório `professores`: enquanto existir um projeto Pages nesse endereço, ele tem precedência sobre a pasta `/professores/` do site principal.
 7. Retirar o repositório antigo somente depois dessas verificações.
 
-O endereço de professores permanece igual. Não é necessária migração do banco ou mudança da origem no Firebase/Workers: todas as páginas continuam na origem `https://tech-2d.github.io` e usam o backend já existente. O GitHub redireciona links do repositório Agenda renomeado; o site conserva a pasta `/Agenda/` para os links públicos antigos.
+O GitHub Pages informa o caminho base durante a publicação. O build usa esse caminho para os arquivos e a navegação interna. Todas as páginas compartilham a origem `https://tech-2d.github.io`, que o Firebase e a API usam.
 
 ## Desenvolvimento
 
@@ -27,7 +27,7 @@ Execute `npm ci` e `npm run dev`. Abra `/` para a agenda, `/professores/` para o
 
 ## Pegaki
 
-O código de `Tech-2D/pegaki` foi incorporado em `src/pegaki/`, com os testes das fórmulas e da leitura de boletim integrados ao Vitest. O importador de PDF continua carregado sob demanda e funciona no navegador. Notas, pesos e ano selecionado continuam nas chaves `aprovae:*` do `localStorage`. Como o endereço permanece em `https://tech-2d.github.io/pegaki/`, as notas previamente salvas nesse domínio continuam disponíveis.
+O código de `Tech-2D/pegaki` foi incorporado em `src/pegaki/`, com os testes das fórmulas e da leitura de boletim integrados ao Vitest. O importador de PDF carrega sob demanda e funciona no navegador. Notas, pesos e ano selecionado usam as chaves `aprovae:*` do `localStorage`. O endereço `https://tech-2d.github.io/web/pegaki/` tem a mesma origem do endereço antigo e pode acessar as notas salvas nesse domínio.
 
 A paleta é compartilhada com a Agenda em `src/sitePalette.css`; o Pegaki lê as mesmas preferências de tema, neon e acessibilidade. Seu seletor independente de claro/escuro foi substituído por um link às configurações gerais. A preferência antiga `aprovae:theme` não sobrescreve mais as cores escolhidas no site.
 

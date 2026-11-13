@@ -4,7 +4,7 @@ import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
-  base: '/',
+  base: process.env.PAGES_BASE_PATH ? `${process.env.PAGES_BASE_PATH.replace(/\/$/, '')}/` : '/',
   build: {
     rollupOptions: { input: { agenda: 'index.html', professores: 'professores/index.html', pegaki: 'pegaki/index.html' } },
   },

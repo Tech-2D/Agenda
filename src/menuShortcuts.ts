@@ -23,7 +23,6 @@ export function readMenuShortcuts(): MenuShortcutId[] {
   }
   return [...DEFAULT_MENU_SHORTCUTS]
 }
-
 export function storeMenuShortcuts(ids: readonly MenuShortcutId[]) {
   try {
     window.localStorage.setItem(MENU_SHORTCUTS_KEY, JSON.stringify(ids))
@@ -32,7 +31,7 @@ export function storeMenuShortcuts(ids: readonly MenuShortcutId[]) {
   }
 }
 
-const AGENDA_URL = '/'
+const AGENDA_URL = sitePaths.agenda
 const AGENDA_DIALOGS = ['notifications', 'updates', 'polls', 'notices', 'suggestActivity', 'requestClass', 'feedback', 'mySuggestions', 'settings', 'profiles', 'help'] as const
 
 export function readAgendaMenuDialog(hash: string) {
@@ -47,3 +46,4 @@ export function agendaMenuUrl(id?: MenuShortcutId | 'options') {
   if (id === 'kanban' || id === 'admin') return AGENDA_URL + '#' + id
   return AGENDA_DIALOGS.some(dialog => dialog === id) ? AGENDA_URL + '#menu=' + id : AGENDA_URL
 }
+import { sitePaths } from './sitePaths'
