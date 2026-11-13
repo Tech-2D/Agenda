@@ -12,6 +12,8 @@ import { ExportPdf } from "./components/ExportPdf";
 import { Segmented } from "./components/Segmented";
 import { AppHeader } from "./components/AppHeader";
 import { ClearGrades } from "./components/ClearGrades";
+import { ImportBoletim } from "./components/ImportBoletim";
+import type { BoletimMatch } from "./lib/boletim";
 
 const YEAR_KEY = "aprovae:year";
 const MODE_KEY = "aprovae:mode"; // modo antigo, um só para os dois semestres
@@ -133,6 +135,32 @@ function GradesView({ year, onChangeYear }: { year: Year; onChangeYear: () => vo
     return () => setGrades(before);
   };
 
+  // Lança as médias e a recuperação do boletim importado. Os semestres que vieram com nota passam
+  // para o modo "Média" (as N1/N2 já digitadas continuam guardadas). Devolve como desfazer.
+  const importGrades = (matched: BoletimMatch["matched"]) => {
+    const before = { grades, modes };
+    const text = (n: number) => n.toFixed(2).replace(".", ",");
+    setGrades((g) => {
+      const next = { ...g };
+      for (const { subject, row } of matched) {
+        const patch: Partial<Grades> = {};
+        if (row.s1 !== null) patch.s1avg = text(row.s1);
+        if (row.s2 !== null) patch.s2avg = text(row.s2);
+        if (row.rf !== null) patch.rec = text(row.rf);
+        next[subject] = { ...EMPTY, ...g[subject], ...patch };
+      }
+      return next;
+    });
+    const has = (k: "s1" | "s2") => matched.some(({ row }) => row[k] !== null);
+    const nextModes: Modes = { s1: has("s1") ? "media" : modes.s1, s2: has("s2") ? "media" : modes.s2 };
+    if (nextModes.s1 !== modes.s1 || nextModes.s2 !== modes.s2) setModeTouched(true);
+    setModes(nextModes);
+    return () => {
+      setGrades(before.grades);
+      setModes(before.modes);
+    };
+  };
+
   const rows = useMemo(
     () =>
       subjects.map((name) => {
@@ -199,6 +227,7 @@ function GradesView({ year, onChangeYear }: { year: Year; onChangeYear: () => vo
           rows={rows}
           action={
             <>
+              <ImportBoletim year={year} subjects={subjects} onImport={importGrades} />
               <ClearGrades
                 year={year}
                 filled={rows.filter(({ g }) => GRADE_FIELDS.some((f) => g[f] !== "")).length}

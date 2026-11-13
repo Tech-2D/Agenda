@@ -7,10 +7,11 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "test": "node --experimental-strip-types --test src/lib/grades.test.ts"
+    "test": "node --experimental-strip-types --test src/lib/grades.test.ts src/lib/boletim.test.ts"
   },
   "dependencies": {
     "lucide-react": "^1.62.0",
+    "pdfjs-dist": "^6.5.438",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
   },
