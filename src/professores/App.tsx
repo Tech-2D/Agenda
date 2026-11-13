@@ -23,7 +23,7 @@ import {
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut, type User } from 'firebase/auth'
 import { FirebaseError } from 'firebase/app'
 import { PageHeading } from './PageHeading'
-import { SiteNavigation } from '../SiteNavigation'
+import { AccountSiteNavigation } from '../AccountSiteNavigation'
 import { requestPasswordReset } from './passwordReset'
 import { ProfileDialog } from './ProfileDialog'
 import { observeCatalog, invalidateCatalog } from './publicQueries'
@@ -256,7 +256,7 @@ function App() {
 
   return (
     <div className="app-shell">
-      <SiteNavigation active="professores" />
+      <AccountSiteNavigation active="professores" />
       <button
         type="button"
         className="menu-trigger"

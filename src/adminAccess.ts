@@ -1,9 +1,13 @@
 import { type User } from 'firebase/auth'
-import { doc, getDoc, serverTimestamp, setDoc } from './dataClient'
+import { doc, getDoc, onSnapshot, serverTimestamp, setDoc } from './dataClient'
 import { db } from './firebase'
 import { CLASS_NAMES } from './classNames'
 import { type AdminProfile } from './types'
 import { normalizeRepresentativeEmail } from './representativeAccess'
+
+export function subscribeAdminProfile(uid: string, change: (profile: AdminProfile | null) => void, onError: () => void) {
+  return onSnapshot(doc(db, 'admins', uid), snapshot => change((snapshot.data() as AdminProfile | undefined) ?? null), onError)
+}
 
 export async function loadOrClaimAdminProfile(account: User): Promise<AdminProfile | null> {
   const adminRecord = await getDoc(doc(db, 'admins', account.uid))

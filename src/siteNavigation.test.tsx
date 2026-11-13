@@ -14,3 +14,13 @@ it('connects all pages on the same origin and identifies the current page', () =
     expect(html).toContain(`href="${active === 'agenda' ? '/' : `/${active}/`}" aria-current="page"`)
   }
 })
+
+it('shows the direct management link for the current Agenda role', () => {
+  const navigation = (role?: 'representante' | 'superadmin', active: 'agenda' | 'professores' | 'pegaki' | 'admin' = 'pegaki') =>
+    renderToStaticMarkup(createElement(SiteNavigation, { active, role }))
+
+  expect(navigation()).not.toContain('href="/admin/"')
+  expect(navigation('representante')).toMatch(/href="\/admin\/"[^]*?>Representante<\/a>/)
+  expect(navigation('superadmin')).toMatch(/href="\/admin\/"[^]*?>Administração<\/a>/)
+  expect(navigation('superadmin', 'admin')).toContain('href="/admin/" aria-current="page"')
+})

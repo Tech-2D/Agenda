@@ -33,7 +33,7 @@ import { observeCatalog, type CatalogMeta } from './publicQueries'
 import { latestUnseenUpdate, markSystemUpdateSeen, readSeenSystemUpdateId, type SystemUpdate } from './systemUpdates'
 import { NEON_COLORS, NEON_COLOR_LABELS, NEON_COLOR_SWATCHES, THEME_LABELS, THEME_PREVIEW, THEMES, readStoredNeon, readStoredTheme, storeNeon, storeTheme, type NeonColor, type Theme } from './theme'
 import { FONT_SCALES, FONT_SCALE_LABELS, readStoredFontScale, readStoredHighContrast, readStoredReduceMotion, storeFontScale, storeHighContrast, storeReduceMotion, type FontScale } from './accessibility'
-import { loadOrClaimAdminProfile } from './adminAccess'
+import { loadOrClaimAdminProfile, subscribeAdminProfile } from './adminAccess'
 import { DEFAULT_MENU_SHORTCUTS, MENU_SHORTCUTS_KEY, readAgendaMenuDialog, readMenuShortcuts, storeMenuShortcuts, type MenuShortcutId } from './menuShortcuts'
 import { IntegratedMenu } from './IntegratedMenu'
 import { menuOptionSections, type MoreOption, type MoreOptionSection } from './menuCatalog'
@@ -169,7 +169,7 @@ function App() {
         }
         previousUid = uid
       }),
-      subscribeProfile: (uid, change, error) => onSnapshot(doc(db, 'admins', uid), snapshot => change(snapshot.data() as AdminProfile ?? null), error),
+      subscribeProfile: subscribeAdminProfile,
       publish: setCalendarProfile,
       reset: () => { setQuickCreateDate(null); setQuickEditActivity(null) },
     })
@@ -517,7 +517,7 @@ function App() {
 
   if (adminOpen) return (
     <div className="app-shell admin-shell">
-      <SiteNavigation active="admin" />
+      <SiteNavigation active="admin" role={calendarProfile?.role} />
       <SyncStatus />
       <DialogLoadBoundary>
         <Suspense fallback={<main className="main-content"><p role="status">Carregando painel…</p></main>}>
@@ -530,7 +530,7 @@ function App() {
 
   return (
     <div className="app-shell">
-      <SiteNavigation active="agenda" />
+      <SiteNavigation active="agenda" role={calendarProfile?.role} />
       <SyncStatus />
       <button
         type="button"
