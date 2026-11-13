@@ -40,8 +40,9 @@ import {
   writeBatch,
 } from './dataClient'
 import { auth, db } from './firebase'
-import { SQL_BASE, SQL_ENABLED } from './dataBackend'
-import { SiteAccessPanel } from './SiteAccessPanel'
+import { SQL_ENABLED } from './dataBackend'
+import { SiteAccessPanel } from '../SiteAccessPanel'
+import { recordSiteAccess } from '../agendaAccess'
 import { CLASS_NAMES } from './classNames'
 import { readPreferredClass, savePreferredClass } from './classPreference'
 import { importDocumentId, parseSchedulesJson } from './importSchedules'
@@ -203,7 +204,7 @@ function App() {
       const uid = currentUser?.uid ?? null
       if (uid !== previousUid) {
         previousUid = uid
-        void recordProfessorAccess(currentUser)
+        void recordSiteAccess('professor', currentUser)
       }
       if (!currentUser) return
 
@@ -777,22 +778,5 @@ function AdminDialog({ schedules, user, isAdmin, canViewAccess, authChecked, onC
   )
 }
 
-async function recordProfessorAccess(user: User | null) {
-  if (!SQL_ENABLED) return
-  try {
-    const token = await user?.getIdToken()
-    if (auth.currentUser?.uid !== user?.uid) return
-    await fetch(SQL_BASE + '/api/professor-access', {
-      method: 'POST',
-      ...(token ? { headers: { Authorization: 'Bearer ' + token } } : {}),
-      credentials: 'omit',
-      redirect: 'error',
-      keepalive: true,
-      signal: AbortSignal.timeout(15000),
-    })
-  } catch {
-    // Access reporting must not interrupt the timetable.
-  }
-}
 
 export default App
