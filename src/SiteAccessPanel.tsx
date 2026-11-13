@@ -7,11 +7,18 @@ import './siteAccess.css'
 
 type Counts = { authenticated: number; anonymous: number; accounts: number }
 type Site = { total: Counts; daily: (Counts & { date: string })[] }
+type RecentAccount = { uid: string; email: string | null; lastSeen: string }
+const siteLabels = { agenda: 'Agenda', professores: 'Cadê o professor?', pegaki: 'Pegaki' }
+type SiteId = keyof typeof siteLabels
+const siteIds = Object.keys(siteLabels) as SiteId[]
+
 type Statistics = {
   today: string
   professorSince: string | null
-  sites: { agenda: Site; professores: Site }
-  recent: { uid: string; email: string | null; lastSeen: string }[]
+  pegakiSince?: string | null
+  sites: Record<'agenda' | 'professores', Site> & { pegaki?: Site }
+  recent: RecentAccount[]
+  pegakiRecent?: RecentAccount[]
 }
 
 const number = new Intl.NumberFormat('pt-BR')
@@ -53,9 +60,13 @@ export function SiteAccessPanel({ user }: { user: User }) {
     return () => controller.abort()
   }, [user, days, revision])
 
-  const agenda = new Map(result?.sites.agenda.daily.map(row => [row.date, row]))
-  const professores = new Map(result?.sites.professores.daily.map(row => [row.date, row]))
-  const dates = [...new Set([...agenda.keys(), ...professores.keys()])].sort().reverse()
+  const daily = new Map(siteIds.map(site => [site, new Map(result?.sites[site]?.daily.map(row => [row.date, row]))]))
+  const dates = [...new Set([...daily.values()].flatMap(rows => [...rows.keys()]))].sort().reverse()
+  const hasCoverage = (site: SiteId, date: string) => {
+    if (site === 'pegaki') return result?.pegakiSince && date >= result.pegakiSince
+    if (site === 'professores') return result?.professorSince && date >= result.professorSince
+    return !result?.professorSince || date >= result.professorSince
+  }
 
   return (
     <section className="site-access" aria-labelledby="site-access-heading">
@@ -71,14 +82,19 @@ export function SiteAccessPanel({ user }: { user: User }) {
       </div>
       {error ? <p role="alert">{error}</p> : !result ? <p role="status">Carregando acessos…</p> : <>
         <p className="site-access-note">{result.professorSince
-          ? 'O comparativo usa os dias do período escolhido a partir do primeiro registro do Cadê o professor (' + labelDate(result.professorSince) + ').'
+          ? 'O comparativo entre Agenda e Cadê o professor começa no primeiro registro do Cadê o professor (' + labelDate(result.professorSince) + ').'
           : 'O Cadê o professor ainda não tem acessos registrados. A Agenda mostra seu histórico no período.'}</p>
+        {result.sites.pegaki && <p className="site-access-note">{result.pegakiSince
+          ? 'O Pegaki tem registros desde ' + labelDate(result.pegakiSince) + ' e mostra seu histórico no período escolhido.'
+          : 'O Pegaki ainda não tem acessos registrados.'}</p>}
         <div className="site-access-summary">
-          {([['Agenda', 'agenda'], ['Cadê o professor?', 'professores']] as const).map(([title, site]) => {
-            const { total, daily } = result.sites[site]
+          {siteIds.map(site => {
+            const stats = result.sites[site]
+            if (!stats) return null
+            const { total, daily } = stats
             return (
               <div className="site-access-card" key={site}>
-                <h4>{title}</h4>
+                <h4>{siteLabels[site]}</h4>
                 <strong>{number.format(count(total))} acessos</strong>
                 <small>{number.format(count(daily.find(row => row.date === result.today)))} hoje</small>
                 <small>{number.format(total.authenticated)} com login · {number.format(total.anonymous)} anônimos</small>
@@ -89,24 +105,32 @@ export function SiteAccessPanel({ user }: { user: User }) {
         </div>
         {dates.length > 0 && <table className="site-access-table">
           <caption>Acessos por dia</caption>
-          <thead><tr><th scope="col">Dia</th><th scope="col">Agenda</th><th scope="col">Cadê o professor?</th></tr></thead>
+          <thead><tr><th scope="col">Dia</th>{siteIds.filter(site => result.sites[site]).map(site => <th key={site} scope="col">{siteLabels[site]}</th>)}</tr></thead>
           <tbody>{dates.map(date => <tr key={date}>
             <th scope="row"><time dateTime={date}>{labelDate(date)}</time></th>
-            <td>{number.format(count(agenda.get(date)))}</td>
-            <td>{result.professorSince ? number.format(count(professores.get(date))) : '—'}</td>
+            {siteIds.filter(site => result.sites[site]).map(site => (
+              <td key={site}>{hasCoverage(site, date) ? number.format(count(daily.get(site)?.get(date))) : '—'}</td>
+            ))}
           </tr>)}</tbody>
         </table>}
-        <details className="site-access-recent">
-          <summary>Contas que acessaram o Cadê o professor</summary>
-          {result.recent.length ? <ul>
-            {result.recent.map(({ uid, email, lastSeen }) => (
-              <li key={uid}><span>{email || uid}</span><time dateTime={lastSeen}>{localTime.format(new Date(lastSeen))}</time></li>
-            ))}
-          </ul> : <p className="site-access-note">Nenhum acesso com login neste período.</p>}
-          {result.recent.length === 50 && <p className="site-access-note">Mostrando as 50 contas com acesso mais recente.</p>}
-        </details>
+        <RecentAccounts title="Contas que acessaram o Cadê o professor" accounts={result.recent} />
+        {result.pegakiRecent && <RecentAccounts title="Contas que acessaram o Pegaki" accounts={result.pegakiRecent} />}
       </>}
       <p className="site-access-note">A contagem agrupa aberturas pela mesma conta ou rede em intervalos de 30 minutos por site. Várias pessoas podem compartilhar uma rede. Datas e horários seguem Brasília.</p>
     </section>
+  )
+}
+
+function RecentAccounts({ title, accounts }: { title: string; accounts: RecentAccount[] }) {
+  return (
+    <details className="site-access-recent">
+      <summary>{title}</summary>
+      {accounts.length ? <ul>
+        {accounts.map(({ uid, email, lastSeen }) => (
+          <li key={uid}><span>{email || uid}</span><time dateTime={lastSeen}>{localTime.format(new Date(lastSeen))}</time></li>
+        ))}
+      </ul> : <p className="site-access-note">Nenhum acesso com login neste período.</p>}
+      {accounts.length === 50 && <p className="site-access-note">Mostrando as 50 contas com acesso mais recente.</p>}
+    </details>
   )
 }
