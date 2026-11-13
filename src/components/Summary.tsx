@@ -103,7 +103,7 @@ export function Summary({ rows, action }: { rows: SummaryRow[]; action?: ReactNo
         </div>
         {/* No celular as ações descem para baixo do título; a última (principal) ocupa o espaço que sobra. */}
         {action && (
-          <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:flex-nowrap[&>button:last-child]:flex-1 [&>button:last-child]:justify-center sm:[&>button:last-child]:flex-none">
+          <div className="flex w-full gap-2 sm:w-auto [&>button:last-child]:flex-1 [&>button:last-child]:justify-center sm:[&>button:last-child]:flex-none">
             {action}
           </div>
         )}

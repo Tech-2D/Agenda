@@ -89,11 +89,11 @@ export function ImportBoletim({ year, subjects, onImport }: Props) {
         disabled={busy}
         aria-busy={busy}
         title="Lançar as notas a partir do PDF do boletim da escola"
-        // No celular fica sozinho na primeira linha das ações, com Limpar e Exportar embaixo.
-        className="inline-flex h-11 shrink-0 basis-full cursor-pointer sm:basis-auto items-center justify-center gap-2 rounded-xl border border-line bg-surface px-3.5 text-sm font-medium text-ink outline-none transition-[border-color,background-color,transform] duration-200 hover:border-brand/40 hover:bg-brand-soft active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-wait disabled:opacity-70"
+        className="inline-flex h-11 shrink-0 cursor-pointer items-center justify-center gap-2 rounded-xl border border-line bg-surface px-3.5 text-sm font-medium text-ink outline-none transition-[border-color,background-color,transform] duration-200 hover:border-brand/40 hover:bg-brand-soft active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-wait disabled:opacity-70"
       >
         {busy ? <Loader2 size={16} aria-hidden className="animate-spin" /> : <FileUp size={16} aria-hidden />}
-        {busy ? "Lendo boletim..." : "Importar boletim"}
+        <span className="sm:hidden">{busy ? "Lendo..." : "Importar"}</span>
+        <span className="hidden sm:inline">{busy ? "Lendo boletim..." : "Importar boletim"}</span>
       </button>
 
       {dialog &&

@@ -41,11 +41,11 @@ export function ClearGrades({ year, filled, onClear }: Props) {
         onClick={() => setConfirming(true)}
         disabled={filled === 0}
         title={filled === 0 ? "Nenhuma nota lançada" : undefined}
-        className="inline-flex h-11 shrink-0 cursor-pointer items-center justify-center gap-2 rounded-xl border border-line bg-surface px-3.5 text-sm font-medium text-muted outline-none transition-[border-color,background-color,color,transform] duration-200 hover:border-chip-red-ink/30 hover:bg-chip-red/50 hover:text-chip-red-ink active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-brand disabled:pointer-events-none disabled:opacity-50"
+        className="inline-flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center gap-2 rounded-xl border border-line bg-surface text-sm sm:mr-3 sm:w-auto sm:px-3.5 font-medium text-muted outline-none transition-[border-color,background-color,color,transform] duration-200 hover:border-chip-red-ink/30 hover:bg-chip-red/50 hover:text-chip-red-ink active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-brand disabled:pointer-events-none disabled:opacity-50"
       >
         <Trash2 size={16} aria-hidden />
-        <span className="sm:hidden">Limpar</span>
-        <span className="hidden sm:inline">Limpar notas</span>
+        {/* No celular fica só a lixeira; o nome continua para leitor de tela. */}
+        <span className="sr-only sm:not-sr-only">Limpar notas</span>
       </button>
 
       {confirming &&

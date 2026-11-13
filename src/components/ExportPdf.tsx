@@ -250,7 +250,9 @@ export function ExportPdf({ year, rows }: { year: Year; rows: ReportRow[] }) {
           <FileDown size={16} aria-hidden />
         </span>
         <span className="flex flex-col items-start leading-tight whitespace-nowrap">
-          Exportar boletim
+          <span>
+            Exportar<span className="hidden sm:inline"> boletim</span>
+          </span>
           <span className="text-[11px] font-normal text-muted">PDF · A4</span>
         </span>
       </button>

@@ -227,12 +227,12 @@ function GradesView({ year, onChangeYear }: { year: Year; onChangeYear: () => vo
           rows={rows}
           action={
             <>
-              <ImportBoletim year={year} subjects={subjects} onImport={importGrades} />
               <ClearGrades
                 year={year}
                 filled={rows.filter(({ g }) => GRADE_FIELDS.some((f) => g[f] !== "")).length}
                 onClear={clearGrades}
               />
+              <ImportBoletim year={year} subjects={subjects} onImport={importGrades} />
               <ExportPdf year={year} rows={rows.map(({ name, g, r }) => ({ name, r, rec: toGrade(g.rec) }))} />
             </>
           }
