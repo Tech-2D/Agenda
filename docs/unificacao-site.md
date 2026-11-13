@@ -31,6 +31,8 @@ O código de `Tech-2D/pegaki` foi incorporado em `src/pegaki/`, com os testes da
 
 A paleta é compartilhada com a Agenda em `src/sitePalette.css`; o Pegaki lê as mesmas preferências de tema, neon e acessibilidade. Seu seletor independente de claro/escuro foi substituído por um link às configurações gerais. A preferência antiga `aprovae:theme` não sobrescreve mais as cores escolhidas no site.
 
-O salvamento por conta fica atrás de `VITE_PEGAKI_CLOUD_GRADES` (desligado até a aplicação da migration 024 e publicação da API). Quando ativado, o usuário autenticado carrega um caderno por ano letivo, importa notas locais explicitamente e usa **Salvar na conta**. A API confirma versões para evitar sobrescritas e protege as notas por conta. Sem login, o modo local continua disponível. A estrutura SQL está documentada em `Tech-2D/modelagem-dados/docs/notas-pegaki.md`.
+O salvamento por conta é controlado por `VITE_PEGAKI_CLOUD_GRADES`, ativado em produção após aplicar a migration 024 e publicar a API. O usuário autenticado carrega um caderno por ano letivo, importa notas locais explicitamente e usa **Salvar na conta**. A API confirma versões para evitar sobrescritas e protege as notas por conta. Sem login, o modo local continua disponível. A estrutura SQL está documentada em `Tech-2D/modelagem-dados/docs/notas-pegaki.md`.
+
+A ativação foi validada em 13/11/2026 na API publicada: duas contas temporárias confirmaram gravação e leitura, isolamento entre contas, rejeição de acesso anônimo, conflitos de versão, autoria forjada e limpeza de notas. As contas e os cadernos de teste foram removidos ao terminar. Nenhuma nota foi enviada à IA.
 
 A navegação compartilhada mostra Agenda, Professores e Pegaki na mesma aba. O Pages separado de `Tech-2D/pegaki` deve ser desativado após a publicação para que `/pegaki/` seja servido pelo site principal. A integração não altera nem exclui o repositório pessoal do autor.
