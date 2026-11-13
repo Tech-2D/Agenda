@@ -31,7 +31,7 @@ jobs:
       - name: Instalar dependências
         run: npm ci
 
-      - name: Testar as duas áreas
+      - name: Testar o site
         run: npm test
 
       - name: Verificar o código

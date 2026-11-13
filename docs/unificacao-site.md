@@ -4,9 +4,10 @@ O repositório Agenda passa a se chamar `Tech-2D/tech-2d.github.io` e publica um
 
 - `/`: agenda de atividades e recursos da turma.
 - `/professores/`: horários, localização e administração de professores.
+- `/pegaki/`: calculadora de médias, simulações e importação/exportação de boletim.
 - `/Agenda/`: compatibilidade com os links antigos, preservando parâmetros e fragmentos de atividades, convites de Kanban e atalhos.
 
-As duas páginas usam uma instalação npm, um build Vite e o mesmo workflow de publicação. A navegação é interna, na mesma aba. Firebase, configuração de backend, aparência e atalhos usam as implementações compartilhadas de `src/`. As preferências de turma conservam as chaves de armazenamento existentes; cada área mantém seu catálogo, pois professores abrange turmas que ainda não têm agenda. Os estilos específicos dos professores são carregados somente nessa página.
+As três páginas usam uma instalação npm, um build Vite e o mesmo workflow de publicação. A navegação é interna, na mesma aba. Agenda e Professores compartilham Firebase, configuração de backend, aparência e atalhos de `src/`. As preferências de turma conservam as chaves de armazenamento existentes; cada área mantém seu catálogo, pois professores abrange turmas que ainda não têm agenda. Cada página carrega seus estilos específicos.
 
 ## Publicação e transição
 
@@ -22,4 +23,10 @@ O endereço de professores permanece igual. Não é necessária migração do ba
 
 ## Desenvolvimento
 
-Execute `npm ci` e `npm run dev`. Abra `/` para a agenda e `/professores/` para os professores. `npm run build` gera as duas páginas em `dist/`; nenhuma delas depende de compilar ou buscar outro repositório.
+Execute `npm ci` e `npm run dev`. Abra `/` para a agenda, `/professores/` para os professores e `/pegaki/` para as notas. `npm run build` gera as três páginas em `dist/`; nenhuma delas depende de compilar ou buscar outro repositório.
+
+## Pegaki
+
+O código de `Tech-2D/pegaki` foi incorporado em `src/pegaki/`, com os testes das fórmulas e da leitura de boletim integrados ao Vitest. O importador de PDF continua carregado sob demanda e funciona no navegador. Notas, pesos e ano selecionado continuam nas chaves `aprovae:*` do `localStorage`. Como o endereço permanece em `https://tech-2d.github.io/pegaki/`, as notas previamente salvas nesse domínio continuam disponíveis.
+
+A navegação compartilhada mostra Agenda, Professores e Pegaki na mesma aba. O Pages separado de `Tech-2D/pegaki` deve ser desativado após a publicação para que `/pegaki/` seja servido pelo site principal. A integração não altera nem exclui o repositório pessoal do autor.

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { Bell, BookOpen, CalendarClock, History, KeyRound, LayoutGrid, Lightbulb, ListChecks, MapPin, MessageSquarePlus, Plus, Settings, StickyNote, UserRound, Vote } from 'lucide-react'
+import { Bell, BookOpen, Calculator, CalendarClock, History, KeyRound, LayoutGrid, Lightbulb, ListChecks, MapPin, MessageSquarePlus, Plus, Settings, StickyNote, UserRound, Vote } from 'lucide-react'
 import type { MenuShortcutId } from './menuShortcuts'
 
 export type MoreOption = {
@@ -25,6 +25,7 @@ export function menuOptionSections({ hasTurma, actions, todayClassesUrl }: {
       title: 'Acompanhar a turma',
       description: 'Avisos e atividades da turma selecionada.',
       items: [
+        { id: 'pegaki', title: 'Pegaki', description: 'Calcule suas médias e simule notas do Tech.', icon: <Calculator />, href: '/pegaki/' },
         { id: 'teachers', title: 'Cadê o professor?', description: 'Pesquise professores, matérias e salas.', icon: <MapPin />, href: '/professores/' },
         { id: 'notifications', title: 'Notificações', description: 'Veja atividades adicionadas ou alteradas recentemente.', icon: <Bell />, onClick: actions.notifications },
         { id: 'updates', title: 'Atualizações', description: 'Confira o que mudou no sistema da Agenda.', icon: <History />, onClick: actions.updates },

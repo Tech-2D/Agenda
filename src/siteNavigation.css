@@ -8,14 +8,16 @@
   width: 100%;
   margin: 0 auto;
   padding: 1rem 4.5rem 1rem 1rem;
-  color: var(--text);
+  color: var(--text, var(--color-ink));
 }
 .site-navigation a { text-decoration: none; color: inherit; }
 .site-navigation .site-brand { font-size: 1rem; font-weight: 800; letter-spacing: -.04em; }
 .site-navigation-pages { display: flex; flex-wrap: wrap; gap: .35rem; }
 .site-navigation-pages a { display: inline-flex; align-items: center; gap: .4rem; padding: .55rem .75rem; border-radius: .625rem; font-size: .8125rem; font-weight: 600; }
-.site-navigation-pages a[aria-current="page"], .site-navigation-pages a:hover { background: var(--interface-subtle); color: var(--interface-accent); }
-.site-navigation a:focus-visible { outline: 2px solid var(--interface-accent); outline-offset: 3px; }
+.site-navigation-pages a[aria-current="page"], .site-navigation-pages a:hover { background: var(--interface-subtle, var(--color-brand-soft)); color: var(--interface-accent, var(--color-brand-ink)); }
+.site-navigation a:focus-visible { outline: 2px solid var(--interface-accent, var(--color-brand-ink)); outline-offset: 3px; }
+.pegaki-shell .site-navigation { padding-right: 1rem; }
+@media print { .site-navigation { display: none; } }
 @media (max-width: 420px) {
   .site-navigation { padding-left: .75rem; padding-right: 4rem; }
   .site-navigation-pages a { padding: .5rem; }

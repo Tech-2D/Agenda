@@ -6,7 +6,7 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   base: '/',
   build: {
-    rollupOptions: { input: { agenda: 'index.html', professores: 'professores/index.html' } },
+    rollupOptions: { input: { agenda: 'index.html', professores: 'professores/index.html', pegaki: 'pegaki/index.html' } },
   },
   server: {
     // Evita CORS em dev: o navegador vê /api/catalog como mesma origem, e o

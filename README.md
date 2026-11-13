@@ -1,8 +1,10 @@
 # Tech 2D
 
-Site principal da comunidade: Agenda de atividades e consulta de professores no mesmo repositório e publicação. Abra [o site](https://tech-2d.github.io/) ou [a página de professores](https://tech-2d.github.io/professores/). A navegação entre as duas áreas fica no topo de cada página.
+Site principal da comunidade: Agenda de atividades, consulta de professores e Pegaki no mesmo repositório e publicação. Abra [o site](https://tech-2d.github.io/), [Professores](https://tech-2d.github.io/professores/) ou [Pegaki](https://tech-2d.github.io/pegaki/). A navegação entre as áreas fica no topo de cada página.
 
-Consulte [a estrutura e a transição dos links antigos](docs/unificacao-site.md). Para desenvolver, execute `npm ci` e `npm run dev`; `/` abre a agenda e `/professores/` abre os horários. Um único `npm run build` gera todo o site.
+Consulte [a estrutura e a transição dos links antigos](docs/unificacao-site.md). Para desenvolver, execute `npm ci` e `npm run dev`; `/` abre a agenda, `/professores/` abre os horários e `/pegaki/` abre a calculadora de notas. Um único `npm run build` gera todo o site.
+
+O Pegaki foi criado por Arakaki e integrado a partir de `Tech-2D/pegaki`. Sua [licença MIT](docs/pegaki/LICENSE) e [documentação original](docs/pegaki/README.md) estão preservadas. O código fica em `src/pegaki/`, incluindo os testes de cálculo e leitura do boletim. As notas mantêm as chaves `aprovae:*` no armazenamento local; não são enviadas ao backend.
 
 ## Agenda da turma
 
