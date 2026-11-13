@@ -68,7 +68,7 @@
   font-size: .76rem;
 }
 
-.admin-page-nav button {
+.admin-page-nav :is(button, a) {
   display: flex;
   align-items: center;
   gap: .55rem;
@@ -82,14 +82,15 @@
   cursor: pointer;
   font-size: .83rem;
   text-align: start;
+  text-decoration: none;
 }
 
-.admin-page-nav button:hover, .admin-page-nav button[aria-current="true"] {
+.admin-page-nav :is(button, a):hover, .admin-page-nav button[aria-current="true"] {
   background: var(--surface-alt);
   color: var(--ink);
 }
 .admin-page-nav button[aria-current="true"] { border-inline-start-color: var(--accent); font-weight: 700; }
-.admin-page-nav :is(h2, button) svg { flex: none; }
+.admin-page-nav :is(h2, button, a) svg { flex: none; }
 
 .admin-page-account {
   grid-area: 1 / 2;

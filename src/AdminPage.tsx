@@ -1,6 +1,6 @@
 import { type FormEvent, type ReactNode, useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowLeft, ArrowRight, BarChart3, Calendar, CalendarDays, Check, DoorOpen, Edit3, Globe, History, KeyRound, Lightbulb, ListChecks, LoaderCircle, LogOut, Megaphone, MessageSquarePlus, MessagesSquare, Plus, Paperclip, Repeat, ShieldCheck, HardDrive, StickyNote, Trash2, UserRound, Users, X } from 'lucide-react'
+import { ArrowLeft, ArrowRight, BarChart3, Calendar, CalendarDays, Check, DoorOpen, Edit3, ExternalLink, Globe, History, KeyRound, Lightbulb, ListChecks, LoaderCircle, LogOut, Megaphone, MessageSquarePlus, MessagesSquare, Plus, Paperclip, Repeat, ShieldCheck, HardDrive, StickyNote, Trash2, UserRound, Users, X } from 'lucide-react'
 import { createUserWithEmailAndPassword, onAuthStateChanged, signInWithEmailAndPassword, type User } from 'firebase/auth'
 import { signOut } from './sessionActions'
 import { requestPasswordReset } from './passwordReset'
@@ -1001,6 +1001,12 @@ export default function AdminPage({ publicTurmaId, classNames, quickCreateDate, 
                                 {!!tab.count && <span className="notif-count">{tab.count}</span>}
                               </button>
                             ))}
+                            {group.id === 'admin' && (
+                              <a href="https://tech-2d.github.io/modelagem-dados/" target="_blank" rel="noopener" aria-label="Modelagem de dados (abre em nova aba)">
+                                <ExternalLink size={15} aria-hidden="true" />
+                                <span>Modelagem de dados</span>
+                              </a>
+                            )}
                           </div>
                         ))}
                       </nav>
