@@ -13,12 +13,12 @@ it('reuses the existing saved shortcut order across sites', () => {
 
 it('opens known features directly without accepting arbitrary routes', () => {
   for (const id of ['notifications', 'polls', 'updates', 'notices', 'mySuggestions', 'settings'] as const) {
-    const url = new URL(agendaMenuUrl(id))
-    expect(url.pathname).toBe('/Agenda/')
+    const url = new URL(agendaMenuUrl(id), 'https://tech-2d.github.io')
+    expect(url.pathname).toBe('/')
     expect(readAgendaMenuDialog(url.hash)).toBe(id)
   }
-  expect(new URL(agendaMenuUrl('kanban')).hash).toBe('#kanban')
-  expect(new URL(agendaMenuUrl('admin')).hash).toBe('#admin')
-  expect(new URL(agendaMenuUrl('options')).hash).toBe('#opcoes')
+  expect(new URL(agendaMenuUrl('kanban'), 'https://tech-2d.github.io').hash).toBe('#kanban')
+  expect(new URL(agendaMenuUrl('admin'), 'https://tech-2d.github.io').hash).toBe('#admin')
+  expect(new URL(agendaMenuUrl('options'), 'https://tech-2d.github.io').hash).toBe('#opcoes')
   for (const hash of ['#menu=unknown', '#menu=admin', '#menu=https://example.com', '#atividade=1']) expect(readAgendaMenuDialog(hash)).toBeNull()
 })

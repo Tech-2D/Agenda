@@ -29,6 +29,7 @@ export function menuOptionSections({ hasTurma, actions, todayClassesUrl, unreadC
       title: 'Acompanhar a turma',
       description: 'Avisos e atividades da turma selecionada.',
       items: [
+        { id: 'teachers', title: 'Cadê o professor?', description: 'Pesquise professores, matérias e salas.', icon: <MapPin />, href: '/professores/' },
         { id: 'notifications', title: 'Notificações', description: 'Veja atividades adicionadas ou alteradas recentemente.', icon: <Bell />, onClick: actions.notifications, pendingLabel: notificationsBadge },
         { id: 'updates', title: 'Atualizações', description: 'Confira o que mudou no sistema da Agenda.', icon: <History />, onClick: actions.updates, pendingLabel: hasUnseenUpdate ? 'Nova atualização' : undefined },
         { id: 'polls', title: 'Enquetes da turma', description: needsTurma ? 'Escolha uma turma para ver e responder enquetes.' : 'Acompanhe votações e participe das decisões.', icon: <Vote />, onClick: actions.polls, disabled: needsTurma },
@@ -61,7 +62,6 @@ export function menuOptionSections({ hasTurma, actions, todayClassesUrl, unreadC
       title: 'Outros projetos',
       description: 'Acesse outras ferramentas da comunidade 2ºD Tech.',
       items: [
-        { id: 'teachers', title: 'Cadê o professor?', description: 'Pesquise professores, matérias e salas.', icon: <MapPin />, href: 'https://tech-2d.github.io/professores/' },
         { id: 'pegaki', title: 'Pegaki', description: 'Calcule suas médias e simule notas do Tech.', icon: <Calculator />, href: 'https://dvarakaki.github.io/pegaki/' },
         { id: 'pong', title: 'Liga Germinare Pong', description: 'Acesse a liga de tênis de mesa.', icon: <TableTennisPaddle />, href: 'https://ligagerminare-pong.vercel.app/' },
       ],

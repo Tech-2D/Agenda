@@ -1,4 +1,10 @@
-# Agenda da turma
+# Tech 2D
+
+Site principal da comunidade: Agenda de atividades e consulta de professores no mesmo repositório e publicação. Abra [o site](https://tech-2d.github.io/) ou [a página de professores](https://tech-2d.github.io/professores/). A navegação entre as duas áreas fica no topo de cada página.
+
+Consulte [a estrutura e a transição dos links antigos](docs/unificacao-site.md). Para desenvolver, execute `npm ci` e `npm run dev`; `/` abre a agenda e `/professores/` abre os horários. Um único `npm run build` gera todo o site.
+
+## Agenda da turma
 
 Calendário mensal com tarefas, lições, trabalhos e eventos por turma. A leitura é pública (sem login); representantes e o super-admin autenticam para criar, editar e excluir atividades.
 

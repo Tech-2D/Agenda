@@ -32,7 +32,7 @@ export function storeMenuShortcuts(ids: readonly MenuShortcutId[]) {
   }
 }
 
-const AGENDA_URL = 'https://tech-2d.github.io/Agenda/'
+const AGENDA_URL = '/'
 const AGENDA_DIALOGS = ['notifications', 'updates', 'polls', 'notices', 'suggestActivity', 'requestClass', 'feedback', 'mySuggestions', 'settings', 'profiles', 'help'] as const
 
 export function readAgendaMenuDialog(hash: string) {

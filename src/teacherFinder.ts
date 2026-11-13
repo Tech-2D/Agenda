@@ -1,6 +1,6 @@
 import { professorClassFor } from './classPreference'
 
-const TEACHER_FINDER_BASE_URL = 'https://tech-2d.github.io/professores/'
+const TEACHER_FINDER_BASE_URL = '/professores/'
 
 // Linka direto para a grade de hoje da turma no Cadê o professor?. Turmas sem
 // par conhecido lá (ex.: pedidas dinamicamente) abrem sem o filtro de turma,

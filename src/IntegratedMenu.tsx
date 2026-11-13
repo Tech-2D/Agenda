@@ -54,7 +54,7 @@ export function IntegratedMenu({ onClose, options, shortcuts, onOpenMoreOptions,
             if (!option) return null
             const content = <><span className="side-menu-shortcut-icon" aria-hidden="true">{option.icon}</span><span>{option.title}</span>
               {option.pendingLabel && <span className="menu-pending-badge">{option.pendingLabel}</span>}
-              {option.href && <ExternalLink size={14} className="external-icon" aria-hidden="true" />}
+              {option.href && !option.href.startsWith('/') && <ExternalLink size={14} className="external-icon" aria-hidden="true" />}
             </>
             if (organizing) return <div key={id} className={`side-menu-sort-row${draggedId === id ? ' dragging' : ''}${dropTarget === id ? ' drop-target' : ''}`}
               onDragOver={event => { if (draggedId && draggedId !== id) { event.preventDefault(); event.dataTransfer.dropEffect = 'move'; setDropTarget(id) } }}
@@ -69,7 +69,7 @@ export function IntegratedMenu({ onClose, options, shortcuts, onOpenMoreOptions,
               </div>
             </div>
             return option.href
-              ? <a key={id} className="side-menu-external" href={option.href} target="_blank" rel="noopener noreferrer" onClick={onClose}>{content}</a>
+              ? <a key={id} className="side-menu-external" href={option.href} target={option.href.startsWith('/') ? undefined : '_blank'} rel={option.href.startsWith('/') ? undefined : 'noopener noreferrer'} onClick={onClose}>{content}</a>
               : <button type="button" key={id} onClick={option.onClick} disabled={option.disabled} title={option.disabled ? option.description : undefined}>{content}</button>
           })}
           {shortcuts.length === 0 && <p className="side-menu-empty">Escolha seus atalhos em “Ver mais opções”.</p>}

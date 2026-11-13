@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">2ºD Tech</title>
+  <desc id="desc">Monograma azul 2ºD com a palavra Tech sobre fundo branco.</desc>
+  <rect width="512" height="512" rx="72" fill="#ffffff"/>
+  <g fill="#6b82f5" font-family="Arial Black, Arial, sans-serif" font-style="italic" font-weight="900">
+    <text x="72" y="300" font-size="224" letter-spacing="-10">2</text>
+    <text x="262" y="300" font-size="224" letter-spacing="-10">D</text>
+  </g>
+  <circle cx="247" cy="142" r="20" fill="none" stroke="#6b82f5" stroke-width="13"/>
+  <text x="256" y="399" fill="#6b82f5" font-family="Arial, sans-serif" font-size="66" font-weight="800" letter-spacing="13" text-anchor="middle">TECH</text>
+</svg>

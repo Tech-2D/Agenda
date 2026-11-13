@@ -4,7 +4,10 @@ import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
-  base: './',
+  base: '/',
+  build: {
+    rollupOptions: { input: { agenda: 'index.html', professores: 'professores/index.html' } },
+  },
   server: {
     // Evita CORS em dev: o navegador vê /api/catalog como mesma origem, e o
     // Vite repassa a chamada pro Worker por fora do navegador. Só ativa se

@@ -9,6 +9,7 @@ import { AttachmentLinks } from './AttachmentLinks'
 import { ATTACHMENTS_ENABLED } from './attachments'
 import { FirebaseError } from 'firebase/app'
 import { PageHeading } from './PageHeading'
+import { SiteNavigation } from './SiteNavigation'
 import { addDoc, collection, doc, getDoc, onSnapshot, serverTimestamp } from './dataClient'
 import { auth, db } from './firebase'
 import { CLASS_NAMES } from './classNames'
@@ -214,7 +215,7 @@ function App() {
   }, [reduceMotion])
 
   useEffect(() => {
-    document.title = turmaId ? `Agenda — ${turmaId}` : 'Agenda da turma'
+    document.title = turmaId ? `Agenda — ${turmaId} | Tech 2D` : 'Tech 2D | Agenda'
   }, [turmaId])
 
   useEffect(() => {
@@ -506,6 +507,7 @@ function App() {
 
   return (
     <div className="app-shell">
+      <SiteNavigation active="agenda" />
       <SyncStatus />
       <button
         type="button"
@@ -596,7 +598,7 @@ function App() {
               <button type="button" className="action-button" aria-label="Sugerir atividade" title="Sugerir atividade" onClick={() => setSuggestOpen(true)}>
                 <Lightbulb size={14} aria-hidden="true" /><span className="action-label">Sugerir</span>
               </button>
-              <a className="action-button" aria-label="Aulas de hoje no Cadê o professor?" title="Aulas de hoje" href={teacherFinderTodayUrl(turmaId)} target="_blank" rel="noopener noreferrer">
+              <a className="action-button" aria-label="Aulas de hoje no Cadê o professor?" title="Aulas de hoje" href={teacherFinderTodayUrl(turmaId)}>
                 <CalendarClock size={14} aria-hidden="true" /><span className="action-label">Aulas de hoje</span>
               </a>
             </div>
@@ -905,7 +907,7 @@ function MoreOptionCard({ title, description, icon, onClick, href, disabled, pen
     </>
   )
 
-  if (href) return <a className="more-option-card" href={href} target="_blank" rel="noopener noreferrer">{content}</a>
+  if (href) return <a className="more-option-card" href={href} target={href.startsWith('/') ? undefined : '_blank'} rel={href.startsWith('/') ? undefined : 'noopener noreferrer'}>{content}</a>
   return <button type="button" className="more-option-card" onClick={onClick} disabled={disabled}>{content}</button>
 }
 
