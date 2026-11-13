@@ -4,6 +4,10 @@ import "./index.css";
 import App from "./App";
 import { SiteNavigation } from "../SiteNavigation";
 import "../siteNavigation.css";
+import "../sitePalette.css";
+import { observeStoredAppearance } from "../appearance";
+
+observeStoredAppearance();
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

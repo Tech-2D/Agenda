@@ -44,7 +44,7 @@ export function Segmented<T extends string>({
   className = "",
   indicatorClassName = "rounded-full bg-brand shadow-lift",
   buttonClassName = "",
-  activeClassName = "text-white",
+  activeClassName = "text-on-brand",
   inactiveClassName = "text-ink hover:text-brand-ink",
 }: Props<T>) {
   const track = useRef<HTMLDivElement>(null);

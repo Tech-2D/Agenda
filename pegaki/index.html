@@ -7,16 +7,11 @@
     <meta name="description" content="Calcule suas médias e simule notas do Tech com o Pegaki, no site Tech 2D." />
     <link rel="icon" type="image/svg+xml" href="/pegaki/favicon.svg" />
     <meta name="theme-color" content="#0a2dc4" />
-    <!-- Aplica o tema salvo (ou o do sistema) antes da primeira pintura, para não piscar claro. -->
     <script>
-      (function () {
-        try {
-          var p = localStorage.getItem("aprovae:theme");
-          var dark = p === "dark" || (p !== "light" && matchMedia("(prefers-color-scheme: dark)").matches);
-          document.documentElement.dataset.theme = dark ? "dark" : "light";
-          if (dark) document.querySelector('meta[name="theme-color"]').setAttribute("content", "#161a22");
-        } catch (e) {}
-      })();
+      try {
+        document.documentElement.dataset.theme = localStorage.getItem('agenda:theme') || localStorage.getItem('professores:theme') || 'padrao';
+        document.documentElement.dataset.neon = localStorage.getItem('agenda:neon') || localStorage.getItem('professores:neon') || 'azul';
+      } catch {}
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />

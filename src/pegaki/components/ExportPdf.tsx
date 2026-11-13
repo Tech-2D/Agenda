@@ -246,7 +246,7 @@ export function ExportPdf({ year, rows }: { year: Year; rows: ReportRow[] }) {
         onClick={() => setOpen(true)}
         className="group/export inline-flex h-11 shrink-0 cursor-pointer items-center gap-2.5 rounded-xl border border-line bg-surface pr-4 pl-1.5 text-sm font-medium text-ink outline-none transition-[border-color,background-color,box-shadow,transform] duration-200 hover:border-brand/30 hover:bg-brand-soft/40 hover:shadow-card active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-brand"
       >
-        <span className="grid size-8 place-items-center rounded-lg bg-brand text-white transition-transform duration-200 group-hover/export:-translate-y-0.5">
+        <span className="grid size-8 place-items-center rounded-lg bg-brand text-on-brand transition-transform duration-200 group-hover/export:-translate-y-0.5">
           <FileDown size={16} aria-hidden />
         </span>
         <span className="flex flex-col items-start leading-tight whitespace-nowrap">
@@ -344,7 +344,7 @@ export function ExportPdf({ year, rows }: { year: Year; rows: ReportRow[] }) {
               )}
               <button
                 type="submit"
-                className="flex h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-lg bg-brand text-sm font-medium text-white outline-none transition-[background-color,transform] hover:bg-brand-dark active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+                className="flex h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-lg bg-brand text-sm font-medium text-on-brand outline-none transition-[background-color,transform] hover:bg-brand-dark active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
               >
                 <FileDown size={16} aria-hidden /> Gerar PDF
               </button>

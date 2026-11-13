@@ -1,4 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
+import { onAuthStateChanged, type User } from "firebase/auth";
+import { auth } from "../firebase";
+import { useNotebook } from "./lib/useNotebook";
 import { ChevronDown, Search } from "lucide-react";
 import { calculateSemesters, DEFAULT_N1_WEIGHT, type InputMode, type Modes, type Situation } from "./lib/grades";
 import { useInView } from "./lib/useInView";
@@ -16,9 +19,7 @@ import { ImportBoletim } from "./components/ImportBoletim";
 import type { BoletimMatch } from "./lib/boletim";
 
 const YEAR_KEY = "aprovae:year";
-const MODE_KEY = "aprovae:mode"; // modo antigo, um só para os dois semestres
-const MODES_KEY = "aprovae:modes";
-const gradesKey = (y: Year) => `aprovae:v4:grades:${y}`;
+const CLOUD_GRADES_ENABLED = import.meta.env.VITE_PEGAKI_CLOUD_GRADES === 'true';
 const EMPTY: Grades = {
   s1n1: "",
   s1n2: "",
@@ -57,15 +58,6 @@ const MODES: { value: InputMode; label: string }[] = [
   { value: "media", label: "Média" },
 ];
 
-const asMode = (v: unknown): InputMode => (v === "media" ? "media" : "notas");
-
-function readModes(): Modes {
-  const saved = read<Partial<Modes>>(MODES_KEY);
-  if (saved) return { s1: asMode(saved.s1), s2: asMode(saved.s2) };
-  // Quem já usava o modo único começa com ele nos dois semestres.
-  const old = asMode(read<InputMode>(MODE_KEY));
-  return { s1: old, s2: old };
-}
 
 const modeHint = (m: InputMode) => (m === "media" ? "Média" : "N1 · N2 · Média");
 const swapIn = (m: InputMode) => (m === "media" ? "animate-swap-in-right" : "animate-swap-in-left");
@@ -76,6 +68,9 @@ const GRADE_FIELDS = ["s1n1", "s1n2", "s2n1", "s2n2", "s1avg", "s2avg", "rec"] a
 const hasSubjects = (y: Year | null): y is Year => y !== null && SUBJECTS_BY_YEAR[y]?.length > 0;
 
 export default function App() {
+  const [user, setUser] = useState<User | null | undefined>(CLOUD_GRADES_ENABLED ? undefined : null);
+  const [academicYear, setAcademicYear] = useState(new Date().getFullYear());
+  useEffect(() => { if (CLOUD_GRADES_ENABLED) return onAuthStateChanged(auth, setUser); }, []);
   const [year, setYear] = useState<Year | null>(() => {
     const saved = read<Year>(YEAR_KEY);
     return hasSubjects(saved) ? saved : null;
@@ -87,24 +82,23 @@ export default function App() {
     window.scrollTo({ top: 0 });
   };
 
+  if (user === undefined) return <p role="status" className="p-6 text-muted">Carregando sua conta…</p>;
   if (!hasSubjects(year)) return <YearPicker onPick={pick} />;
-  return <GradesView key={year} year={year} onChangeYear={() => pick(null)} />;
+  return <GradesView key={`${user?.uid ?? "guest"}:${year}:${academicYear}`} user={user} academicYear={academicYear} onAcademicYear={setAcademicYear} year={year} onChangeYear={() => pick(null)} />;
 }
 
-function GradesView({ year, onChangeYear }: { year: Year; onChangeYear: () => void }) {
+function GradesView({ year, onChangeYear, user, academicYear, onAcademicYear }: { year: Year; onChangeYear: () => void; user: User | null; academicYear: number; onAcademicYear: (year: number) => void }) {
   const subjects = SUBJECTS_BY_YEAR[year];
   // As notas ficam salvas pelo nome da disciplina; a lista em si é fixa por ano.
-  const [grades, setGrades] = useState<Record<string, Grades>>(() => read(gradesKey(year)) ?? {});
+  const cloud = useNotebook(user, year, academicYear);
+  const { grades, setGrades, modes, setModes } = cloud;
   const [filter, setFilter] = useState<Filter>("todas");
   const [query, setQuery] = useState("");
   // Modo de cada semestre, para todas as disciplinas; as notas de cada modo ficam guardadas separadas.
-  const [modes, setModes] = useState<Modes>(readModes);
   // Só anima o cabeçalho da tabela depois que o modo foi trocado (não ao abrir a página).
   const [modeTouched, setModeTouched] = useState(false);
   const [formulasRef, formulasIn] = useInView<HTMLDetailsElement>();
 
-  useEffect(() => write(gradesKey(year), grades), [year, grades]);
-  useEffect(() => write(MODES_KEY, modes), [modes]);
 
   // Disciplina aberta na tela de detalhe. Entra no histórico para o "voltar" do celular fechar a tela.
   const [open, setOpen] = useState<string | null>(null);
@@ -179,18 +173,30 @@ function GradesView({ year, onChangeYear }: { year: Year; onChangeYear: () => vo
   const q = query.trim().toLowerCase();
   const visible = rows.filter(({ name, r }) => (filter === "todas" || r.situation === filter) && (!q || name.toLowerCase().includes(q)));
 
+  if (user && !cloud.ready) return <main className="mx-auto max-w-7xl p-6"><p role="status">{cloud.loading ? 'Carregando notas da sua conta…' : cloud.error}</p>{!cloud.loading && <button type="button" onClick={cloud.reload}>Tentar novamente</button>}</main>;
+
   return (
     <div className="min-h-dvh">
-      <AppHeader year={year} onChangeYear={onChangeYear} />
+      <AppHeader year={year} onChangeYear={() => { if (!cloud.dirty || window.confirm("Há notas não salvas. Sair sem salvar?")) onChangeYear(); }} />
 
       <main className="mx-auto max-w-7xl space-y-5 px-4 py-6 sm:py-8">
+        <section aria-label="Notas da sua conta" className="flex flex-wrap items-center gap-3 rounded-xl bg-surface p-4 shadow-card">
+          {user ? <>
+            <label className="text-sm">Ano letivo <select aria-label="Ano letivo" className="ml-2 rounded-lg border border-line bg-surface p-2" disabled={cloud.dirty || cloud.saving} value={academicYear} onChange={e=>onAcademicYear(Number(e.target.value))}>{Array.from({length:7},(_,i)=>new Date().getFullYear()+1-i).map(y=><option key={y}>{y}</option>)}</select></label>
+            <span className="text-sm text-muted" role="status">{cloud.saving ? 'Salvando…' : cloud.dirty ? 'Alterações não salvas' : 'Notas da sua conta carregadas'}</span>
+            <button type="button" className="rounded-lg bg-brand px-4 py-2 text-on-brand disabled:opacity-50" disabled={!cloud.dirty || cloud.saving || cloud.conflict} onClick={()=>void cloud.save()}>Salvar na conta</button>
+            {cloud.canImport && <button type="button" className="text-sm text-brand-ink underline" onClick={cloud.importLocal}>Importar notas deste navegador</button>}
+            {cloud.error && <p role="alert" className="w-full text-sm">{cloud.error}</p>}
+            {cloud.conflict && <button type="button" onClick={()=>{if(window.confirm('Recarregar as notas da conta e descartar as alterações desta tela?'))cloud.reload()}}>Recarregar notas da conta</button>}
+          </> : <><p className="flex-1 text-sm text-muted">{CLOUD_GRADES_ENABLED ? 'Suas notas ficam neste navegador. Entre para salvá-las na conta e acessar em outros dispositivos.' : 'Suas notas ficam salvas neste navegador.'}</p>{CLOUD_GRADES_ENABLED && <a className="text-sm text-brand-ink underline" href="/#menu=profiles">Entrar ou criar conta</a>}</>}
+        </section>
         <div className="flex animate-fade-up flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h1 className="text-xl font-semibold sm:text-2xl">Disciplinas do {year}º ano</h1>
             <p className="text-sm text-muted">
-              <span className="sm:hidden">Tudo fica salvo neste navegador.</span>
+              <span className="sm:hidden">Notas privadas, com cálculo atualizado enquanto você digita.</span>
               <span className="hidden sm:inline">
-                Escolha, em cada semestre, se vai lançar a N1 e a N2 ou só a média. Tudo fica salvo neste navegador.
+                Escolha, em cada semestre, se vai lançar a N1 e a N2 ou só a média. Notas privadas, com cálculo atualizado enquanto você digita.
               </span>
             </p>
           </div>

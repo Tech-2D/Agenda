@@ -136,7 +136,7 @@ export function ImportBoletim({ year, subjects, onImport }: Props) {
                         close();
                         inputRef.current?.click();
                       }}
-                      className="flex h-11 cursor-pointer items-center justify-center gap-2 rounded-lg bg-brand text-sm font-medium text-white outline-none transition-[filter,transform] hover:brightness-110 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+                      className="flex h-11 cursor-pointer items-center justify-center gap-2 rounded-lg bg-brand text-sm font-medium text-on-brand outline-none transition-[filter,transform] hover:brightness-110 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
                     >
                       <FileUp size={16} aria-hidden /> Outro arquivo
                     </button>
@@ -262,7 +262,7 @@ function Preview({
         <button
           ref={confirmRef}
           onClick={onConfirm}
-          className="flex h-11 cursor-pointer items-center justify-center gap-2 rounded-lg bg-brand text-sm font-medium text-white outline-none transition-[filter,transform] hover:brightness-110 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+          className="flex h-11 cursor-pointer items-center justify-center gap-2 rounded-lg bg-brand text-sm font-medium text-on-brand outline-none transition-[filter,transform] hover:brightness-110 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
         >
           <FileUp size={16} aria-hidden /> Importar notas
         </button>

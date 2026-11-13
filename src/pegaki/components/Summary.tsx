@@ -111,11 +111,11 @@ export function Summary({ rows, action }: { rows: SummaryRow[]; action?: ReactNo
 
       <div className="mt-5 grid gap-3 sm:grid-cols-[1.4fr_1fr_1fr]">
         {/* Número principal: quantas disciplinas já estão garantidas. */}
-        <div className="col-span-full flex items-end gap-3 rounded-xl bg-brand p-4 text-white sm:col-span-1">
+        <div className="col-span-full flex items-end gap-3 rounded-xl bg-brand p-4 text-on-brand sm:col-span-1">
           <span className="text-5xl leading-none font-semibold">{shownSafe}</span>
-          <span className="pb-1 text-sm leading-tight text-white/80">
+          <span className="pb-1 text-sm leading-tight text-on-brand/80">
             de {total} disciplinas
-            <span className="block font-medium text-white">garantidas</span>
+            <span className="block font-medium text-on-brand">garantidas</span>
           </span>
         </div>
         <div className="col-span-full grid grid-cols-2 gap-3 sm:contents">

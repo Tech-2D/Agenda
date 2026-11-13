@@ -212,7 +212,7 @@ function WeightCard({ weights, enabled, semester, onSemester, onChange }: Weight
           className={`absolute inset-x-0 top-1/2 flex -translate-y-1/2 overflow-hidden rounded-xl transition-[height] duration-200 ${dragging ? "h-12" : "h-10"}`}
         >
           <div
-            className={`relative flex items-center overflow-hidden bg-brand pl-3 text-xs font-semibold whitespace-nowrap text-white transition-[width] ${motion}`}
+            className={`relative flex items-center overflow-hidden bg-brand pl-3 text-xs font-semibold whitespace-nowrap text-on-brand transition-[width] ${motion}`}
             style={{ width: `${value}%` }}
           >
             {value >= 20 && "N1"}
@@ -322,7 +322,7 @@ export function SubjectDetail({ name, modes, grades: g, result: r, onChange, onC
 
   return (
     <div role="dialog" aria-modal="true" aria-label={name} className="fixed inset-0 z-30 overflow-y-auto bg-page">
-      <header className="sticky top-0 z-10 bg-brand text-white shadow-md dark:border-b dark:border-line dark:bg-surface dark:shadow-none">
+      <header className="sticky top-0 z-10 bg-brand text-on-brand shadow-md dark:border-b dark:border-line dark:bg-surface dark:text-ink dark:shadow-none">
         <div className="mx-auto flex h-16 max-w-3xl items-center gap-2 px-4">
           <button
             ref={back}

@@ -4,7 +4,7 @@ import { SUBJECTS_BY_YEAR, YEARS, type Year } from "../data/subjects";
 export function YearPicker({ onPick }: { onPick: (y: Year) => void }) {
   return (
     <div className="flex min-h-dvh flex-col">
-      <div className="relative overflow-hidden bg-brand px-4 pt-10 pb-28 text-white sm:pt-14 sm:pb-36">
+      <div className="relative overflow-hidden bg-brand px-4 pt-10 pb-28 text-on-brand sm:pt-14 sm:pb-36">
         <div aria-hidden className="absolute -top-24 -right-24 size-72 animate-float rounded-full bg-white/10" />
         <div
           aria-hidden
@@ -16,7 +16,7 @@ export function YearPicker({ onPick }: { onPick: (y: Year) => void }) {
             <GraduationCap size={30} aria-hidden /> Pegaki
           </div>
           <h1 className="text-2xl font-semibold sm:text-4xl">De qual ano do Tech você é?</h1>
-          <p className="mt-3 text-sm text-white/80 sm:text-base">
+          <p className="mt-3 text-sm text-on-brand/80 sm:text-base">
             Escolha seu ano para carregar as disciplinas e calcular se você passou.
           </p>
         </div>
@@ -37,7 +37,7 @@ export function YearPicker({ onPick }: { onPick: (y: Year) => void }) {
               <span
                 className={`grid size-14 shrink-0 place-items-center rounded-xl text-2xl font-bold transition-[background-color,color,transform] duration-300 sm:size-16 sm:text-3xl ${
                   ready
-                    ? "bg-brand-soft text-brand-ink group-hover:rotate-[-6deg] group-hover:bg-brand group-hover:text-white"
+                    ? "bg-brand-soft text-brand-ink group-hover:rotate-[-6deg] group-hover:bg-brand group-hover:text-on-brand"
                     : "bg-ink/5 text-muted"
                 }`}
               >

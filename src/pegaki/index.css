@@ -2,17 +2,18 @@
 
 @theme {
   --font-sans: "Poppins", system-ui, sans-serif;
-  --color-brand: #0a2dc4;
-  --color-brand-dark: #0821a0;
-  --color-brand-soft: #eef1fd;
+  --color-brand: var(--accent);
+  --color-on-brand: var(--accent-contrast);
+  --color-brand-dark: var(--accent-hover);
+  --color-brand-soft: var(--surface-alt);
   /* Azul da marca como texto (no escuro fica mais claro para manter o contraste). */
-  --color-brand-ink: #0a2dc4;
-  --color-ink: #2f2f2f;
-  --color-muted: #6b6b6b;
-  --color-line: #e8e8e8;
-  --color-page: #f6f7fb;
+  --color-brand-ink: var(--ink);
+  --color-ink: var(--text);
+  --color-muted: var(--ink-soft);
+  --color-line: var(--line);
+  --color-page: var(--bg);
   /* Fundo de cards, campos e diálogos (branco no claro, cinza-azulado no escuro). */
-  --color-surface: #ffffff;
+  --color-surface: var(--paper);
   --color-chip-blue: #e3f2fd;
   --color-chip-blue-ink: #1565c0;
   --color-chip-orange: #fff3e0;
@@ -167,19 +168,10 @@
 }
 
 /* Modo noturno: [data-theme="dark"] no <html>, posto antes da pintura pelo script do index.html. */
-@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+@custom-variant dark (&:where([data-theme="escuro"], [data-theme="escuro"] *, [data-theme="cyberpunk"], [data-theme="cyberpunk"] *));
 
-:root[data-theme="dark"] {
+:root:is([data-theme="escuro"], [data-theme="cyberpunk"]) {
   color-scheme: dark;
-  --color-brand: #3f5ef0;
-  --color-brand-dark: #3352e0;
-  --color-brand-soft: #1a2350;
-  --color-brand-ink: #8ea2ff;
-  --color-ink: #e6e8ee;
-  --color-muted: #9aa2b1;
-  --color-line: #2a303b;
-  --color-page: #0d1016;
-  --color-surface: #161a22;
   --color-chip-blue: #12253d;
   --color-chip-blue-ink: #86bbff;
   --color-chip-orange: #33220e;

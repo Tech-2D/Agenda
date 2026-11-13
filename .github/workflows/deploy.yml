@@ -52,6 +52,7 @@ jobs:
           VITE_STORAGE_ADMIN_API_URL: ${{ vars.VITE_STORAGE_ADMIN_API_URL }}
           VITE_PUBLIC_QUERY_API_URL: ${{ vars.VITE_PUBLIC_QUERY_API_URL }}
           VITE_DATA_BACKEND: ${{ vars.VITE_DATA_BACKEND }}
+          VITE_PEGAKI_CLOUD_GRADES: ${{ vars.VITE_PEGAKI_CLOUD_GRADES }}
 
       - name: Configurar GitHub Pages
         uses: actions/configure-pages@v5

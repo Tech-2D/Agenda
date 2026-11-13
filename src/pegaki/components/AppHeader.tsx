@@ -1,35 +1,14 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { ChevronDown, ChevronRight, ExternalLink, GraduationCap, LayoutGrid, Menu, Monitor, Moon, Sun, X } from "lucide-react";
-import { useTheme, type ThemePref } from "../lib/theme";
-import { Segmented } from "./Segmented";
+import { ChevronDown, ChevronRight, ExternalLink, GraduationCap, LayoutGrid, Menu, Settings, X } from "lucide-react";
 
 const REPORT_CARD_URL = "https://alunos.igerminare.org.br/aluno/minhas-notas/4";
-
-const THEMES: { value: ThemePref; label: string; Icon: typeof Sun }[] = [
-  { value: "light", label: "Claro", Icon: Sun },
-  { value: "dark", label: "Escuro", Icon: Moon },
-  { value: "system", label: "Automático", Icon: Monitor },
-];
-
-const themeOptions = (withText: boolean) =>
-  THEMES.map(({ value, label, Icon }) => ({
-    value,
-    ariaLabel: withText ? undefined : `Tema ${label.toLowerCase()}`,
-    label: (
-      <span className="flex items-center justify-center gap-1.5">
-        <Icon size={withText ? 16 : 15} aria-hidden />
-        {withText && label}
-      </span>
-    ),
-  }));
 
 /**
  * Cabeçalho do app. No desktop (md+): marca, navegação, tema e ano lado a lado.
  * No celular: marca e um botão sanduíche que abre um painel com navegação, ano e aparência.
  */
 export function AppHeader({ year, onChangeYear }: { year: number; onChangeYear: () => void }) {
-  const [theme, setTheme] = useTheme();
   const [open, setOpen] = useState(false);
   const menuId = useId();
   const toggleRef = useRef<HTMLButtonElement>(null);
@@ -64,7 +43,7 @@ export function AppHeader({ year, onChangeYear }: { year: number; onChangeYear: 
   const close = () => setOpen(false);
 
   return (
-    <header className="sticky top-0 z-30 animate-slide-down bg-brand text-white shadow-md dark:border-b dark:border-line dark:bg-surface dark:shadow-none">
+    <header className="sticky top-0 z-30 animate-slide-down bg-brand text-on-brand shadow-md dark:border-b dark:border-line dark:bg-surface dark:text-ink dark:shadow-none">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-4">
         <div className="flex items-center gap-2 text-lg font-semibold">
           <GraduationCap aria-hidden size={28} /> Pegaki
@@ -79,30 +58,20 @@ export function AppHeader({ year, onChangeYear }: { year: number; onChangeYear: 
             href={REPORT_CARD_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1.5 border-b-2 border-transparent pb-1 text-white/80 outline-none transition-colors hover:border-white/50 hover:text-white focus-visible:border-white focus-visible:text-white"
+            className="flex items-center gap-1.5 border-b-2 border-transparent pb-1 text-on-brand/80 outline-none transition-colors hover:border-white/50 hover:text-on-brand focus-visible:border-white focus-visible:text-on-brand dark:text-ink/80 dark:hover:text-ink dark:focus-visible:text-ink"
           >
             Boletim <ExternalLink size={14} aria-hidden />
             <span className="sr-only">(abre o boletim na Odette em nova aba)</span>
           </a>
         </nav>
         <div className="hidden items-center gap-2 md:flex">
-          <Segmented
-            ariaLabel="Tema"
-            options={themeOptions(false)}
-            value={theme}
-            onChange={setTheme}
-            className="rounded-full bg-white/10 p-1"
-            indicatorClassName="rounded-full bg-white shadow-sm dark:bg-brand"
-            buttonClassName="grid size-9 place-items-center rounded-full"
-            activeClassName="text-brand-ink dark:text-white"
-            inactiveClassName="text-white/75 hover:text-white"
-          />
+          <a href="/#menu=settings" className="inline-flex items-center gap-2 rounded-full px-3 py-2 text-sm" aria-label="Configurações de aparência do site"><Settings size={18} aria-hidden />Aparência</a>
           <button
             onClick={onChangeYear}
             className="flex h-11 cursor-pointer items-center gap-2 rounded-full bg-white/10 pr-3 pl-1.5 text-sm outline-none transition-[background-color,transform] hover:bg-white/20 active:scale-95 focus-visible:ring-2 focus-visible:ring-white"
             aria-label={`${year}º ano Tech. Trocar de ano`}
           >
-            <span className="grid size-8 place-items-center rounded-full bg-white text-sm font-bold text-brand-ink dark:bg-brand dark:text-white">
+            <span className="grid size-8 place-items-center rounded-full bg-white text-sm font-bold text-brand-ink dark:bg-brand dark:text-on-brand">
               {year}º
             </span>
             Tech
@@ -187,7 +156,7 @@ export function AppHeader({ year, onChangeYear }: { year: number; onChangeYear: 
                 className="flex h-14 w-full animate-fade-up cursor-pointer items-center gap-3 rounded-xl px-3 text-left outline-none transition-colors hover:bg-page focus-visible:ring-2 focus-visible:ring-brand"
                 style={{ animationDelay: "120ms" }}
               >
-                <span className="grid size-9 place-items-center rounded-full bg-brand text-sm font-bold text-white">{year}º</span>
+                <span className="grid size-9 place-items-center rounded-full bg-brand text-sm font-bold text-on-brand">{year}º</span>
                 <span className="flex-1">
                   <span className="block font-medium">{year}º ano Tech</span>
                   <span className="block text-xs text-muted">Trocar de ano</span>
@@ -197,15 +166,7 @@ export function AppHeader({ year, onChangeYear }: { year: number; onChangeYear: 
 
               <div className="mt-3 animate-fade-up px-1" style={{ animationDelay: "160ms" }}>
                 <span className="mb-2 block text-xs font-semibold text-muted">Aparência</span>
-                <Segmented
-                  ariaLabel="Tema"
-                  options={themeOptions(true)}
-                  value={theme}
-                  onChange={setTheme}
-                  className="rounded-xl bg-page p-1"
-                  indicatorClassName="rounded-lg bg-brand shadow-lift"
-                  buttonClassName="h-10 flex-1 rounded-lg text-sm font-medium"
-                />
+                <a href="/#menu=settings" className="flex items-center gap-2 rounded-xl bg-page px-3 py-3 text-ink"><Settings size={18} aria-hidden />Configurações do site</a>
               </div>
             </div>
           </div>,
