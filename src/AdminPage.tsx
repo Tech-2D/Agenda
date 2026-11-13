@@ -1,6 +1,6 @@
 import { type FormEvent, type ReactNode, useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowRight, BarChart3, Calendar, CalendarDays, Check, DoorOpen, Edit3, Globe, History, KeyRound, Lightbulb, ListChecks, LoaderCircle, LogOut, Megaphone, MessageSquarePlus, MessagesSquare, Plus, Paperclip, Repeat, ShieldCheck, HardDrive, StickyNote, Trash2, UserRound, Users, X } from 'lucide-react'
+import { ArrowLeft, ArrowRight, BarChart3, Calendar, CalendarDays, Check, DoorOpen, Edit3, Globe, History, KeyRound, Lightbulb, ListChecks, LoaderCircle, LogOut, Megaphone, MessageSquarePlus, MessagesSquare, Plus, Paperclip, Repeat, ShieldCheck, HardDrive, StickyNote, Trash2, UserRound, Users, X } from 'lucide-react'
 import { createUserWithEmailAndPassword, onAuthStateChanged, signInWithEmailAndPassword, type User } from 'firebase/auth'
 import { signOut } from './sessionActions'
 import { requestPasswordReset } from './passwordReset'
@@ -34,6 +34,9 @@ import { NoticesAdminPanel } from './NoticeBoard'
 import { invalidateCatalog } from './publicQueries'
 import { type SystemUpdate } from './systemUpdates'
 import { loadOrClaimAdminProfile } from './adminAccess'
+import { PageHeading } from './PageHeading'
+import { sitePaths } from './sitePaths'
+import './adminPage.css'
 
 const emptyForm: Omit<ActivityInput, 'turmaId'> = {
   title: '',
@@ -44,21 +47,23 @@ const emptyForm: Omit<ActivityInput, 'turmaId'> = {
   time: null,
 }
 
-type AdminDialogProps = {
+type AdminPageProps = {
   publicTurmaId: string | null
   classNames: string[]
   quickCreateDate: string | null
   quickEditActivity: Activity | null
   systemUpdates: SystemUpdate[]
-  onClose: () => void
+  onReturnToCalendar: () => void
 }
 
-export default function AdminDialog({ publicTurmaId, classNames, quickCreateDate, quickEditActivity, systemUpdates, onClose }: AdminDialogProps) {
+export default function AdminPage({ publicTurmaId, classNames, quickCreateDate, quickEditActivity, systemUpdates, onReturnToCalendar }: AdminPageProps) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [authError, setAuthError] = useState('')
   const [authNotice, setAuthNotice] = useState('')
-  const [entryMode, setEntryMode] = useState<'login' | 'request'>(window.location.hash === '#representante' ? 'request' : 'login')
+  const [entryMode, setEntryMode] = useState<'login' | 'request'>(() =>
+    new URLSearchParams(window.location.search).get('acesso') === 'solicitar' ? 'request' : 'login',
+  )
   const [requestEmail, setRequestEmail] = useState('')
   const [requestTurma, setRequestTurma] = useState<string>(publicTurmaId ?? CLASS_NAMES[0])
   const [requestId, setRequestId] = useState(readRepresentativeRequestId)
@@ -96,11 +101,6 @@ export default function AdminDialog({ publicTurmaId, classNames, quickCreateDate
   const [repeatInterval, setRepeatInterval] = useState(1)
   const [repeatEndDate, setRepeatEndDate] = useState('')
   const [formOpen, setFormOpen] = useState(false)
-  useEffect(() => {
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => { document.body.style.overflow = previousOverflow }
-  }, [])
   const [quickCreateActive, setQuickCreateActive] = useState(false)
   const [editing, setEditing] = useState<Activity | null>(null)
   const [form, setForm] = useState(emptyForm)
@@ -116,14 +116,26 @@ export default function AdminDialog({ publicTurmaId, classNames, quickCreateDate
   const [resolutionError, setResolutionError] = useState('')
 
   useEffect(() => {
+    if (!formOpen && !closingSuggestion) return
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return
       if (closingSuggestion) setClosingSuggestion(null)
-      else onClose()
+      else if (quickCreateDate || quickEditActivity) onReturnToCalendar()
+      else setFormOpen(false)
     }
     window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [closingSuggestion, onClose])
+    return () => {
+      document.body.style.overflow = previousOverflow
+      window.removeEventListener('keydown', onKeyDown)
+    }
+  }, [closingSuggestion, formOpen, onReturnToCalendar, quickCreateDate, quickEditActivity])
+
+  function closeActivityEditor() {
+    if (quickCreateDate || quickEditActivity) onReturnToCalendar()
+    else setFormOpen(false)
+  }
 
   useEffect(() => {
     let requestId = 0
@@ -566,7 +578,7 @@ export default function AdminDialog({ publicTurmaId, classNames, quickCreateDate
           const payload={title:form.title,description:form.description,type:form.type,subject:form.subject ?? null,date:form.date,time:hasTime ? form.time : null,turmaId:isGlobalForm ? null : managedTurma,updatedAt:serverTimestamp()}
           enqueueDocument(target,editing ? 'activity-update' : 'activity-create',editing ? payload : {...payload,createdBy:user.uid,createdByEmail:user.email,createdAt:serverTimestamp()},`${editing ? 'Editar' : 'Criar'} atividade: ${form.title}`)
           setSaveError('');setNotice('Atividade na fila de salvamento. Você pode continuar.');setFormOpen(false)
-          if((quickCreateActive && !editing) || quickEditActivity)onClose()
+          if ((quickCreateActive && !editing) || quickEditActivity) onReturnToCalendar()
         } catch(error){setSaveError(activitySaveError(error,false))}
         return
       }
@@ -622,7 +634,7 @@ export default function AdminDialog({ publicTurmaId, classNames, quickCreateDate
         setNotice('Atividade e anexos salvos.')
       }
       setFormOpen(false)
-      if ((quickCreateActive && !editing) || quickEditActivity) onClose()
+      if ((quickCreateActive && !editing) || quickEditActivity) onReturnToCalendar()
       else window.setTimeout(() => setNotice(''), 2800)
     } catch (error) {
       setSaveError(activitySaveError(error, savingAttachments))
@@ -825,13 +837,18 @@ export default function AdminDialog({ publicTurmaId, classNames, quickCreateDate
   }
 
   return (
-    <div className="modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
-      <section className="admin-dialog" role="dialog" aria-modal="true" aria-labelledby="admin-title">
-        <div className="dialog-header">
-          <div><p className="eyebrow dark">ACESSO RESTRITO</p><h2 id="admin-title">Área administrativa</h2></div>
-          <button className="icon-button" onClick={onClose} aria-label="Fechar"><X /></button>
+    <main className="admin-page">
+      <section aria-label="Painel da Agenda">
+        <div className="admin-page-header" inert={formOpen || Boolean(closingSuggestion)}>
+          <PageHeading icon={ShieldCheck} title="Painel da Agenda" description="Área de representantes e administradores." />
+          <a className="secondary-button" href={sitePaths.agenda} onClick={event => {
+            if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return
+            event.preventDefault()
+            onReturnToCalendar()
+          }}><ArrowLeft size={17} aria-hidden="true" /> Voltar à Agenda</a>
         </div>
 
+        <div className={authChecked && (!user || !profile || turmaMismatch) ? 'admin-entry-card' : undefined}>
         {!authChecked ? (
           <div className="state-card"><LoaderCircle className="spin" /><p>Verificando acesso…</p></div>
         ) : !user && entryMode === 'login' ? (
@@ -908,14 +925,31 @@ export default function AdminDialog({ publicTurmaId, classNames, quickCreateDate
           </div>
         ) : turmaMismatch ? (
           <div className="unauthorized">
-            <DoorOpen /><h3>Turma não reconhecida</h3><p>O campo <code>turmaId</code> deste representante ("{profile?.turmaId}") não corresponde a nenhuma turma em <code>src/classNames.ts</code>. Corrija a grafia no documento <code>admins/{user.uid}</code> no Firestore — o texto precisa ser idêntico.</p>
+            <DoorOpen /><h3>Turma não reconhecida</h3><p>A turma {profile?.turmaId} não está disponível na Agenda. Peça à administração para revisar seu acesso.</p>
             <button className="secondary-button" onClick={() => signOut(auth)}>Sair</button>
           </div>
         ) : (
           <div className="admin-content" inert={formOpen || Boolean(closingSuggestion)}>
             {quickCreateMismatch && <div className="quick-create-warning" role="alert">Esta conta representa {profile?.turmaId}. Para cadastrar diretamente por um dia, volte ao calendário e selecione essa turma.</div>}
-            <div className="admin-body">
-              <div className="admin-main">
+            <div className="admin-workspace">
+              <aside className="admin-page-account" aria-label="Conta e turma">
+                <div className="sidebar-block">
+                  <span>{isRepresentante ? 'Representante' : 'Administrador'}</span>
+                  <strong>{user.email}</strong>
+                  <button className="secondary-button" onClick={() => signOut(auth)}><LogOut size={17} /> Sair</button>
+                </div>
+
+                <div className="sidebar-block managed-turma">
+                  <span>Gerenciando a turma</span>
+                  {isRepresentante ? (
+                    <strong>{managedTurma}</strong>
+                  ) : (
+                    <select aria-label="Turma gerenciada" value={managedTurma} onChange={(event) => setManagedTurma(event.target.value)}>
+                      {classNames.map((name) => <option key={name} value={name}>{name}</option>)}
+                    </select>
+                  )}
+                </div>
+              </aside>
                 {(() => {
                   type AdminTabId = typeof adminTab
                   const groups: { id: string; label: string; icon: ReactNode; tabs: { id: AdminTabId; label: string; icon: ReactNode; count?: number }[] }[] = [
@@ -953,35 +987,34 @@ export default function AdminDialog({ publicTurmaId, classNames, quickCreateDate
                       ],
                     }] : []),
                   ]
-                  const activeGroup = groups.find((group) => group.tabs.some((tab) => tab.id === adminTab)) ?? groups[0]
+                  const activeTab = groups.flatMap(group => group.tabs).find(tab => tab.id === adminTab)
                   return (
-                    <nav className="admin-nav" aria-label="Seções do painel">
-                      <div className="admin-groups" role="tablist" aria-label="Categorias">
-                        {groups.map((group) => {
-                          const groupCount = group.tabs.reduce((sum, tab) => sum + (tab.count ?? 0), 0)
-                          return (
-                            <button key={group.id} type="button" role="tab" aria-selected={group === activeGroup} className={group === activeGroup ? 'active' : ''} onClick={() => setAdminTab(group.tabs[0].id)}>
-                              {group.icon}
-                              <span>{group.label}</span>
-                              {groupCount > 0 && group !== activeGroup && <span className="notif-count">{groupCount}</span>}
-                            </button>
-                          )
-                        })}
-                      </div>
-                      <div className="admin-subtabs" role="tablist" aria-label={activeGroup.label}>
-                        {activeGroup.tabs.map((tab) => (
-                          <button key={tab.id} type="button" role="tab" aria-selected={tab.id === adminTab} className={tab.id === adminTab ? 'active' : ''} onClick={() => setAdminTab(tab.id)}>
-                            {tab.icon}
-                            <span>{tab.label}</span>
-                            {!!tab.count && <span className="notif-count">{tab.count}</span>}
-                          </button>
+                    <>
+                      <nav className="admin-page-nav" aria-label="Seções do painel">
+                        {groups.map(group => (
+                          <div key={group.id} className="admin-page-nav-group">
+                            <h2>{group.icon}{group.label}</h2>
+                            {group.tabs.map(tab => (
+                              <button key={tab.id} type="button" aria-current={tab.id === adminTab ? 'true' : undefined} onClick={() => setAdminTab(tab.id)}>
+                                {tab.icon}
+                                <span>{tab.label}</span>
+                                {!!tab.count && <span className="notif-count">{tab.count}</span>}
+                              </button>
+                            ))}
+                          </div>
                         ))}
+                      </nav>
+                      <div className="admin-section-heading">
+                        <h2 id="admin-section-title">{activeTab?.label}</h2>
+                        {(adminTab === 'activities' || adminTab === 'recurrences') && (
+                          <button className="primary-button compact" onClick={startCreate}><Plus size={18} /> Nova atividade</button>
+                        )}
                       </div>
-                    </nav>
+                    </>
                   )
                 })()}
 
-                <div className="admin-panel">
+                <section className="admin-page-panel" aria-labelledby="admin-section-title">
                   {adminTab === 'activities' && (
                     <>
                       <div className="admin-list-heading"><strong>Atividades cadastradas</strong><input aria-label="Buscar atividades" placeholder="Buscar por título ou descrição" value={adminSearch} onChange={(event) => setAdminSearch(event.target.value)} /></div>
@@ -1181,41 +1214,18 @@ export default function AdminDialog({ publicTurmaId, classNames, quickCreateDate
                       </div>
                     </>
                   )}
-                </div>
-              </div>
+                </section>
 
-              <aside className="admin-sidebar">
-                <div className="sidebar-block">
-                  <span>Conectado como</span>
-                  <strong>{user.email}</strong>
-                  <button className="secondary-button" onClick={() => signOut(auth)}><LogOut size={17} /> Sair</button>
-                </div>
-
-                <div className="sidebar-block managed-turma">
-                  <span>Gerenciando a turma</span>
-                  {isRepresentante ? (
-                    <strong>{managedTurma}</strong>
-                  ) : (
-                    <select value={managedTurma} onChange={(event) => setManagedTurma(event.target.value)}>
-                      {classNames.map((name) => <option key={name} value={name}>{name}</option>)}
-                    </select>
-                  )}
-                </div>
-
-                {(adminTab === 'activities' || adminTab === 'recurrences') && (
-                  <button className="primary-button compact" onClick={startCreate}><Plus size={18} /> Nova atividade</button>
-                )}
-
-                {notice && <div className="notice"><Check size={17} /> {notice}</div>}
-              </aside>
+              {notice && <div className="notice admin-page-notice" role="status"><Check size={17} /> {notice}</div>}
             </div>
           </div>
         )}
+        </div>
 
       {formOpen && authChecked && profile && user?.uid === auth.currentUser?.uid && createPortal(
           <div className="form-overlay activity-editor-overlay" role="dialog" aria-modal="true" aria-labelledby="activity-editor-title">
             <form className="activity-form activity-editor" onSubmit={saveActivity} aria-label={editing ? 'Editar atividade' : 'Adicionar atividade'}>
-              <div className="form-title"><div><p className="eyebrow dark">ATIVIDADE</p><h3 id="activity-editor-title">{editing ? 'Editar atividade' : 'Adicionar atividade'}</h3></div><button type="button" className="icon-button" aria-label="Fechar formulário" onClick={() => quickEditActivity ? onClose() : setFormOpen(false)}><X /></button></div>
+              <div className="form-title"><div><p className="eyebrow dark">ATIVIDADE</p><h3 id="activity-editor-title">{editing ? 'Editar atividade' : 'Adicionar atividade'}</h3></div><button type="button" className="icon-button" aria-label="Fechar formulário" onClick={closeActivityEditor}><X /></button></div>
               <div className="activity-editor-scroll" tabIndex={0} role="region" aria-label="Campos da atividade">
               <div className="form-grid">
                 <label className="wide">Título<input required value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} /></label>
@@ -1250,14 +1260,14 @@ export default function AdminDialog({ publicTurmaId, classNames, quickCreateDate
               </section>}
               {saveError && <p className="form-error" role="alert">{saveError}</p>}
               </div>
-              <div className="form-actions"><button type="button" className="secondary-button" onClick={() => quickEditActivity ? onClose() : setFormOpen(false)}>Cancelar</button><button className="primary-button compact" disabled={busy}>{busy ? <LoaderCircle className="spin" /> : repeatWeekly ? 'Salvar repetição' : 'Salvar atividade'}</button></div>
+              <div className="form-actions"><button type="button" className="secondary-button" onClick={closeActivityEditor}>Cancelar</button><button className="primary-button compact" disabled={busy}>{busy ? <LoaderCircle className="spin" /> : repeatWeekly ? 'Salvar repetição' : 'Salvar atividade'}</button></div>
             </form>
           </div>,
           document.body,
         )}
 
         {closingSuggestion && (
-          <div className="form-overlay">
+          <div className="form-overlay admin-resolution-overlay" role="dialog" aria-modal="true" aria-labelledby="resolution-title">
             <form className="activity-form resolution-form" onSubmit={closeSuggestion} aria-labelledby="resolution-title">
               <div className="form-title">
                 <div><p className="eyebrow dark">SUGESTÃO</p><h3 id="resolution-title">Encerrar sugestão</h3></div>
@@ -1282,7 +1292,7 @@ export default function AdminDialog({ publicTurmaId, classNames, quickCreateDate
           </div>
         )}
       </section>
-    </div>
+    </main>
   )
 }
 

@@ -45,13 +45,15 @@ import { ActivityDetails } from './ActivityDetails'
 import { AgendaGuide, type GuideFeature } from './AgendaGuide'
 import './agendaGuide.css'
 import { readActivityLink } from './activityLinks'
+import { isAdminRoute, legacyAdminUrl } from './adminRoute'
+import { sitePaths } from './sitePaths'
 
 const CompareCalendar = lazy(() => import('./CompareCalendar').then(module => ({ default: module.CompareCalendar })))
 const ProfileDialog = lazy(() => import('./ProfileDialog').then(module => ({ default: module.ProfileDialog })))
 const ClassRequestDialog = lazy(() => import('./ClassRequestDialog').then(module => ({ default: module.ClassRequestDialog })))
 const PollsDialog = lazy(() => import('./PollsDialog').then(module => ({ default: module.PollsDialog })))
 const NoticeBoardDialog = lazy(() => import('./NoticeBoard').then(module => ({ default: module.NoticeBoardDialog })))
-const AdminDialog = lazy(() => import('./AdminDialog'))
+const AdminPage = lazy(() => import('./AdminPage'))
 const KanbanPage = lazy(() => import('./KanbanPage'))
 const ActivityLinkDialog = lazy(() => import('./ActivityLinkDialog').then(module => ({ default: module.ActivityLinkDialog })))
 
@@ -91,7 +93,7 @@ function App() {
   const [linkedActivityId, setLinkedActivityId] = useState(() => readActivityLink(window.location.hash))
   const [dayPreview, setDayPreview] = useState<{ key: string; day: Date; activities: Activity[]; left: number; top: number; width: number } | null>(null)
   const previewCloseTimer = useRef<number | null>(null)
-  const [adminOpen, setAdminOpen] = useState(['#admin', '#representante'].includes(window.location.hash))
+  const [adminOpen, setAdminOpen] = useState(() => isAdminRoute(window.location.pathname))
   const [quickCreateDate, setQuickCreateDate] = useState<string | null>(null)
   const [quickEditActivity, setQuickEditActivity] = useState<Activity | null>(null)
   const [calendarProfile, setCalendarProfile] = useState<AdminProfile | null>(null)
@@ -215,8 +217,8 @@ function App() {
   }, [reduceMotion])
 
   useEffect(() => {
-    document.title = turmaId ? `Agenda — ${turmaId} | Tech 2D` : 'Tech 2D | Agenda'
-  }, [turmaId])
+    document.title = adminOpen ? 'Painel da Agenda | Tech 2D' : turmaId ? `Agenda — ${turmaId} | Tech 2D` : 'Tech 2D | Agenda'
+  }, [adminOpen, turmaId])
 
   useEffect(() => {
     setNotificationsSeenAt(turmaId ? readLastSeen(turmaId) : 0)
@@ -240,12 +242,20 @@ function App() {
 
   useEffect(() => {
     const syncOptionsPage = () => {
+      const redirect = legacyAdminUrl(window.location)
+      if (redirect) window.history.replaceState(null, '', redirect)
+      const isAdmin = isAdminRoute(window.location.pathname)
+      setAdminOpen(isAdmin)
+      if (!isAdmin) {
+        setQuickCreateDate(null)
+        setQuickEditActivity(null)
+      }
       setMoreOptionsOpen(window.location.hash === '#opcoes')
       setKanbanOpen(window.location.hash.split('?')[0] === '#kanban')
       setLinkedMenuDialog(readAgendaMenuDialog(window.location.hash))
       const linkedId = readActivityLink(window.location.hash)
       setLinkedActivityId(linkedId)
-      if (linkedId) { setSelectedDay(null); setDayPreview(null); setAdminOpen(false); setMenuOpen(false) }
+      if (linkedId) { setSelectedDay(null); setDayPreview(null); setMenuOpen(false) }
     }
     window.addEventListener('hashchange', syncOptionsPage)
     window.addEventListener('popstate', syncOptionsPage)
@@ -273,7 +283,6 @@ function App() {
   useEffect(() => {
     if (!linkedMenuDialog) return
     if (!turmaId && ['polls', 'notices', 'suggestActivity', 'notifications'].includes(linkedMenuDialog)) return
-    setAdminOpen(false)
     setMenuOpen(false)
     setSelectedDay(null)
     openMenuDialog(linkedMenuDialog)
@@ -392,8 +401,10 @@ function App() {
   }
 
   const openAdmin = () => {
-    window.location.hash = 'admin'
+    window.history.pushState({ fromAgendaCalendar: true }, '', sitePaths.admin)
+    setDayPreview(null)
     setAdminOpen(true)
+    window.scrollTo(0, 0)
   }
 
   const openMoreOptions = () => {
@@ -431,10 +442,8 @@ function App() {
   }
 
   const closeAdmin = () => {
-    history.replaceState(null, '', `${window.location.pathname}${window.location.search}`)
-    setAdminOpen(false)
-    setQuickCreateDate(null)
-    setQuickEditActivity(null)
+    if (window.history.state?.fromAgendaCalendar) window.history.back()
+    else window.location.assign(sitePaths.agenda)
   }
 
   const menuAction = (action: () => void) => () => {
@@ -456,7 +465,6 @@ function App() {
       requestClass: menuAction(() => openMenuDialog('requestClass')),
       feedback: menuAction(() => openMenuDialog('feedback')),
       mySuggestions: menuAction(() => openMenuDialog('mySuggestions')),
-      admin: menuAction(openAdmin),
       settings: menuAction(() => openMenuDialog('settings')),
       profiles: menuAction(() => openMenuDialog('profiles')),
       help: menuAction(() => openMenuDialog('help')),
@@ -470,7 +478,9 @@ function App() {
 
   function openGuideFeature(feature: GuideFeature) {
     setDocsOpen(false)
-    menuSections.flatMap(section => section.items).find(option => option.id === feature)?.onClick?.()
+    const option = menuSections.flatMap(section => section.items).find(option => option.id === feature)
+    if (option?.href) window.location.assign(option.href)
+    else option?.onClick?.()
   }
 
   function openCalendarFromGuide() {
@@ -503,6 +513,19 @@ function App() {
         </div>
       </section>
     </main>
+  )
+
+  if (adminOpen) return (
+    <div className="app-shell admin-shell">
+      <SiteNavigation active="admin" />
+      <SyncStatus />
+      <DialogLoadBoundary>
+        <Suspense fallback={<main className="main-content"><p role="status">Carregando painel…</p></main>}>
+          <AdminPage publicTurmaId={turmaId} classNames={classNames} quickCreateDate={quickCreateDate} quickEditActivity={quickEditActivity} systemUpdates={systemUpdates} onReturnToCalendar={closeAdmin} />
+        </Suspense>
+      </DialogLoadBoundary>
+      <VLibrasWidget />
+    </div>
   )
 
   return (
@@ -696,7 +719,7 @@ function App() {
 
       {linkedActivityId && <ActivityLinkDialog key={linkedActivityId} id={linkedActivityId} onClose={closeLinkedActivity} onViewCalendar={viewLinkedActivity} />}
 
-      {!turmaId && !kanbanOpen && !linkedActivityId && !activeMenuDialog && !adminOpen && <TurmaPickerModal classNames={classNames} onChoose={choosePreferredTurma} onRequest={() => setClassRequestOpen(true)} onHelp={() => setDocsOpen(true)} />}
+      {!turmaId && !kanbanOpen && !linkedActivityId && !activeMenuDialog && <TurmaPickerModal classNames={classNames} onChoose={choosePreferredTurma} onRequest={() => setClassRequestOpen(true)} onHelp={() => setDocsOpen(true)} />}
 
       {menuOpen && (
         <IntegratedMenu
@@ -763,7 +786,6 @@ function App() {
       )}
 
       {classRequestOpen && <ClassRequestDialog classNames={classNames} onClose={() => setClassRequestOpen(false)} />}
-      {adminOpen && <AdminDialog publicTurmaId={turmaId} classNames={classNames} quickCreateDate={quickCreateDate} quickEditActivity={quickEditActivity} systemUpdates={systemUpdates} onClose={closeAdmin} />}
 
       {showSystemUpdate && unseenSystemUpdate && (
         <SystemUpdateWelcome update={unseenSystemUpdate} onClose={() => {

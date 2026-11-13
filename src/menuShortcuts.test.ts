@@ -18,7 +18,7 @@ it('opens known features directly without accepting arbitrary routes', () => {
     expect(readAgendaMenuDialog(url.hash)).toBe(id)
   }
   expect(new URL(agendaMenuUrl('kanban'), 'https://tech-2d.github.io').hash).toBe('#kanban')
-  expect(new URL(agendaMenuUrl('admin'), 'https://tech-2d.github.io').hash).toBe('#admin')
+  expect(agendaMenuUrl('admin')).toBe('/admin/')
   expect(new URL(agendaMenuUrl('options'), 'https://tech-2d.github.io').hash).toBe('#opcoes')
   for (const hash of ['#menu=unknown', '#menu=admin', '#menu=https://example.com', '#atividade=1']) expect(readAgendaMenuDialog(hash)).toBeNull()
 })

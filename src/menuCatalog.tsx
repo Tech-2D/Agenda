@@ -47,7 +47,7 @@ export function menuOptionSections({ hasTurma, actions, todayClassesUrl, unreadC
         { id: 'requestClass', title: 'Pedir agenda para minha turma', description: 'Solicite a criação de uma agenda para outra sala.', icon: <Plus />, onClick: actions.requestClass },
         { id: 'feedback', title: 'Comentar melhoria', description: 'Converse com a equipe sobre uma ideia para o sistema.', icon: <MessageSquarePlus />, onClick: actions.feedback },
         { id: 'mySuggestions', title: 'Minhas sugestões', description: 'Acompanhe o andamento das ideias que você enviou.', icon: <ListChecks />, onClick: actions.mySuggestions },
-        { id: 'admin', title: 'Sou representante', description: 'Acesse as ferramentas para representantes de turma.', icon: <KeyRound />, onClick: actions.admin },
+        { id: 'admin', title: 'Painel da Agenda', description: 'Acesse as ferramentas de representantes e administradores.', icon: <KeyRound />, href: sitePaths.admin },
       ],
     },
     {
