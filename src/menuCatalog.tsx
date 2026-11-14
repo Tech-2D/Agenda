@@ -14,7 +14,11 @@ export type MoreOption = {
   pendingLabel?: string
 }
 
-export type MoreOptionSection = { title: string; description: string; items: MoreOption[] }
+export type MoreOptionSection = {
+  id: 'estudos' | 'turma' | 'conta' | 'ajuda' | 'outros'
+  title: string
+  items: MoreOption[]
+}
 
 export function menuOptionSections({ hasTurma, actions, todayClassesUrl, unreadCount, hasUnseenUpdate }: {
   hasTurma: boolean
@@ -23,47 +27,52 @@ export function menuOptionSections({ hasTurma, actions, todayClassesUrl, unreadC
   unreadCount: number
   hasUnseenUpdate: boolean
 }): MoreOptionSection[] {
-  const needsTurma = !hasTurma
   const notificationsBadge = unreadCount > 0 ? `${unreadCount} ${unreadCount === 1 ? 'não lida' : 'não lidas'}` : undefined
   return [
     {
-      title: 'Acompanhar a turma',
-      description: 'Avisos e atividades da turma selecionada.',
+      id: 'estudos',
+      title: 'Estudos',
       items: [
-        { id: 'pegaki', title: 'Notaki', description: 'Calcule suas médias e simule notas do Tech.', icon: <Calculator />, href: sitePaths.pegaki },
-        { id: 'teachers', title: 'Cadê o professor?', description: 'Pesquise professores, matérias e salas.', icon: <MapPin />, href: sitePaths.professores },
-        { id: 'notifications', title: 'Notificações', description: 'Veja atividades adicionadas ou alteradas recentemente.', icon: <Bell />, onClick: actions.notifications, pendingLabel: notificationsBadge },
-        { id: 'updates', title: 'Atualizações', description: 'Confira o que mudou no sistema da Agenda.', icon: <History />, onClick: actions.updates, pendingLabel: hasUnseenUpdate ? 'Nova atualização' : undefined },
-        { id: 'notices', title: 'Quadro de avisos', description: needsTurma ? 'Escolha uma turma para abrir os avisos.' : 'Consulte comunicados importantes da turma.', icon: <StickyNote />, onClick: actions.notices, disabled: needsTurma },
-        { id: 'suggestActivity', title: 'Sugerir atividade', description: needsTurma ? 'Escolha uma turma antes de enviar uma sugestão.' : 'Peça para incluir uma atividade na agenda.', icon: <Lightbulb />, onClick: actions.suggestActivity, disabled: needsTurma },
-        { id: 'todayClasses', title: 'Aulas de hoje', description: needsTurma ? 'Escolha uma turma para consultar as aulas.' : 'Abra a localização das aulas de hoje.', icon: <CalendarClock />, href: todayClassesUrl, disabled: needsTurma },
+        { id: 'teachers', title: 'Professores', description: 'Busque professores, matérias e salas.', icon: <MapPin />, href: sitePaths.professores },
+        { id: 'todayClasses', title: 'Aulas de hoje', description: hasTurma ? 'Consulte os horários e salas de hoje.' : 'Defina a turma padrão em “Minha turma”.', icon: <CalendarClock />, href: todayClassesUrl, disabled: !hasTurma },
+        { id: 'pegaki', title: 'Notaki', description: 'Calcule médias e simule notas.', icon: <Calculator />, href: sitePaths.pegaki },
+        { id: 'kanban', title: 'Kanban', description: 'Organize suas tarefas em quadros privados.', icon: <LayoutGrid />, onClick: actions.kanban },
       ],
     },
     {
-      title: 'Participar e colaborar',
-      description: 'Ajude a melhorar e ampliar a Agenda.',
+      id: 'turma',
+      title: 'Minha turma',
       items: [
-        { id: 'requestClass', title: 'Pedir agenda para minha turma', description: 'Solicite a criação de uma agenda para outra sala.', icon: <Plus />, onClick: actions.requestClass },
-        { id: 'feedback', title: 'Comentar melhoria', description: 'Converse com a equipe sobre uma ideia para o sistema.', icon: <MessageSquarePlus />, onClick: actions.feedback },
-        { id: 'mySuggestions', title: 'Minhas sugestões', description: 'Acompanhe o andamento das ideias que você enviou.', icon: <ListChecks />, onClick: actions.mySuggestions },
-        { id: 'admin', title: 'Painel da Agenda', description: 'Acesse as ferramentas de representantes e administradores.', icon: <KeyRound />, href: sitePaths.admin },
+        { id: 'notifications', title: 'Notificações da turma', description: 'Veja atividades novas ou alteradas.', icon: <Bell />, onClick: actions.notifications, pendingLabel: notificationsBadge },
+        { id: 'notices', title: 'Quadro de avisos', description: hasTurma ? 'Consulte os comunicados da turma.' : 'Selecione sua turma para ver os comunicados.', icon: <StickyNote />, onClick: actions.notices, disabled: !hasTurma },
+        { id: 'suggestActivity', title: 'Sugerir atividade', description: hasTurma ? 'Peça para incluir uma atividade na Agenda.' : 'Selecione sua turma para sugerir uma atividade.', icon: <Lightbulb />, onClick: actions.suggestActivity, disabled: !hasTurma },
+        { id: 'requestClass', title: 'Pedir agenda para minha turma', description: 'Solicite uma agenda para uma turma que ainda não aparece.', icon: <Plus />, onClick: actions.requestClass },
       ],
     },
     {
-      title: 'Conta e ajuda',
-      description: 'Personalize sua experiência e encontre orientações.',
+      id: 'conta',
+      title: 'Conta e atalhos',
       items: [
-        { id: 'kanban', title: 'Meu Kanban', description: 'Entre com sua conta para organizar tarefas em quadros privados e personalizáveis.', icon: <LayoutGrid />, onClick: actions.kanban },
-        { id: 'settings', title: 'Configurações', description: 'Ajuste tema, tamanho do texto e acessibilidade.', icon: <Settings />, onClick: actions.settings },
+        { id: 'settings', title: 'Configurações', description: 'Ajuste o tema, o tamanho do texto e a acessibilidade.', icon: <Settings />, onClick: actions.settings },
         { id: 'profiles', title: 'Perfis da comunidade', description: 'Edite seu perfil e conheça outras pessoas.', icon: <UserRound />, onClick: actions.profiles },
-        { id: 'help', title: 'Como funciona', description: 'Entenda os recursos e como usar a Agenda.', icon: <BookOpen />, onClick: actions.help },
       ],
     },
     {
-      title: 'Outros projetos',
-      description: 'Acesse outras ferramentas da comunidade 2ºD Tech.',
+      id: 'ajuda',
+      title: 'Ajuda e sugestões',
       items: [
-        { id: 'pong', title: 'Liga Germinare Pong', description: 'Acesse a liga de tênis de mesa.', icon: <TableTennisPaddle />, href: 'https://ligagerminare-pong.vercel.app/' },
+        { id: 'help', title: 'Como funciona', description: 'Veja como usar a Agenda.', icon: <BookOpen />, onClick: actions.help },
+        { id: 'updates', title: 'Histórico de atualizações', description: 'Confira as mudanças recentes no portal.', icon: <History />, onClick: actions.updates, pendingLabel: hasUnseenUpdate ? 'Nova atualização' : undefined },
+        { id: 'feedback', title: 'Comentar melhoria', description: 'Envie uma ideia para a equipe.', icon: <MessageSquarePlus />, onClick: actions.feedback },
+        { id: 'mySuggestions', title: 'Minhas sugestões', description: 'Acompanhe as ideias que você enviou.', icon: <ListChecks />, onClick: actions.mySuggestions },
+      ],
+    },
+    {
+      id: 'outros',
+      title: 'Outros recursos',
+      items: [
+        { id: 'admin', title: 'Painel da Agenda', description: 'Acesse o painel ou solicite acesso de representante.', icon: <KeyRound />, href: sitePaths.admin },
+        { id: 'pong', title: 'Liga Germinare Pong', description: 'Conheça a liga de tênis de mesa.', icon: <TableTennisPaddle />, href: 'https://ligagerminare-pong.vercel.app/' },
       ],
     },
   ]

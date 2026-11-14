@@ -52,7 +52,7 @@ export function AgendaGuide({ hasClass, onClose, onCalendar, onFeature }: {
             </section>
             <section className="agenda-guide-card">
               <Users size={18} aria-hidden="true" /><h3>Publicar atividades da turma</h3>
-              <p>Representantes aprovados podem cadastrar e editar atividades da própria turma. Para sugerir uma atividade, abra <b>Sugerir atividade</b> em <b>Ver mais opções</b>.</p>
+              <p>Representantes aprovados podem cadastrar e editar atividades da própria turma. Em <b>Opções do portal</b>, abra <b>Minha turma</b> e escolha <b>Sugerir atividade</b>.</p>
               <button type="button" className="secondary-button" onClick={() => onFeature('admin')}>Sou representante</button>
             </section>
           </div>

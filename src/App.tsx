@@ -543,7 +543,6 @@ function App() {
           shortcuts={menuShortcuts}
           onToggleShortcut={toggleMenuShortcut}
           onResetShortcuts={resetMenuShortcuts}
-          onOpenGuide={() => setDocsOpen(true)}
         />
       ) : compareMode ? (
       <main id="inicio" className="main-content">
@@ -700,7 +699,7 @@ function App() {
 
       {linkedActivityId && <ActivityLinkDialog key={linkedActivityId} id={linkedActivityId} onClose={closeLinkedActivity} onViewCalendar={viewLinkedActivity} />}
 
-      {!turmaId && !kanbanOpen && !linkedActivityId && !activeMenuDialog && !menuOpen && <TurmaPickerModal classNames={classNames} onChoose={choosePreferredTurma} onRequest={() => setClassRequestOpen(true)} onHelp={() => setDocsOpen(true)} />}
+      {!turmaId && !kanbanOpen && !moreOptionsOpen && !linkedActivityId && !activeMenuDialog && !menuOpen && <TurmaPickerModal classNames={classNames} onChoose={choosePreferredTurma} onRequest={() => setClassRequestOpen(true)} onHelp={() => setDocsOpen(true)} />}
 
       {menuOpen && (
         <IntegratedMenu
@@ -823,7 +822,7 @@ function VLibrasWidget() {
   )
 }
 
-function MoreOptionsPage({ turmaId, classNames, onChooseTurma, onBack, sections, shortcuts, onToggleShortcut, onResetShortcuts, onOpenGuide }: {
+function MoreOptionsPage({ turmaId, classNames, onChooseTurma, onBack, sections, shortcuts, onToggleShortcut, onResetShortcuts }: {
   turmaId: string | null
   classNames: string[]
   onChooseTurma: (turmaId: string) => void
@@ -832,55 +831,62 @@ function MoreOptionsPage({ turmaId, classNames, onChooseTurma, onBack, sections,
   shortcuts: MenuShortcutId[]
   onToggleShortcut: (id: MenuShortcutId) => void
   onResetShortcuts: () => void
-  onOpenGuide: () => void
 }) {
+  function goToSection(id: MoreOptionSection['id']) {
+    const heading = document.getElementById(`opcoes-${id}`)
+    heading?.focus({ preventScroll: true })
+    heading?.scrollIntoView({ block: 'start' })
+  }
+
   return (
     <main className="more-options-page" id="mais-opcoes">
       <button type="button" className="more-options-back" onClick={onBack}><ChevronLeft size={18} /> Voltar para a agenda</button>
       <header className="more-options-heading">
-        <div>
-          <span className="more-options-eyebrow">AGENDA DA TURMA</span>
-          <h1>Mais opções</h1>
-          <p>Abra um recurso pelos cartões abaixo. Marque os seus favoritos para encontrá-los no menu lateral.</p>
-          <button type="button" className="more-options-back" onClick={onOpenGuide}><BookOpen size={16} /> Comece por aqui</button>
-        </div>
-        <span className="more-options-turma">{turmaId ?? 'Nenhuma turma selecionada'}</span>
+        <h1>Opções do portal</h1>
       </header>
-      <section className="menu-customize-note" aria-labelledby="preferred-class-title">
-        <div><h2 id="preferred-class-title">Sua turma</h2>
-          <p>Escolha sua turma para abrir a Agenda nela neste navegador. O filtro da Agenda pode ser alterado sem mudar esta preferência.</p>
-        </div>
-        <label className="turma-select-inline" aria-label="Sua turma">
-          <select value={turmaId ?? ''} onChange={(event) => onChooseTurma(event.target.value)}>
-            <option value="" disabled>Selecione uma turma</option>
-            {turmaId && !classNames.includes(turmaId) && <option value={turmaId}>{turmaId}</option>}
-            {classNames.map((name) => <option key={name} value={name}>{name}</option>)}
-          </select>
-        </label>
-      </section>
-      <section className="menu-customize-note" aria-labelledby="customize-menu-title">
-        <div><h2 id="customize-menu-title">Seu menu lateral</h2>
-          <p>Marque nos cartões os atalhos que quer no menu. A seleção e a ordem valem para a Agenda e o Cadê o professor? neste navegador.</p>
-          <span role="status" aria-live="polite">{shortcuts.length} {shortcuts.length === 1 ? 'atalho selecionado' : 'atalhos selecionados'}</span>
-        </div>
-        <button type="button" className="secondary-button" onClick={onResetShortcuts}>Restaurar padrão</button>
-      </section>
+      <nav className="more-options-index" aria-label="Seções das opções">
+        {sections.map(section => (
+          <button key={section.id} type="button" onClick={() => goToSection(section.id)}>
+            {section.title}
+          </button>
+        ))}
+      </nav>
       <div className="more-options-sections">
-        {sections.map((section, sectionIndex) => (
-          <section className="more-options-section" key={section.title} aria-labelledby={`options-${sectionIndex}`}>
-            <div className="more-options-section-heading">
-              <h2 id={`options-${sectionIndex}`}>{section.title}</h2>
-              <p>{section.description}</p>
-            </div>
-            <div className="more-options-grid">
-              {section.items.map(option => <div className={`more-option-item${shortcuts.includes(option.id) ? ' pinned' : ''}`} key={option.id}>
-                <MoreOptionCard {...option} />
+        {sections.map(section => (
+          <section className="more-options-section" key={section.id} aria-labelledby={`opcoes-${section.id}`}>
+            <h2 id={`opcoes-${section.id}`} tabIndex={-1}>{section.title}</h2>
+            {section.id === 'turma' && (
+              <div className="menu-customize-note">
+                <div><h3 id="preferred-class-title">Turma padrão</h3>
+                  <p>A Agenda abre nesta turma quando você usa este navegador.</p>
+                </div>
+                <div className="turma-select-inline">
+                  <select aria-labelledby="preferred-class-title" value={turmaId ?? ''} onChange={(event) => onChooseTurma(event.target.value)}>
+                    <option value="" disabled>Selecione uma turma</option>
+                    {turmaId && !classNames.includes(turmaId) && <option value={turmaId}>{turmaId}</option>}
+                    {classNames.map(name => <option key={name} value={name}>{name}</option>)}
+                  </select>
+                </div>
+              </div>
+            )}
+            {section.id === 'conta' && (
+              <div className="menu-customize-note">
+                <div><h3>Atalhos do menu lateral</h3>
+                  <p>Marque “No menu” nos recursos que quer ter à mão neste navegador.</p>
+                  <span role="status">{shortcuts.length} {shortcuts.length === 1 ? 'atalho' : 'atalhos'} no menu</span>
+                </div>
+                <button type="button" className="secondary-button" onClick={onResetShortcuts}>Restaurar atalhos padrão</button>
+              </div>
+            )}
+            <ul className="more-options-grid">
+              {section.items.map(option => <li className="more-option-item" key={option.id}>
+                <MoreOptionLink {...option} />
                 <label className="more-option-pin">
                   <input type="checkbox" checked={shortcuts.includes(option.id)} onChange={() => onToggleShortcut(option.id)} aria-label={`Mostrar ${option.title} no menu lateral`} />
-                  <span>{shortcuts.includes(option.id) ? 'No menu lateral' : 'Adicionar ao menu lateral'}</span>
+                  <span>No menu</span>
                 </label>
-              </div>)}
-            </div>
+              </li>)}
+            </ul>
           </section>
         ))}
       </div>
@@ -888,7 +894,8 @@ function MoreOptionsPage({ turmaId, classNames, onChooseTurma, onBack, sections,
   )
 }
 
-function MoreOptionCard({ title, description, icon, onClick, href, disabled, pendingLabel }: MoreOption) {
+function MoreOptionLink({ title, description, icon, onClick, href, disabled, pendingLabel }: MoreOption) {
+  const external = href && !href.startsWith('/')
   const content = (
     <>
       <span className="more-option-icon" aria-hidden="true">{icon}</span>
@@ -899,12 +906,12 @@ function MoreOptionCard({ title, description, icon, onClick, href, disabled, pen
         </span>
         <small>{description}</small>
       </span>
-      {href ? <ExternalLink size={16} className="more-option-end" aria-hidden="true" /> : <ChevronRight size={17} className="more-option-end" aria-hidden="true" />}
+      {external ? <ExternalLink size={16} className="more-option-end" aria-hidden="true" /> : <ChevronRight size={17} className="more-option-end" aria-hidden="true" />}
     </>
   )
 
-  if (href) return <a className="more-option-card" href={href} target={href.startsWith('/') ? undefined : '_blank'} rel={href.startsWith('/') ? undefined : 'noopener noreferrer'}>{content}</a>
-  return <button type="button" className="more-option-card" onClick={onClick} disabled={disabled}>{content}</button>
+  if (href) return <a className="more-option-link" href={href} target={external ? '_blank' : undefined} rel={external ? 'noopener noreferrer' : undefined}>{content}</a>
+  return <button type="button" className="more-option-link" onClick={onClick} disabled={disabled}>{content}</button>
 }
 
 function ConfigDialog({

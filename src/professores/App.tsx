@@ -47,8 +47,8 @@ import { importDocumentId, parseSchedulesJson } from './importSchedules'
 import { isHappeningNow, matchesSearch, timeToMinutes } from './schedule'
 import { WEEKDAYS, type Schedule, type ScheduleInput } from './types'
 import { readClassParam, readViewParam, type View } from './viewParams'
-import { IntegratedMenu } from './IntegratedMenu'
-import { menuOptionSections } from './menuCatalog'
+import { IntegratedMenu } from '../IntegratedMenu'
+import { menuOptionSections } from '../menuCatalog'
 import { agendaMenuUrl, MENU_SHORTCUTS_KEY, readMenuShortcuts, storeMenuShortcuts } from './menuShortcuts'
 import { FONT_SCALES, FONT_SCALE_LABELS, readStoredFontScale, readStoredHighContrast, readStoredReduceMotion, storeFontScale, storeHighContrast, storeReduceMotion, type FontScale } from './accessibility'
 import {
@@ -325,7 +325,7 @@ function App() {
             <button type="button" onClick={() => { setMenuOpen(false); openAdmin() }}><KeyRound size={18} /> Área administrativa</button>
             <a href={agendaMenuUrl()}><CalendarDays size={18} /> Agenda da turma <ArrowRight size={15} className="menu-external-icon" /></a>
           </>}
-          options={menuOptionSections({ hasTurma: true, actions: {} }).flatMap(section => section.items.map(option => {
+          options={menuOptionSections({ hasTurma: true, actions: {}, unreadCount: 0, hasUnseenUpdate: false }).flatMap(section => section.items.map(option => {
             if (option.id === 'settings') return { ...option, onClick: () => { setMenuOpen(false); setConfigOpen(true) } }
             if (option.id === 'profiles') return { ...option, onClick: () => { setMenuOpen(false); setProfilesOpen(true) } }
             if (option.id === 'todayClasses') return { ...option, onClick: () => { setView('today'); setMenuOpen(false) } }

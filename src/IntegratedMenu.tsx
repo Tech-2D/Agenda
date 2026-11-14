@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useId, useState, type ReactNode } from 'react'
 import { ArrowDown, ArrowUp, Check, ChevronRight, ExternalLink, GripVertical, LayoutGrid, X } from 'lucide-react'
 import type { MenuShortcutId } from './menuShortcuts'
 import type { MoreOption } from './menuCatalog'
@@ -15,6 +15,8 @@ export function IntegratedMenu({ onClose, options, shortcuts, onOpenMoreOptions,
   const [draggedId, setDraggedId] = useState<MenuShortcutId | null>(null)
   const [dropTarget, setDropTarget] = useState<MenuShortcutId | null>(null)
   const [orderStatus, setOrderStatus] = useState('')
+  const titleId = useId()
+  const shortcutsId = useId()
   const hasPendingOutsideShortcuts = options.some(option => option.pendingLabel && !shortcuts.includes(option.id))
 
   function moveShortcut(id: MenuShortcutId, targetId: MenuShortcutId) {
@@ -35,20 +37,26 @@ export function IntegratedMenu({ onClose, options, shortcuts, onOpenMoreOptions,
 
   return (
     <div className="drawer-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
-      <aside className="side-menu" role="dialog" aria-modal="true" aria-labelledby="menu-title">
+      <aside className="side-menu" role="dialog" aria-modal="true" aria-labelledby={titleId}>
         <div className="dialog-header">
-          <h2 id="menu-title">Menu</h2>
+          <h2 id={titleId}>Menu</h2>
           <button className="icon-button" onClick={onClose} aria-label="Fechar"><X /></button>
         </div>
-        {localLinks && <nav className="side-menu-list side-menu-local" aria-label="Neste site">{localLinks}</nav>}
-        {shortcuts.length > 1 && <div className="side-menu-organize">
-          <button type="button" className="secondary-button" aria-pressed={organizing} onClick={() => { setOrganizing(!organizing); setDraggedId(null); setDropTarget(null) }}>
-            {organizing ? <Check size={16} /> : <GripVertical size={16} />}{organizing ? 'Concluir organização' : 'Organizar atalhos'}
-          </button>
+        {localLinks && <nav className="side-menu-list side-menu-local" aria-label="Acesso rápido">
+          <h3 className="side-menu-section-title">Acesso rápido</h3>
+          {localLinks}
+        </nav>}
+        <div className="side-menu-organize">
+          <div className="side-menu-section-heading">
+            <h3 id={shortcutsId} className="side-menu-section-title">Seus atalhos</h3>
+            {shortcuts.length > 1 && <button type="button" className="secondary-button" aria-pressed={organizing} onClick={() => { setOrganizing(!organizing); setDraggedId(null); setDropTarget(null) }}>
+              {organizing ? <Check size={16} /> : <GripVertical size={16} />}{organizing ? 'Concluir' : 'Reordenar'}
+            </button>}
+          </div>
           {organizing && <p>Arraste pela alça ou use as setas. A ordem é salva automaticamente.</p>}
-        </div>}
+        </div>
         <span className="sr-only" role="status" aria-live="polite">{orderStatus}</span>
-        <nav className="side-menu-list" aria-label="Atalhos principais">
+        <nav className="side-menu-list" aria-labelledby={shortcutsId}>
           {shortcuts.map((id, index) => {
             const option = options.find(item => item.id === id)
             if (!option) return null
@@ -72,15 +80,14 @@ export function IntegratedMenu({ onClose, options, shortcuts, onOpenMoreOptions,
               ? <a key={id} className="side-menu-external" href={option.href} target={option.href.startsWith('/') ? undefined : '_blank'} rel={option.href.startsWith('/') ? undefined : 'noopener noreferrer'} onClick={onClose}>{content}</a>
               : <button type="button" key={id} onClick={option.onClick} disabled={option.disabled} title={option.disabled ? option.description : undefined}>{content}</button>
           })}
-          {shortcuts.length === 0 && <p className="side-menu-empty">Escolha seus atalhos em “Ver mais opções”.</p>}
+          {shortcuts.length === 0 && <p className="side-menu-empty">Adicione atalhos em “Opções do portal”.</p>}
         </nav>
         <div className="side-menu-more">
-          <p>Precisa de outra ferramenta?</p>
           <button type="button" className="side-menu-more-button" onClick={onOpenMoreOptions}>
             <span className="side-menu-more-icon"><LayoutGrid size={19} /></span>
             <span className="side-menu-more-copy">
-              <strong>Ver mais opções</strong>
-              {hasPendingOutsideShortcuts ? <span className="menu-pending-badge">Há novidades</span> : <small>Todos os recursos e atalhos compartilhados</small>}
+              <strong>Opções do portal</strong>
+              {hasPendingOutsideShortcuts && <span className="menu-pending-badge">Há novidades</span>}
             </span>
             <ChevronRight size={18} aria-hidden="true" />
           </button>

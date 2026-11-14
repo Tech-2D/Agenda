@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { createUserWithEmailAndPassword, onAuthStateChanged, signInWithEmailAndPassword } from 'firebase/auth'
 import { FirebaseError } from 'firebase/app'
-import { ArrowRight, CalendarDays, Calculator, Columns3, Eye, EyeOff, MapPin } from 'lucide-react'
+import { ArrowRight, CalendarDays, Calculator, Columns3, Eye, EyeOff, MapPin, ShieldCheck } from 'lucide-react'
 import { auth } from './firebase'
 import { requestPasswordReset } from './passwordReset'
 import './siteSession.css'
@@ -22,7 +22,15 @@ function accountError(error: unknown, mode: Mode) {
 export function SiteSession({ destination, children }: { destination: string; children: ReactNode }) {
   const [session, setSession] = useState<string | null | undefined>()
   useEffect(() => onAuthStateChanged(auth, user => setSession(user && !user.isAnonymous ? user.uid : null), () => setSession(null)), [])
-  if (session === undefined) return <main className="site-entry-check" role="status">Verificando sua sessão…</main>
+  if (session === undefined) return (
+    <main className="site-entry-check">
+      <div className="site-entry-check-card" role="status">
+        <span className="site-entry-check-icon" aria-hidden="true"><ShieldCheck size={28} strokeWidth={1.8} /></span>
+        <span className="site-entry-check-brand" aria-hidden="true">Tech 2D</span>
+        <p>Verificando sua sessão…</p>
+      </div>
+    </main>
+  )
   return session ? <div key={session}>{children}</div> : <AccountEntry destination={destination} />
 }
 
