@@ -4,14 +4,15 @@ import { expect, it } from 'vitest'
 import { SiteNavigation } from './SiteNavigation'
 
 it('connects all pages on the same origin and identifies the current page', () => {
-  for (const active of ['agenda', 'professores', 'pegaki'] as const) {
+  for (const active of ['agenda', 'professores', 'pegaki', 'kanban'] as const) {
     const html = renderToStaticMarkup(createElement(SiteNavigation, { active }))
     expect(html).toContain('href="/"')
     expect(html).toContain('href="/professores/"')
     expect(html).toContain('href="/pegaki/"')
+    expect(html).toContain('href="/#kanban"')
     expect(html).not.toContain('target=')
     expect(html.match(/aria-current="page"/g)).toHaveLength(1)
-    expect(html).toContain(`href="${active === 'agenda' ? '/' : `/${active}/`}" aria-current="page"`)
+    expect(html).toContain(`href="${active === 'agenda' ? '/' : active === 'kanban' ? '/#kanban' : `/${active}/`}" aria-current="page"`)
   }
 })
 

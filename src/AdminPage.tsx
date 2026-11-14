@@ -1,16 +1,13 @@
 import { type FormEvent, type ReactNode, useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowLeft, ArrowRight, BarChart3, Calendar, CalendarDays, Check, DoorOpen, Edit3, ExternalLink, Globe, History, KeyRound, Lightbulb, ListChecks, LoaderCircle, LogOut, Megaphone, MessageSquarePlus, MessagesSquare, Plus, Paperclip, Repeat, ShieldCheck, HardDrive, StickyNote, Trash2, UserRound, Users, X } from 'lucide-react'
-import { createUserWithEmailAndPassword, onAuthStateChanged, signInWithEmailAndPassword, type User } from 'firebase/auth'
+import { ArrowLeft, BarChart3, Calendar, CalendarDays, Check, DoorOpen, Edit3, ExternalLink, Globe, History, Lightbulb, ListChecks, LoaderCircle, LogOut, Megaphone, MessageSquarePlus, MessagesSquare, Plus, Paperclip, Repeat, ShieldCheck, HardDrive, StickyNote, Trash2, UserRound, Users, X } from 'lucide-react'
+import { onAuthStateChanged, reload, sendEmailVerification, type User } from 'firebase/auth'
 import { signOut } from './sessionActions'
-import { requestPasswordReset } from './passwordReset'
 import { StorageAdminPanel } from './StorageAdminPanel'
 import { RepresentativesPanel } from './RepresentativesPanel'
 import { SiteAccessPanel } from './SiteAccessPanel'
 import { AgendaUsersPanel } from './AgendaUsersPanel'
-import { observePublicInfo } from './publicInfo'
 import { ATTACHMENTS_ENABLED, deleteActivityWithAttachments, formatAttachmentSize, MAX_ATTACHMENTS, removeAttachment, uploadAttachment, validateAttachment } from './attachments'
-import { FirebaseError } from 'firebase/app'
 import { addDoc, collection, deleteDoc, doc, knownDocument, onSnapshot, query, serverTimestamp, setDoc, SQL_ENABLED, updateDoc, where, writeBatch } from './dataClient'
 import { enqueueDocument, mergeQueuedActivities, pendingActivityStates, queuedDocument, QUEUED_CHANGED } from './queuedWrites'
 import { auth, db } from './firebase'
@@ -57,20 +54,12 @@ type AdminPageProps = {
 }
 
 export default function AdminPage({ publicTurmaId, classNames, quickCreateDate, quickEditActivity, systemUpdates, onReturnToCalendar }: AdminPageProps) {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [authError, setAuthError] = useState('')
-  const [authNotice, setAuthNotice] = useState('')
-  const [entryMode, setEntryMode] = useState<'login' | 'request'>(() =>
-    new URLSearchParams(window.location.search).get('acesso') === 'solicitar' ? 'request' : 'login',
-  )
-  const [requestEmail, setRequestEmail] = useState('')
+  const [showRequest, setShowRequest] = useState(() => new URLSearchParams(window.location.search).get('acesso') === 'solicitar')
   const [requestTurma, setRequestTurma] = useState<string>(publicTurmaId ?? CLASS_NAMES[0])
   const [requestId, setRequestId] = useState(readRepresentativeRequestId)
   const [trackingCode, setTrackingCode] = useState('')
   const [requestRecord, setRequestRecord] = useState<RepresentativeRequest | null>(null)
   const [requestError, setRequestError] = useState('')
-  const [registerPassword, setRegisterPassword] = useState('')
   const [accessError, setAccessError] = useState('')
   const [busy, setBusy] = useState(false)
   const [user, setUser] = useState<User | null>(null)
@@ -217,16 +206,16 @@ export default function AdminPage({ publicTurmaId, classNames, quickCreateDate, 
   }, [quickEditActivity, profile])
 
   useEffect(() => {
-    if (!requestId) {
+    if (!requestId || !user || !showRequest) {
       setRequestRecord(null)
       return
     }
     setRequestRecord(null)
-    return observePublicInfo<{ request: { status: RepresentativeRequest['status']; turmaId: string } | null }>({ action: 'request-status', id: requestId }, data => {
-      setRequestRecord(data.request ? { id: requestId, email: '', ...data.request } : null)
-      setRequestError(data.request ? '' : 'Solicitação não encontrada. Envie uma nova solicitação.')
-    }, () => setRequestError('Não foi possível consultar sua solicitação. Tente novamente mais tarde.'))
-  }, [requestId])
+    return onSnapshot(doc(db, 'representativeRequests', requestId), snapshot => {
+      setRequestRecord(snapshot.exists() ? { id: requestId, ...snapshot.data() } as RepresentativeRequest : null)
+      setRequestError(snapshot.exists() ? '' : 'Solicitação não encontrada para esta conta.')
+    }, () => setRequestError('Não foi possível consultar sua solicitação nesta conta.'))
+  }, [requestId, user, showRequest])
 
   useEffect(() => {
     if (!profile || !managedTurma) return
@@ -322,49 +311,10 @@ export default function AdminPage({ publicTurmaId, classNames, quickCreateDate, 
     .filter((item) => item.status !== 'pendente' && !item.closedAt)
     .sort((a, b) => a.date.localeCompare(b.date)), [managedSuggestions])
 
-  async function logIn(event: FormEvent) {
-    event.preventDefault()
-    setBusy(true)
-    setAuthError('')
-    setAuthNotice('')
-    try {
-      await signInWithEmailAndPassword(auth, email.trim(), password)
-      setPassword('')
-    } catch (error) {
-      if (error instanceof FirebaseError && error.code === 'auth/too-many-requests') {
-        setAuthError('Muitas tentativas de entrada. Aguarde um pouco antes de tentar novamente.')
-      } else if (error instanceof FirebaseError && error.code === 'auth/network-request-failed') {
-        setAuthError('Não foi possível conectar ao Firebase. Confira sua internet e tente novamente.')
-      } else {
-        setAuthError('E-mail ou senha inválidos.')
-      }
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  async function resetPassword() {
-    const normalizedEmail = normalizeRepresentativeEmail(email)
-    if (!isValidRepresentativeEmail(normalizedEmail)) {
-      setAuthError('Informe seu e-mail para recuperar a senha.')
-      return
-    }
-    setBusy(true)
-    setAuthError('')
-    setAuthNotice('')
-    try {
-      await requestPasswordReset(normalizedEmail)
-      setAuthNotice('Se houver uma conta com esse e-mail, você receberá um link para redefinir a senha. Confira também a pasta de spam ou lixo eletrônico.')
-    } catch {
-      setAuthError('Não foi possível enviar o link agora. Tente novamente mais tarde.')
-    } finally {
-      setBusy(false)
-    }
-  }
-
   async function submitRepresentativeRequest(event: FormEvent) {
     event.preventDefault()
-    const normalizedEmail = normalizeRepresentativeEmail(requestEmail)
+    if (!user?.email) return
+    const normalizedEmail = normalizeRepresentativeEmail(user.email)
     if (!isValidRepresentativeEmail(normalizedEmail)) {
       setRequestError('Informe um e-mail válido.')
       return
@@ -380,7 +330,6 @@ export default function AdminPage({ publicTurmaId, classNames, quickCreateDate, 
       })
       storeRepresentativeRequestId(created.id)
       setRequestId(created.id)
-      setRequestEmail(normalizedEmail)
     } catch {
       setRequestError('Não foi possível enviar a solicitação. Confira sua conexão e tente novamente.')
     } finally {
@@ -400,28 +349,16 @@ export default function AdminPage({ publicTurmaId, classNames, quickCreateDate, 
     setRequestId(code)
   }
 
-  async function registerRepresentative(event: FormEvent) {
-    event.preventDefault()
-    if (!requestRecord || requestRecord.status !== 'aprovada') return
+  async function verifyRepresentativeEmail() {
+    if (!user) return
     setBusy(true)
     setRequestError('')
+    setNotice('')
     try {
-      const registrationEmail = normalizeRepresentativeEmail(requestEmail)
-      if (!isValidRepresentativeEmail(registrationEmail)) {
-        setRequestError('Informe o mesmo e-mail usado na solicitação.')
-        return
-      }
-      // Account creation never grants representative access; the private invite check does.
-      await createUserWithEmailAndPassword(auth, registrationEmail, registerPassword)
-      setRegisterPassword('')
-    } catch (error) {
-      if (error instanceof FirebaseError && error.code === 'auth/email-already-in-use') {
-        setRequestError('Este e-mail já tem uma conta. Entre com sua senha ou use “Esqueci minha senha”.')
-      } else if (error instanceof FirebaseError && error.code === 'auth/weak-password') {
-        setRequestError('Escolha uma senha mais forte, com pelo menos 6 caracteres.')
-      } else {
-        setRequestError('Não foi possível criar a conta. Tente novamente; se a conta já foi criada, entre com ela.')
-      }
+      await sendEmailVerification(user)
+      setNotice('Enviamos um link de confirmação. Abra o link e clique em Atualizar acesso.')
+    } catch {
+      setRequestError('Não foi possível enviar o link agora. Tente novamente mais tarde.')
     } finally {
       setBusy(false)
     }
@@ -431,11 +368,14 @@ export default function AdminPage({ publicTurmaId, classNames, quickCreateDate, 
     if (!user) return
     setBusy(true)
     setAccessError('')
+    setRequestError('')
     try {
+      await reload(user)
+      await user.getIdToken(true)
       const data = await loadOrClaimAdminProfile(user)
       setProfile(data)
       if (data?.role === 'representante' && data.turmaId) setManagedTurma(data.turmaId)
-      if (!data) setAccessError('Esta conta ainda não foi aprovada para representar uma turma.')
+      if (!data) setRequestError(user.emailVerified ? 'Ainda não há acesso aprovado para esta conta.' : 'Confirme seu e-mail antes de ativar a representação.')
     } catch {
       setAccessError('Não foi possível conferir o acesso agora. Tente novamente.')
     } finally {
@@ -851,25 +791,10 @@ export default function AdminPage({ publicTurmaId, classNames, quickCreateDate, 
         <div className={authChecked && (!user || !profile || turmaMismatch) ? 'admin-entry-card' : undefined}>
         {!authChecked ? (
           <div className="state-card"><LoaderCircle className="spin" /><p>Verificando acesso…</p></div>
-        ) : !user && entryMode === 'login' ? (
-          <form className="login-form" onSubmit={logIn}>
-            <div className="login-symbol"><KeyRound /></div>
-            <h3>Entre para gerenciar a agenda</h3>
-            <p>Use o e-mail e a senha da sua conta.</p>
-            <label htmlFor="admin-email">E-mail</label>
-            <input id="admin-email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="username" autoFocus required />
-            <label htmlFor="admin-password">Senha</label>
-            <input id="admin-password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" required />
-            {authError && <p className="form-error">{authError}</p>}
-            {authNotice && <p className="access-notice" role="status">{authNotice}</p>}
-            <button className="primary-button" disabled={busy}>{busy ? <LoaderCircle className="spin" /> : <>Entrar <ArrowRight /></>}</button>
-            <button type="button" className="access-switch" onClick={resetPassword} disabled={busy}>Esqueci minha senha</button>
-            <button type="button" className="access-switch" onClick={() => setEntryMode('request')}>Quer representar sua turma? Solicite acesso</button>
-          </form>
-        ) : !user ? (
+        ) : user && !profile && showRequest ? (
           <div className="representative-entry">
             <div className="access-steps" aria-label="Etapas para representar uma turma">
-              <span>1. Solicite</span><span>2. Aguarde aprovação</span><span>3. Crie sua conta</span>
+              <span>1. Solicite</span><span>2. Aguarde aprovação</span><span>3. Confirme seu e-mail</span>
             </div>
             <h3>Representar minha turma</h3>
             {requestRecord ? (
@@ -880,24 +805,14 @@ export default function AdminPage({ publicTurmaId, classNames, quickCreateDate, 
                 <p className="request-code">Código da solicitação: <code>{requestRecord.id}</code></p>
                 {requestRecord.status === 'pendente' && <p>Seu pedido está em análise. Esta tela atualiza quando o administrador responder.</p>}
                 {requestRecord.status === 'rejeitada' && <p>Esta solicitação não foi aprovada. Se necessário, envie uma nova com os dados corretos.</p>}
-                {requestRecord.status === 'aprovada' && (
-                  <form className="access-form" onSubmit={registerRepresentative}>
-                    <p>E-mail aprovado. Crie uma senha para entrar diretamente na administração da sua turma.</p>
-                    <label htmlFor="approved-email">E-mail usado na solicitação</label>
-                    <input id="approved-email" type="email" value={requestEmail} onChange={event => setRequestEmail(event.target.value)} autoComplete="email" required />
-                    <label htmlFor="representative-password">Criar senha</label>
-                    <input id="representative-password" type="password" minLength={6} value={registerPassword} onChange={(event) => setRegisterPassword(event.target.value)} autoComplete="new-password" required />
-                    <button className="primary-button" disabled={busy}>{busy ? <LoaderCircle className="spin" /> : 'Criar conta'}</button>
-                  </form>
-                )}
+                {requestRecord.status === 'aprovada' && <p>Solicitação aprovada. Confirme o e-mail da sua conta para ativar o acesso.</p>}
                 <button type="button" className="access-switch" onClick={() => { storeRepresentativeRequestId(''); setRequestId(''); setRequestRecord(null); setRequestError('') }}>Fazer outra solicitação</button>
               </div>
             ) : (
               <>
-                <p>Informe seu e-mail e a turma que deseja representar. Um administrador vai avaliar o pedido.</p>
+                <p>Escolha a turma que deseja representar. A solicitação será enviada com o e-mail da sua conta.</p>
                 <form className="access-form" onSubmit={submitRepresentativeRequest}>
-                  <label htmlFor="representative-email">Seu e-mail</label>
-                  <input id="representative-email" type="email" value={requestEmail} onChange={(event) => setRequestEmail(event.target.value)} autoComplete="email" required />
+                  <p><strong>{user.email}</strong></p>
                   <label htmlFor="representative-class">Sua turma</label>
                   <select id="representative-class" value={requestTurma} onChange={(event) => setRequestTurma(event.target.value)}>
                     {classNames.map((name) => <option key={name} value={name}>{name}</option>)}
@@ -911,19 +826,25 @@ export default function AdminPage({ publicTurmaId, classNames, quickCreateDate, 
               </>
             )}
             {requestError && <p className="form-error" role="alert">{requestError}</p>}
-            <button type="button" className="access-switch" onClick={() => setEntryMode('login')}>Já tenho conta · Entrar</button>
+            {notice && <p className="access-notice" role="status">{notice}</p>}
+            {requestRecord?.status === 'aprovada' && !user.emailVerified && <button type="button" className="secondary-button" onClick={verifyRepresentativeEmail} disabled={busy}>Enviar link de confirmação</button>}
+            <button type="button" className="access-switch" onClick={retryRepresentativeAccess} disabled={busy}>Atualizar acesso</button>
+            <button type="button" className="access-switch" onClick={() => setShowRequest(false)}>Voltar ao painel</button>
           </div>
-        ) : !profile ? (
+        ) : user && !profile ? (
           <div className="unauthorized access-onboarding">
             <DoorOpen /><h3>Esta conta ainda não tem acesso</h3>
             <p>{accessError || `Ainda não encontramos uma turma aprovada para ${user.email}.`}</p>
-            {notice && <p className="access-notice">{notice}</p>}
+            {notice && <p className="access-notice" role="status">{notice}</p>}
+            {requestError && <p className="form-error" role="alert">{requestError}</p>}
             <div className="access-actions">
               <button className="primary-button" onClick={retryRepresentativeAccess} disabled={busy}>{busy ? <LoaderCircle className="spin" /> : 'Atualizar acesso'}</button>
+              <button type="button" className="secondary-button" onClick={() => setShowRequest(true)}>Solicitar acesso de representante</button>
+              {!user.emailVerified && <button type="button" className="access-switch" onClick={verifyRepresentativeEmail} disabled={busy}>Confirmar meu e-mail</button>}
               <button className="access-switch" onClick={() => signOut(auth)}>Entrar com outra conta</button>
             </div>
           </div>
-        ) : turmaMismatch ? (
+        ) : !user || !profile ? null : turmaMismatch ? (
           <div className="unauthorized">
             <DoorOpen /><h3>Turma não reconhecida</h3><p>A turma {profile?.turmaId} não está disponível na Agenda. Peça à administração para revisar seu acesso.</p>
             <button className="secondary-button" onClick={() => signOut(auth)}>Sair</button>

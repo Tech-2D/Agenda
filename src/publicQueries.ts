@@ -43,7 +43,7 @@ export function observeCatalog<T>(resource: 'schedules' | 'agenda' | 'updates', 
     lastAttempt = Date.now()
     let delay = 60000
     try {
-      const response = await fetchCatalog(resource, className, abort.signal)
+      const response = await fetchCatalog(resource, className, abort.signal, await auth.currentUser?.getIdToken())
       if (!response.ok) {
         const retry = Number(response.headers.get('Retry-After'))
         delay = Math.max(60000, Math.min((retry || 120) * 1000, 300000))

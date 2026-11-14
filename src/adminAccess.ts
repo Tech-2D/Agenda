@@ -13,7 +13,7 @@ export async function loadOrClaimAdminProfile(account: User): Promise<AdminProfi
   const adminRecord = await getDoc(doc(db, 'admins', account.uid))
   const profile = adminRecord.data() as AdminProfile | undefined
   if (profile?.role === 'representante' || profile?.role === 'superadmin') return profile
-  if (adminRecord.exists() || !account.email) return null
+  if (adminRecord.exists() || !account.email || !account.emailVerified) return null
 
   const email = normalizeRepresentativeEmail(account.email)
   const invite = await getDoc(doc(db, 'representativeInvites', email))

@@ -32,9 +32,9 @@ export function ProfileDialog({ onClose }: { onClose: () => void }) {
   useEffect(() => onAuthStateChanged(auth, setUser), [])
   useEffect(() => {
     let active = true
-    request('/api/profiles').then(data => { if (active) setProfiles(data.profiles || []) }).catch(e => { if (active) setError(e.message) })
+    if (user) user.getIdToken().then(token => request('/api/profiles', { headers: { Authorization: 'Bearer ' + token } })).then(data => { if (active) setProfiles(data.profiles || []) }).catch(e => { if (active) setError(e.message) })
     return () => { active = false }
-  }, [refresh])
+  }, [refresh, user])
   useEffect(() => {
     let active = true
     setMine(null)

@@ -9,7 +9,7 @@ export function catalogWriteEndpoint() {
   return Date.now() < primaryUnavailableUntil ? FALLBACK : PRIMARY
 }
 
-export async function fetchCatalog(resource: string, className: string | undefined, signal: AbortSignal): Promise<Response> {
+export async function fetchCatalog(resource: string, className: string | undefined, signal: AbortSignal, token?: string): Promise<Response> {
   const read = async (base: string, timeout: number) => {
     // O segundo argumento só importa quando VITE_PUBLIC_QUERY_API_URL é um
     // caminho relativo (ex.: /api/catalog, via proxy do Vite em dev, para
@@ -17,7 +17,7 @@ export async function fetchCatalog(resource: string, className: string | undefin
     const origin = typeof window !== 'undefined' ? window.location?.origin : undefined
     const url = new URL(`${base}/${resource}`, origin)
     if (className) url.searchParams.set('class', className)
-    return fetch(url, { signal: AbortSignal.any([signal, AbortSignal.timeout(timeout)]) })
+    return fetch(url, { ...(token ? { headers: { Authorization: 'Bearer ' + token }, redirect: 'error' } : {}), signal: AbortSignal.any([signal, AbortSignal.timeout(timeout)]) })
   }
   // Never fall back to a pre-migration Redis/Firestore snapshot after SQL cutover.
   if (SQL_ENABLED) return read(PRIMARY, 15000)

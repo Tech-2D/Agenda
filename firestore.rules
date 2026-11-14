@@ -30,6 +30,7 @@ service cloud.firestore {
     function canClaimRepresentativeAccess(uid) {
       return isSignedIn()
         && request.auth.uid == uid
+        && request.auth.token.email_verified == true
         && request.auth.token.email is string
         && exists(/databases/$(database)/documents/representativeInvites/$(request.auth.token.email.lower()))
         && get(/databases/$(database)/documents/representativeInvites/$(request.auth.token.email.lower())).data.email == request.auth.token.email.lower()
@@ -149,7 +150,7 @@ service cloud.firestore {
     }
 
     match /agendaClasses/{className} {
-      allow get, list: if true;
+      allow get, list: if isSignedIn();
       allow create: if isSuperAdmin()
         && request.resource.data.keys().hasOnly(['name', 'active', 'requestId', 'approvedAt'])
         && request.resource.data.keys().hasAll(['name', 'active', 'requestId', 'approvedAt'])
@@ -199,7 +200,7 @@ service cloud.firestore {
 
     // Horários usados pelo site Cadê o professor?.
     match /schedules/{scheduleId} {
-      allow read: if true;
+      allow read: if isSignedIn();
       allow create, update, delete: if isProfessorAdmin();
     }
 
@@ -403,7 +404,7 @@ service cloud.firestore {
     match /suggestions/{suggestionId} {
       // Leitura de UM documento pelo ID: usada pelo aluno para acompanhar a própria
       // sugestão (o ID guardado no localStorage funciona como um token de acesso).
-      allow get: if true;
+      allow get: if isSignedIn();
 
       // Listagem/consulta (ex.: "todas as sugestões da minha turma") só para quem
       // gerencia aquela turma — evita expor as sugestões de todo mundo publicamente.
@@ -476,7 +477,7 @@ service cloud.firestore {
     // Aviso único mostrado para todo mundo (documento fixo "latest"). Só o
     // super-admin publica/edita/remove; a leitura é pública, sem login.
     match /announcement/{announcementId} {
-      allow get: if true;
+      allow get: if isSignedIn();
       allow list: if false;
       allow create, update: if isSuperAdmin() && isValidAnnouncement(request.resource.data);
       allow delete: if isSuperAdmin();
@@ -563,7 +564,7 @@ service cloud.firestore {
     }
 
     match /notebookNotes/{noteId} {
-      allow get, list: if true;
+      allow get, list: if isSignedIn();
       allow create: if isSignedIn()
         && request.auth.token.email is string
         && isValidNotebookNote(request.resource.data)

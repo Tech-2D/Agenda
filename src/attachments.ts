@@ -52,7 +52,9 @@ export async function attachmentDownloadUrl(activityId: string, attachmentId: st
   const url = new URL(API)
   url.searchParams.set('activityId', activityId)
   url.searchParams.set('attachmentId', attachmentId)
-  const response = await fetch(url)
+  const token = await auth.currentUser?.getIdToken()
+  if (!token) throw new Error('Entre na sua conta para abrir o anexo.')
+  const response = await fetch(url, { headers: { Authorization: 'Bearer ' + token }, redirect: 'error' })
   const data = await response.json().catch(() => ({}))
   if (!response.ok) throw new Error(data.message || 'Não foi possível abrir o anexo.')
   return data.url

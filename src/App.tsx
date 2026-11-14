@@ -530,7 +530,7 @@ function App() {
 
   return (
     <div className="app-shell">
-      <SiteNavigation active="agenda" role={calendarProfile?.role} />
+      <SiteNavigation active={kanbanOpen ? 'kanban' : 'agenda'} role={calendarProfile?.role} />
       <SyncStatus />
       <button
         type="button"

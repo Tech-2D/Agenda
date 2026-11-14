@@ -1,3 +1,4 @@
+import { auth } from './firebase'
 export function observePublicInfo<T>(params: Record<string, string>, change: (data: T) => void, error: () => void) {
   const url = new URL('https://tech-2d-auth-email.vercel.app/api/public-info')
   for (const [key, value] of Object.entries(params)) url.searchParams.set(key, value)
@@ -6,7 +7,8 @@ export function observePublicInfo<T>(params: Record<string, string>, change: (da
   let stopped = false
   async function poll() {
     try {
-      const response = await fetch(url, { signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15000)]) })
+      const token = await auth.currentUser?.getIdToken()
+      const response = await fetch(url, { headers: token ? { Authorization: 'Bearer ' + token } : {}, redirect: 'error', signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15000)]) })
       if (!response.ok) throw new Error('PUBLIC_INFO_UNAVAILABLE')
       const data = await response.json()
       if (!stopped) change(data)

@@ -1,5 +1,6 @@
 import { afterEach, expect, it, vi } from 'vitest'
 const fetchCatalog = vi.hoisted(() => vi.fn())
+vi.mock('./firebase', () => ({ auth: { currentUser: { getIdToken: async () => 'test-token' } } }))
 vi.mock('./catalogTransport', () => ({ fetchCatalog }))
 import { activityLink, loadLinkedActivity, readActivityLink } from './activityLinks'
 afterEach(() => vi.resetAllMocks())
@@ -17,7 +18,7 @@ it('loads the single public activity independently of the saved class or filters
   const signal = new AbortController().signal
   fetchCatalog.mockResolvedValue(Response.json({ activity: { id: 'one', title: 'Entrega', turmaId: '2° TECH E' } }))
   expect((await loadLinkedActivity('one', signal))?.turmaId).toBe('2° TECH E')
-  expect(fetchCatalog).toHaveBeenCalledWith('activities/one', undefined, signal)
+  expect(fetchCatalog).toHaveBeenCalledWith('activities/one', undefined, signal, 'test-token')
 })
 it('distinguishes a removed activity from a service outage and refuses a mismatched response', async () => {
   const signal = new AbortController().signal

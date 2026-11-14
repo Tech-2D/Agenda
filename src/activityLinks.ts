@@ -1,3 +1,4 @@
+import { auth } from './firebase'
 import { fetchCatalog } from './catalogTransport'
 import type { Activity } from './types'
 
@@ -17,7 +18,7 @@ export function activityLink(id: string, base: string): string {
 }
 export async function loadLinkedActivity(id: string, signal: AbortSignal): Promise<Activity | null> {
   if (!validId(id)) throw Error('Link de atividade inválido.')
-  const response = await fetchCatalog('activities/' + encodeURIComponent(id), undefined, signal)
+  const response = await fetchCatalog('activities/' + encodeURIComponent(id), undefined, signal, await auth.currentUser?.getIdToken())
   if (response.status === 404) return null
   if (!response.ok) throw Error('Não foi possível carregar a atividade. Tente novamente.')
   const result = await response.json()

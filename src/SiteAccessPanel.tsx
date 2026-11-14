@@ -17,7 +17,6 @@ type Statistics = {
   professorSince: string | null
   pegakiSince?: string | null
   sites: Record<'agenda' | 'professores', Site> & { pegaki?: Site }
-  recent: RecentAccount[]
   pegakiRecent?: RecentAccount[]
 }
 
@@ -113,10 +112,9 @@ export function SiteAccessPanel({ user }: { user: User }) {
             ))}
           </tr>)}</tbody>
         </table>}
-        <RecentAccounts title="Contas que acessaram o Cadê o professor" accounts={result.recent} />
         {result.pegakiRecent && <RecentAccounts title="Contas que acessaram o Pegaki" accounts={result.pegakiRecent} />}
       </>}
-      <p className="site-access-note">A contagem agrupa aberturas pela mesma conta ou rede em intervalos de 30 minutos por site. Várias pessoas podem compartilhar uma rede. Datas e horários seguem Brasília.</p>
+      <p className="site-access-note">A contagem agrupa acessos da mesma conta em intervalos de 30 minutos por site. Os acessos anônimos são do histórico. Datas e horários seguem Brasília.</p>
     </section>
   )
 }
