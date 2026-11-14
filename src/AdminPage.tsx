@@ -1094,7 +1094,7 @@ export default function AdminPage({ publicTurmaId, classNames, quickCreateDate, 
                         </label>
                         {updateFeedbackId && <p className="config-hint">O nome escolhido e o texto original da sugestão aparecerão no aviso e no histórico. O e-mail continuará privado.</p>}
                         {!feedbackList.some(isCreditEligible) && <p className="config-hint">Sugestões aparecerão aqui quando a pessoa autorizar o crédito público em “Comentar melhoria”.</p>}
-                        <div className="system-update-editor-actions"><span>Publicações permanecem no histórico.</span><button type="submit" className="primary-button compact" disabled={busy || !updateTitle.trim() || !updateBody.trim()}><History size={16} /> Publicar atualização</button></div>
+                        <div className="system-update-editor-actions"><span>Cada atualização fica no histórico por 14 dias.</span><button type="submit" className="primary-button compact" disabled={busy || !updateTitle.trim() || !updateBody.trim()}><History size={16} /> Publicar atualização</button></div>
                       </form>
                       {systemUpdates.length > 0 && <div className="system-update-admin-recent"><strong>Última publicação</strong>{systemUpdates.map((item) => <div key={item.id}><span>{item.title}</span><time>{item.publishedAt ? item.publishedAt.toDate().toLocaleDateString('pt-BR') : 'Publicando…'}</time></div>)}</div>}
 
