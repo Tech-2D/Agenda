@@ -768,7 +768,7 @@ export default function AdminPage({ publicTurmaId, classNames, quickCreateDate, 
       setUpdateTitle('')
       setUpdateBody('')
       setUpdateFeedbackId('')
-      setNotice('Atualização publicada. Ela aparecerá na próxima abertura do site e no histórico.')
+      setNotice('Atualização publicada no histórico do menu Atualizações.')
     } catch {
       setNotice('Não foi possível publicar a atualização. Tente novamente.')
     } finally {
@@ -1083,7 +1083,7 @@ export default function AdminPage({ publicTurmaId, classNames, quickCreateDate, 
                     <>
                       <div className="admin-list-heading"><strong>Atualizações do sistema</strong></div>
                       <form className="system-update-editor" onSubmit={publishSystemUpdate}>
-                        <p className="config-hint">Publique o que mudou na Agenda. A atualização ficará no histórico e aparecerá uma vez para cada visitante.</p>
+                        <p className="config-hint">Publique o que mudou na Agenda. As pessoas podem consultar as novidades em Atualizações, no menu.</p>
                         <label>Título<input required maxLength={120} value={updateTitle} onChange={(event) => setUpdateTitle(event.target.value)} placeholder="Ex.: Enquetes para as turmas" /></label>
                         <label>O que mudou<textarea required rows={4} maxLength={2000} value={updateBody} onChange={(event) => setUpdateBody(event.target.value)} placeholder="Explique as novidades de forma simples para os alunos." /></label>
                         <label>Sugestão que inspirou a atualização (opcional)

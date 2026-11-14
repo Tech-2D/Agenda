@@ -13,6 +13,7 @@ export async function notebookRequest(user: User, academicYear: number, gradeYea
     method: draft ? 'POST' : 'GET',
     headers: { Authorization: `Bearer ${token}`, ...(draft ? { 'Content-Type': 'application/json' } : {}) },
     ...(draft ? { body: JSON.stringify({ academicYear, gradeYear, expectedVersion: draft.version, grades: draft.grades, modes: draft.modes }) } : {}),
+    keepalive: Boolean(draft), redirect: 'error',
     cache: 'no-store', signal: AbortSignal.timeout(20000),
   })
   const data = await response.json().catch(() => ({}))
