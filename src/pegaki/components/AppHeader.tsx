@@ -1,9 +1,7 @@
 import { agendaMenuUrl } from "../../menuShortcuts";
 import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { ChevronDown, ChevronRight, ExternalLink, GraduationCap, LayoutGrid, Menu, Settings, X } from "lucide-react";
-
-const REPORT_CARD_URL = "https://alunos.igerminare.org.br/aluno/minhas-notas/4";
+import { ChevronDown, ChevronRight, GraduationCap, LayoutGrid, Menu, Settings, X } from "lucide-react";
 
 /**
  * Cabeçalho do app. No desktop (md+): marca, navegação, tema e ano lado a lado.
@@ -55,15 +53,6 @@ export function AppHeader({ year, onChangeYear }: { year: number; onChangeYear: 
           <span aria-current="page" className="flex items-center gap-2 border-b-2 border-white pb-1 font-medium">
             <LayoutGrid size={18} aria-hidden /> Disciplinas
           </span>
-          <a
-            href={REPORT_CARD_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1.5 border-b-2 border-transparent pb-1 text-on-brand/80 outline-none transition-colors hover:border-white/50 hover:text-on-brand focus-visible:border-white focus-visible:text-on-brand dark:text-ink/80 dark:hover:text-ink dark:focus-visible:text-ink"
-          >
-            Boletim <ExternalLink size={14} aria-hidden />
-            <span className="sr-only">(abre o boletim na Odette em nova aba)</span>
-          </a>
         </nav>
         <div className="hidden items-center gap-2 md:flex">
           <a href={agendaMenuUrl("settings")} className="inline-flex items-center gap-2 rounded-full px-3 py-2 text-sm" aria-label="Configurações de aparência do site"><Settings size={18} aria-hidden />Aparência</a>
@@ -133,17 +122,6 @@ export function AppHeader({ year, onChangeYear }: { year: number; onChangeYear: 
                   style={{ animationDelay: "40ms" }}
                 >
                   <LayoutGrid size={20} aria-hidden /> Disciplinas
-                </a>
-                <a
-                  href={REPORT_CARD_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={close}
-                  className="flex h-12 animate-fade-up items-center gap-3 rounded-xl px-3 font-medium outline-none transition-colors hover:bg-page focus-visible:ring-2 focus-visible:ring-brand"
-                  style={{ animationDelay: "80ms" }}
-                >
-                  <ExternalLink size={20} aria-hidden className="text-muted" /> Boletim
-                  <span className="ml-auto text-xs font-normal text-muted">abre na Odette</span>
                 </a>
               </nav>
 

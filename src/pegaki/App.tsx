@@ -5,7 +5,6 @@ import { auth } from "../firebase";
 import { useNotebook } from "./lib/useNotebook";
 import { ChevronDown, Search } from "lucide-react";
 import { calculateSemesters, DEFAULT_N1_WEIGHT, type InputMode, type Modes, type Situation } from "./lib/grades";
-import { useInView } from "./lib/useInView";
 import { SUBJECTS_BY_YEAR, type Year } from "./data/subjects";
 import { Formulas } from "./components/Formulas";
 import { YearPicker } from "./components/YearPicker";
@@ -98,7 +97,6 @@ function GradesView({ year, onChangeYear, user, academicYear, onAcademicYear }: 
   // Modo de cada semestre, para todas as disciplinas; as notas de cada modo ficam guardadas separadas.
   // Só anima o cabeçalho da tabela depois que o modo foi trocado (não ao abrir a página).
   const [modeTouched, setModeTouched] = useState(false);
-  const [formulasRef, formulasIn] = useInView<HTMLDetailsElement>();
 
 
   // Disciplina aberta na tela de detalhe. Entra no histórico para o "voltar" do celular fechar a tela.
@@ -178,14 +176,26 @@ function GradesView({ year, onChangeYear, user, academicYear, onAcademicYear }: 
 
   return (
     <div className="min-h-dvh">
-      <AppHeader year={year} onChangeYear={() => { if (!cloud.dirty || window.confirm("Há notas não salvas. Sair sem salvar?")) onChangeYear(); }} />
+      <AppHeader year={year} onChangeYear={() => { void cloud.save().then(saved => { if (!cloud.dirty || saved) onChangeYear(); }); }} />
 
       <main className="mx-auto max-w-7xl space-y-5 px-4 py-6 sm:py-8">
         <section aria-label="Notas da sua conta" className="flex flex-wrap items-center gap-3 rounded-xl bg-surface p-4 shadow-card">
           {user ? <>
-            <label className="text-sm">Ano letivo <select aria-label="Ano letivo" className="ml-2 rounded-lg border border-line bg-surface p-2" disabled={cloud.dirty || cloud.saving} value={academicYear} onChange={e=>onAcademicYear(Number(e.target.value))}>{Array.from({length:7},(_,i)=>new Date().getFullYear()+1-i).map(y=><option key={y}>{y}</option>)}</select></label>
-            <span className="text-sm text-muted" role="status">{cloud.saving ? 'Salvando…' : cloud.dirty ? 'Alterações não salvas' : 'Notas da sua conta carregadas'}</span>
-            <button type="button" className="rounded-lg bg-brand px-4 py-2 text-on-brand disabled:opacity-50" disabled={!cloud.dirty || cloud.saving || cloud.conflict} onClick={()=>void cloud.save()}>Salvar na conta</button>
+            <label className="inline-flex items-center gap-2 text-sm">
+              Ano letivo
+              <span className="relative inline-flex">
+                <select aria-label="Ano letivo" className="appearance-none rounded-lg border border-line bg-surface py-2 pr-9 pl-3"
+                  disabled={cloud.loading || cloud.saving} value={academicYear}
+                  onChange={event => {
+                    const next = Number(event.target.value);
+                    void cloud.save().then(saved => { if (!cloud.dirty || saved) onAcademicYear(next); });
+                  }}>
+                  {Array.from({ length: 7 }, (_, index) => new Date().getFullYear() + 1 - index).map(value => <option key={value}>{value}</option>)}
+                </select>
+                <ChevronDown size={16} aria-hidden="true" className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2" />
+              </span>
+            </label>
+            <span className="text-sm text-muted" role="status">{cloud.loading ? 'Carregando notas…' : cloud.saving ? 'Salvando…' : cloud.error ? 'Salvamento pendente' : cloud.dirty ? 'Aguardando para salvar…' : 'Notas salvas na conta'}</span>
             {cloud.canImport && <button type="button" className="text-sm text-brand-ink underline" onClick={cloud.importLocal}>Importar notas deste navegador</button>}
             {cloud.error && <p role="alert" className="w-full text-sm">{cloud.error}</p>}
             {cloud.conflict && <button type="button" onClick={()=>{if(window.confirm('Recarregar as notas da conta e descartar as alterações desta tela?'))cloud.reload()}}>Recarregar notas da conta</button>}
@@ -332,8 +342,7 @@ function GradesView({ year, onChangeYear, user, academicYear, onAcademicYear }: 
         </section>
 
         <details
-          ref={formulasRef}
-          className={`reveal group rounded-2xl bg-surface shadow-card [&_summary::-webkit-details-marker]:hidden ${formulasIn ? "in" : ""}`}
+          className="group rounded-2xl bg-surface shadow-card [&_summary::-webkit-details-marker]:hidden"
           open
         >
           <summary className="flex h-14 cursor-pointer list-none items-center justify-between rounded-2xl px-5 font-semibold outline-none focus-visible:ring-2 focus-visible:ring-brand">
