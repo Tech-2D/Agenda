@@ -1,6 +1,6 @@
 import { sitePaths } from './sitePaths'
 import type { ReactNode } from 'react'
-import { Bell, BookOpen, Calculator, CalendarClock, History, KeyRound, LayoutGrid, Lightbulb, ListChecks, MapPin, MessageSquarePlus, Plus, Settings, StickyNote, UserRound, Vote } from 'lucide-react'
+import { Bell, BookOpen, Calculator, CalendarClock, History, KeyRound, LayoutGrid, Lightbulb, ListChecks, MapPin, MessageSquarePlus, Plus, Settings, StickyNote, UserRound } from 'lucide-react'
 import type { MenuShortcutId } from './menuShortcuts'
 
 export type MoreOption = {
@@ -34,7 +34,6 @@ export function menuOptionSections({ hasTurma, actions, todayClassesUrl, unreadC
         { id: 'teachers', title: 'Cadê o professor?', description: 'Pesquise professores, matérias e salas.', icon: <MapPin />, href: sitePaths.professores },
         { id: 'notifications', title: 'Notificações', description: 'Veja atividades adicionadas ou alteradas recentemente.', icon: <Bell />, onClick: actions.notifications, pendingLabel: notificationsBadge },
         { id: 'updates', title: 'Atualizações', description: 'Confira o que mudou no sistema da Agenda.', icon: <History />, onClick: actions.updates, pendingLabel: hasUnseenUpdate ? 'Nova atualização' : undefined },
-        { id: 'polls', title: 'Enquetes da turma', description: needsTurma ? 'Escolha uma turma para ver e responder enquetes.' : 'Acompanhe votações e participe das decisões.', icon: <Vote />, onClick: actions.polls, disabled: needsTurma },
         { id: 'notices', title: 'Quadro de avisos', description: needsTurma ? 'Escolha uma turma para abrir os avisos.' : 'Consulte comunicados importantes da turma.', icon: <StickyNote />, onClick: actions.notices, disabled: needsTurma },
         { id: 'suggestActivity', title: 'Sugerir atividade', description: needsTurma ? 'Escolha uma turma antes de enviar uma sugestão.' : 'Peça para incluir uma atividade na agenda.', icon: <Lightbulb />, onClick: actions.suggestActivity, disabled: needsTurma },
         { id: 'todayClasses', title: 'Aulas de hoje', description: needsTurma ? 'Escolha uma turma para consultar as aulas.' : 'Abra a localização das aulas de hoje.', icon: <CalendarClock />, href: todayClassesUrl, disabled: needsTurma },

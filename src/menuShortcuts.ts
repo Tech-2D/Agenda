@@ -1,11 +1,11 @@
 export const MENU_SHORTCUT_IDS = [
-  'notifications', 'updates', 'polls', 'notices', 'suggestActivity', 'todayClasses',
+  'notifications', 'updates', 'notices', 'suggestActivity', 'todayClasses',
   'requestClass', 'feedback', 'mySuggestions', 'admin', 'settings', 'profiles',
   'help', 'teachers', 'pong', 'kanban', 'pegaki',
 ] as const
 
 export type MenuShortcutId = (typeof MENU_SHORTCUT_IDS)[number]
-export const DEFAULT_MENU_SHORTCUTS: readonly MenuShortcutId[] = ['notifications', 'updates', 'polls']
+export const DEFAULT_MENU_SHORTCUTS: readonly MenuShortcutId[] = ['notifications', 'updates', 'notices']
 export const MENU_SHORTCUTS_KEY = 'agenda:menu-shortcuts:v1'
 
 export function readMenuShortcuts(): MenuShortcutId[] {
@@ -32,7 +32,7 @@ export function storeMenuShortcuts(ids: readonly MenuShortcutId[]) {
 }
 
 const AGENDA_URL = sitePaths.agenda
-const AGENDA_DIALOGS = ['notifications', 'updates', 'polls', 'notices', 'suggestActivity', 'requestClass', 'feedback', 'mySuggestions', 'settings', 'profiles', 'help'] as const
+const AGENDA_DIALOGS = ['notifications', 'updates', 'notices', 'suggestActivity', 'requestClass', 'feedback', 'mySuggestions', 'settings', 'profiles', 'help'] as const
 
 export function readAgendaMenuDialog(hash: string) {
   if (!hash.startsWith('#menu=')) return null
