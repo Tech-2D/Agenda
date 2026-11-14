@@ -36,7 +36,7 @@ export function AgendaGuide({ hasClass, onClose, onCalendar, onFeature }: {
           <div className="agenda-guide-grid">
             <section className="agenda-guide-card">
               <StickyNote size={18} aria-hidden="true" /><h3>Acompanhar a turma</h3>
-              <p>Veja comunicados no <b>Quadro de avisos</b> e alterações recentes em <b>Notificações</b>. Para votar em enquetes, entre com sua conta e peça aprovação ao representante.</p>
+              <p>Veja comunicados no <b>Quadro de avisos</b> e alterações recentes em <b>Notificações</b>.</p>
               {hasClass && <button type="button" className="secondary-button" onClick={() => onFeature('notices')}>Abrir quadro de avisos</button>}
             </section>
             <section className="agenda-guide-card">

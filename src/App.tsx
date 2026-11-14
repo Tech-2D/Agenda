@@ -1,6 +1,6 @@
 import { Component, type FormEvent, type ReactNode, useCallback, useEffect, useMemo, useRef, useState, lazy, Suspense } from 'react'
 import { createPortal } from 'react-dom'
-import { BookOpen, Calendar, CalendarClock, Check, ChevronLeft, ChevronRight, DoorOpen, ExternalLink, History, LayoutGrid, Lightbulb, LoaderCircle, Menu, Plus, StickyNote, Vote, X } from 'lucide-react'
+import { BookOpen, Calendar, CalendarClock, Check, ChevronLeft, ChevronRight, DoorOpen, ExternalLink, History, LayoutGrid, Lightbulb, LoaderCircle, Menu, Plus, StickyNote, X } from 'lucide-react'
 import { createUserWithEmailAndPassword, onAuthStateChanged, signInWithEmailAndPassword, type User } from 'firebase/auth'
 import { signOut } from './sessionActions'
 import { requestPasswordReset } from './passwordReset'
@@ -51,7 +51,6 @@ import { sitePaths } from './sitePaths'
 const CompareCalendar = lazy(() => import('./CompareCalendar').then(module => ({ default: module.CompareCalendar })))
 const ProfileDialog = lazy(() => import('./ProfileDialog').then(module => ({ default: module.ProfileDialog })))
 const ClassRequestDialog = lazy(() => import('./ClassRequestDialog').then(module => ({ default: module.ClassRequestDialog })))
-const PollsDialog = lazy(() => import('./PollsDialog').then(module => ({ default: module.PollsDialog })))
 const NoticeBoardDialog = lazy(() => import('./NoticeBoard').then(module => ({ default: module.NoticeBoardDialog })))
 const AdminPage = lazy(() => import('./AdminPage'))
 const KanbanPage = lazy(() => import('./KanbanPage'))
@@ -108,7 +107,6 @@ function App() {
   const [suggestOpen, setSuggestOpen] = useState(false)
   const [mySuggestionsOpen, setMySuggestionsOpen] = useState(false)
   const [feedbackOpen, setFeedbackOpen] = useState(false)
-  const [pollsOpen, setPollsOpen] = useState(false)
   const [noticesOpen, setNoticesOpen] = useState(false)
   const [calendarUser, setCalendarUser] = useState<User | null>(null)
   const [accessBlocked, setAccessBlocked] = useState(false)
@@ -228,7 +226,7 @@ function App() {
   const unseenSystemUpdate = updatesReady && !updatesError
     ? latestUnseenUpdate(systemUpdates, seenSystemUpdateId)
     : null
-  const activeMenuDialog = notificationsOpen || updatesOpen || pollsOpen || noticesOpen
+  const activeMenuDialog = notificationsOpen || updatesOpen || noticesOpen
     || suggestOpen || classRequestOpen || feedbackOpen || mySuggestionsOpen || configOpen || profilesOpen || docsOpen
   const menuDialogOpen = linkedMenuDialog || activeMenuDialog
   const showSystemUpdate = unseenSystemUpdate && !adminOpen && !menuDialogOpen && !linkedActivityId && !menuOpen && !moreOptionsOpen
@@ -273,7 +271,7 @@ function App() {
       return
     }
     const open = {
-      updates: setUpdatesOpen, polls: setPollsOpen, notices: setNoticesOpen, suggestActivity: setSuggestOpen,
+      updates: setUpdatesOpen, notices: setNoticesOpen, suggestActivity: setSuggestOpen,
       requestClass: setClassRequestOpen, feedback: setFeedbackOpen, mySuggestions: setMySuggestionsOpen,
       settings: setConfigOpen, profiles: setProfilesOpen, help: setDocsOpen,
     }
@@ -282,7 +280,7 @@ function App() {
 
   useEffect(() => {
     if (!linkedMenuDialog) return
-    if (!turmaId && ['polls', 'notices', 'suggestActivity', 'notifications'].includes(linkedMenuDialog)) return
+    if (!turmaId && ['notices', 'suggestActivity', 'notifications'].includes(linkedMenuDialog)) return
     setMenuOpen(false)
     setSelectedDay(null)
     openMenuDialog(linkedMenuDialog)
@@ -459,7 +457,6 @@ function App() {
     actions: {
       notifications: menuAction(() => openMenuDialog('notifications')),
       updates: menuAction(() => openMenuDialog('updates')),
-      polls: menuAction(() => openMenuDialog('polls')),
       notices: menuAction(() => openMenuDialog('notices')),
       suggestActivity: menuAction(() => openMenuDialog('suggestActivity')),
       requestClass: menuAction(() => openMenuDialog('requestClass')),
@@ -615,9 +612,6 @@ function App() {
                 <StickyNote size={14} aria-hidden="true" /><span className="action-label">Avisos</span>
                 {visibleNotices.length > 0 && <span className="action-badge">{visibleNotices.length}</span>}
               </button>
-              <button type="button" className="action-button" aria-label="Enquetes da turma" title="Enquetes da turma" onClick={() => setPollsOpen(true)}>
-                <Vote size={14} aria-hidden="true" /><span className="action-label">Enquetes</span>
-              </button>
               <button type="button" className="action-button" aria-label="Sugerir atividade" title="Sugerir atividade" onClick={() => setSuggestOpen(true)}>
                 <Lightbulb size={14} aria-hidden="true" /><span className="action-label">Sugerir</span>
               </button>
@@ -742,7 +736,6 @@ function App() {
 
       {feedbackOpen && <FeedbackDialog turmaId={turmaId} onClose={() => setFeedbackOpen(false)} />}
 
-      {pollsOpen && turmaId && <PollsDialog turmaId={turmaId} loadAdminProfile={loadOrClaimAdminProfile} onClose={() => setPollsOpen(false)} />}
 
       {noticesOpen && turmaId && (
         <NoticeBoardDialog
