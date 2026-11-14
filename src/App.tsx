@@ -1,6 +1,6 @@
 import { Component, type FormEvent, type ReactNode, useCallback, useEffect, useMemo, useRef, useState, lazy, Suspense } from 'react'
 import { createPortal } from 'react-dom'
-import { BookOpen, Calendar, CalendarClock, Check, ChevronLeft, ChevronRight, DoorOpen, ExternalLink, History, LayoutGrid, Lightbulb, LoaderCircle, Menu, Plus, StickyNote, X } from 'lucide-react'
+import { BookOpen, Calendar, CalendarClock, Check, ChevronLeft, ChevronRight, DoorOpen, ExternalLink, LayoutGrid, Lightbulb, LoaderCircle, Menu, Plus, StickyNote, X } from 'lucide-react'
 import { createUserWithEmailAndPassword, onAuthStateChanged, signInWithEmailAndPassword, type User } from 'firebase/auth'
 import { signOut } from './sessionActions'
 import { requestPasswordReset } from './passwordReset'
@@ -33,7 +33,7 @@ import { observeCatalog, type CatalogMeta } from './publicQueries'
 import { latestUnseenUpdate, markSystemUpdateSeen, readSeenSystemUpdateId, type SystemUpdate } from './systemUpdates'
 import { NEON_COLORS, NEON_COLOR_LABELS, NEON_COLOR_SWATCHES, THEME_LABELS, THEME_PREVIEW, THEMES, readStoredNeon, readStoredTheme, storeNeon, storeTheme, type NeonColor, type Theme } from './theme'
 import { FONT_SCALES, FONT_SCALE_LABELS, readStoredFontScale, readStoredHighContrast, readStoredReduceMotion, storeFontScale, storeHighContrast, storeReduceMotion, type FontScale } from './accessibility'
-import { loadOrClaimAdminProfile, subscribeAdminProfile } from './adminAccess'
+import { subscribeAdminProfile } from './adminAccess'
 import { DEFAULT_MENU_SHORTCUTS, MENU_SHORTCUTS_KEY, readAgendaMenuDialog, readMenuShortcuts, storeMenuShortcuts, type MenuShortcutId } from './menuShortcuts'
 import { IntegratedMenu } from './IntegratedMenu'
 import { menuOptionSections, type MoreOption, type MoreOptionSection } from './menuCatalog'
@@ -229,7 +229,6 @@ function App() {
   const activeMenuDialog = notificationsOpen || updatesOpen || noticesOpen
     || suggestOpen || classRequestOpen || feedbackOpen || mySuggestionsOpen || configOpen || profilesOpen || docsOpen
   const menuDialogOpen = linkedMenuDialog || activeMenuDialog
-  const showSystemUpdate = unseenSystemUpdate && !adminOpen && !menuDialogOpen && !linkedActivityId && !menuOpen && !moreOptionsOpen
   const acknowledgeSystemUpdate = useCallback((id: string) => {
     markSystemUpdateSeen(id)
     setSeenSystemUpdateId(id)
@@ -751,7 +750,7 @@ function App() {
 
       {notificationsOpen && <NotificationsDialog activities={recentActivities} previouslySeenAt={notificationsOpenedFrom} onClose={() => setNotificationsOpen(false)} />}
 
-      {showAnnouncement && announcement && updatesReady && !showSystemUpdate && !linkedActivityId && !menuDialogOpen && (
+      {showAnnouncement && announcement && updatesReady && !linkedActivityId && !menuDialogOpen && (
         <AnnouncementModal
           message={announcement.message}
           onClose={() => {
@@ -779,12 +778,6 @@ function App() {
       )}
 
       {classRequestOpen && <ClassRequestDialog classNames={classNames} onClose={() => setClassRequestOpen(false)} />}
-
-      {showSystemUpdate && unseenSystemUpdate && (
-        <SystemUpdateWelcome update={unseenSystemUpdate} onClose={() => {
-          acknowledgeSystemUpdate(unseenSystemUpdate.id)
-        }} />
-      )}
 
       </Suspense>
       </DialogLoadBoundary>
@@ -1367,31 +1360,6 @@ function AnnouncementModal({ message, onClose }: { message: string; onClose: () 
         <div className="announcement-body">
           <p>{message}</p>
           <button className="primary-button" onClick={onClose}>Entendi</button>
-        </div>
-      </section>
-    </div>
-  )
-}
-
-function SystemUpdateWelcome({ update, onClose }: { update: SystemUpdate; onClose: () => void }) {
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => event.key === 'Escape' && onClose()
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [onClose])
-
-  return (
-    <div className="modal-backdrop system-update-backdrop" role="presentation">
-      <section className="system-update-dialog" role="dialog" aria-modal="true" aria-labelledby="system-update-title">
-        <div className="system-update-accent"><History size={22} aria-hidden="true" /><span>Atualização da Agenda</span></div>
-        <div className="system-update-content">
-          <p className="eyebrow">O QUE MUDOU</p>
-          <h2 id="system-update-title">{update.title}</h2>
-          {update.publishedAt && <time>{update.publishedAt.toDate().toLocaleDateString('pt-BR')}</time>}
-          <p>{update.body}</p>
-          {update.sourceName && update.sourceMessage && <div className="update-request-credit"><strong>Pedido da comunidade · {update.sourceName}</strong><p>{update.sourceMessage}</p></div>}
-          <button type="button" className="primary-button" onClick={onClose} autoFocus>Entendi, abrir agenda</button>
-          <span>Você pode reler esta novidade em Atualizações, no menu.</span>
         </div>
       </section>
     </div>
