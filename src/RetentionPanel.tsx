@@ -33,7 +33,7 @@ export function RetentionPanel({ turmaId, userId, activityDates }: Props) {
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!validDays) return
-    if (enabled && !window.confirm(`Ativar o expurgo de ${turmaId}? Após 24 horas, atividades com mais de ${days} dias sairão da Agenda. ${estimate} atividade(s) atual(is) já se enquadram. Uma cópia será arquivada antes da remoção.`)) return
+    if (enabled && !window.confirm(`Ativar o expurgo de ${turmaId}? Após 24 horas, atividades com mais de ${days} dias sairão da Agenda. ${estimate} atividade(s) atual(is) já se enquadram. As atividades e seus anexos serão excluídos definitivamente.`)) return
     setSaving(true)
     setMessage('')
     try {
@@ -63,7 +63,7 @@ export function RetentionPanel({ turmaId, userId, activityDates }: Props) {
           </label>
           <label className="retention-checkbox"><input type="checkbox" checked={enabled} onChange={(event) => setEnabled(event.target.checked)} /> Ativar expurgo automático</label>
           <div className="retention-preview"><strong>{estimate} atividade{estimate === 1 ? '' : 's'} antiga{estimate === 1 ? '' : 's'}</strong><span>se enquadra{estimate === 1 ? '' : 'm'} no prazo escolhido hoje</span></div>
-          <p className="config-hint">Uma regra nova ou alterada só começa a apagar após 24 horas. Antes de remover, a automação salva uma cópia em <code>purgedActivities</code>. O expurgo roda diariamente.</p>
+          <p className="config-hint">Uma regra nova ou alterada só começa a apagar após 24 horas. O expurgo roda diariamente e exclui os anexos antes de remover a atividade.</p>
           <button type="submit" className="primary-button compact" disabled={saving || !validDays}>{saving ? 'Salvando…' : 'Salvar regra'}</button>
           {message && <p className="retention-message" role="status">{message}</p>}
         </form>
