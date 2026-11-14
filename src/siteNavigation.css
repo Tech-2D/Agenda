@@ -1,24 +1,51 @@
 .site-navigation {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
   gap: .65rem;
   max-width: 1200px;
   width: 100%;
   margin: 0 auto;
-  padding: 1rem 4.5rem 1rem 1rem;
+  padding: 0.75rem 1rem;
   color: var(--text, var(--color-ink));
 }
 .site-navigation a { text-decoration: none; color: inherit; }
 .site-navigation .site-brand { font-size: 1rem; font-weight: 800; letter-spacing: -.04em; }
-.site-navigation-pages { display: flex; flex-wrap: wrap; gap: .35rem; }
+.site-navigation-pages { display: flex; justify-content: end; flex-wrap: wrap; gap: .35rem; }
 .site-navigation-pages a { display: inline-flex; align-items: center; gap: .4rem; padding: .55rem .75rem; border-radius: .625rem; font-size: .8125rem; font-weight: 600; }
 .site-navigation-pages a[aria-current="page"], .site-navigation-pages a:hover { background: var(--interface-subtle, var(--color-brand-soft)); color: var(--interface-accent, var(--color-brand-ink)); }
 .site-navigation a:focus-visible { outline: 2px solid var(--interface-accent, var(--color-brand-ink)); outline-offset: 3px; }
-.pegaki-shell .site-navigation { padding-right: 1rem; }
 @media print { .site-navigation { display: none; } }
-@media (max-width: 420px) {
-  .site-navigation { padding-left: .75rem; padding-right: 4rem; }
+@media (max-width: 640px) {
+  .site-navigation { grid-template-columns: 1fr auto; padding: .625rem .75rem; }
+  .site-navigation-pages { grid-column: 1 / -1; grid-row: 2; justify-content: start; }
   .site-navigation-pages a { padding: .5rem; }
 }
+
+.site-options-button {
+  position: relative;
+  justify-self: end;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--paper);
+  color: var(--accent, var(--ink));
+  box-shadow: var(--interface-elevation, var(--shadow));
+  cursor: pointer;
+}
+
+.site-options-button:hover { border-color: var(--accent); background: var(--surface-alt); }
+.site-options-button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.site-options-pending { position: absolute; top: 7px; right: 7px; width: 9px; height: 9px; border-radius: 50%; background: #e5484d; box-shadow: 0 0 0 2px var(--paper); }
+
+.site-options-drawer .drawer-backdrop { position: fixed; inset: 0; z-index: 100; display: flex; justify-content: flex-end; padding: 0; background: rgba(9, 20, 48, .55); backdrop-filter: blur(6px); }
+.site-options-drawer .side-menu { color: var(--text); }
+.site-options-drawer .dialog-header { position: sticky; top: 0; z-index: 3; display: flex; align-items: center; justify-content: space-between; padding: 1rem; background: var(--paper); border-bottom: 1px solid var(--line); }
+.site-options-drawer .dialog-header h2 { margin: 0; color: var(--ink); font-size: 1.25rem; font-weight: 750; }
+.site-options-drawer :is(.icon-button, .side-menu-organize .secondary-button) { min-height: 44px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); color: var(--text); cursor: pointer; }
+.site-options-drawer .icon-button { width: 44px; display: grid; place-items: center; }
+.site-options-drawer :is(button, a):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }

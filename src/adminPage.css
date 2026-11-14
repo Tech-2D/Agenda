@@ -1,5 +1,3 @@
-.admin-shell .site-navigation { padding-inline-end: 1rem; }
-
 .admin-page {
   width: min(1360px, calc(100% - 2rem));
   margin-inline: auto;

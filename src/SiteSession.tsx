@@ -76,7 +76,7 @@ function AccountEntry({ destination }: { destination: string }) {
         <ul>
           <li><CalendarDays aria-hidden="true" /> Agenda</li>
           <li><MapPin aria-hidden="true" /> Professores</li>
-          <li><Calculator aria-hidden="true" /> Pegaki</li>
+          <li><Calculator aria-hidden="true" /> Notaki</li>
           <li><Columns3 aria-hidden="true" /> Kanban</li>
         </ul>
       </section>

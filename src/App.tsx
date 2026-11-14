@@ -1,6 +1,6 @@
 import { Component, type FormEvent, type ReactNode, useCallback, useEffect, useMemo, useRef, useState, lazy, Suspense } from 'react'
 import { createPortal } from 'react-dom'
-import { BookOpen, Calendar, CalendarClock, Check, ChevronLeft, ChevronRight, DoorOpen, ExternalLink, LayoutGrid, Lightbulb, LoaderCircle, Menu, Plus, StickyNote, X } from 'lucide-react'
+import { BookOpen, Calendar, CalendarClock, Check, ChevronLeft, ChevronRight, DoorOpen, ExternalLink, LayoutGrid, Lightbulb, LoaderCircle, Plus, StickyNote, X } from 'lucide-react'
 import { createUserWithEmailAndPassword, onAuthStateChanged, signInWithEmailAndPassword, type User } from 'firebase/auth'
 import { signOut } from './sessionActions'
 import { requestPasswordReset } from './passwordReset'
@@ -526,20 +526,8 @@ function App() {
 
   return (
     <div className="app-shell">
-      <SiteNavigation active={kanbanOpen ? 'kanban' : 'agenda'} role={calendarProfile?.role} />
+      <SiteNavigation active={kanbanOpen ? 'kanban' : 'agenda'} role={calendarProfile?.role} menu={{ open: menuOpen, onOpen: () => setMenuOpen(true), hasPending: hasPendingMenuItems }} />
       <SyncStatus />
-      <button
-        type="button"
-        className="menu-trigger"
-        aria-label={hasPendingMenuItems ? 'Abrir menu, há novidades' : 'Abrir menu'}
-        aria-haspopup="dialog"
-        aria-expanded={menuOpen}
-        title="Menu"
-        onClick={() => setMenuOpen(true)}
-      >
-        <Menu size={22} strokeWidth={2.3} aria-hidden="true" />
-        {hasPendingMenuItems && <span className="notif-dot" aria-hidden="true" />}
-      </button>
 
       {kanbanOpen ? (
         <DialogLoadBoundary><Suspense fallback={<div className="state-card" role="status"><LoaderCircle className="spin" /><p>Carregando seu Kanban…</p></div>}>
@@ -712,7 +700,7 @@ function App() {
 
       {linkedActivityId && <ActivityLinkDialog key={linkedActivityId} id={linkedActivityId} onClose={closeLinkedActivity} onViewCalendar={viewLinkedActivity} />}
 
-      {!turmaId && !kanbanOpen && !linkedActivityId && !activeMenuDialog && <TurmaPickerModal classNames={classNames} onChoose={choosePreferredTurma} onRequest={() => setClassRequestOpen(true)} onHelp={() => setDocsOpen(true)} />}
+      {!turmaId && !kanbanOpen && !linkedActivityId && !activeMenuDialog && !menuOpen && <TurmaPickerModal classNames={classNames} onChoose={choosePreferredTurma} onRequest={() => setClassRequestOpen(true)} onHelp={() => setDocsOpen(true)} />}
 
       {menuOpen && (
         <IntegratedMenu

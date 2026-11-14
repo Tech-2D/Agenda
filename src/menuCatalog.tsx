@@ -30,7 +30,7 @@ export function menuOptionSections({ hasTurma, actions, todayClassesUrl, unreadC
       title: 'Acompanhar a turma',
       description: 'Avisos e atividades da turma selecionada.',
       items: [
-        { id: 'pegaki', title: 'Pegaki', description: 'Calcule suas médias e simule notas do Tech.', icon: <Calculator />, href: sitePaths.pegaki },
+        { id: 'pegaki', title: 'Notaki', description: 'Calcule suas médias e simule notas do Tech.', icon: <Calculator />, href: sitePaths.pegaki },
         { id: 'teachers', title: 'Cadê o professor?', description: 'Pesquise professores, matérias e salas.', icon: <MapPin />, href: sitePaths.professores },
         { id: 'notifications', title: 'Notificações', description: 'Veja atividades adicionadas ou alteradas recentemente.', icon: <Bell />, onClick: actions.notifications, pendingLabel: notificationsBadge },
         { id: 'updates', title: 'Atualizações', description: 'Confira o que mudou no sistema da Agenda.', icon: <History />, onClick: actions.updates, pendingLabel: hasUnseenUpdate ? 'Nova atualização' : undefined },

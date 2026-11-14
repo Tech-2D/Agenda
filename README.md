@@ -1,12 +1,12 @@
 # Tech 2D
 
-Site principal da comunidade com Agenda, Professores e Pegaki no mesmo repositório. A navegação entre as áreas fica no topo de cada página. [Agenda](https://tech-2d.github.io/web/) · [Professores](https://tech-2d.github.io/web/professores/) · [Pegaki](https://tech-2d.github.io/web/pegaki/)
+Site principal da comunidade com Agenda, Professores e Notaki no mesmo repositório. A navegação entre as áreas fica no topo de cada página. [Agenda](https://tech-2d.github.io/web/) · [Professores](https://tech-2d.github.io/web/professores/) · [Notaki](https://tech-2d.github.io/web/pegaki/)
 
 Consulte [a estrutura e a transição dos links antigos](docs/unificacao-site.md). Para desenvolver, execute `npm ci` e `npm run dev`; `/` abre a agenda, `/professores/` abre os horários e `/pegaki/` abre a calculadora de notas. Um único `npm run build` gera todo o site.
 
-O Pegaki foi criado por Arakaki e integrado a partir de `Tech-2D/pegaki`. Sua [licença MIT](docs/pegaki/LICENSE) e [documentação original](docs/pegaki/README.md) estão preservadas. O código fica em `src/pegaki/`, incluindo os testes de cálculo e leitura do boletim. Sem login, as notas mantêm as chaves `aprovae:*` no navegador. Com login, o caderno da conta usa a API centralizada e o botão **Salvar na conta**, separado por ano letivo. A importação das notas locais é explícita; PDFs continuam no dispositivo.
+O Notaki foi criado por Arakaki e integrado a partir de `Tech-2D/pegaki`. Sua [licença MIT](docs/pegaki/LICENSE) e [documentação original](docs/pegaki/README.md) estão preservadas. O código fica em `src/pegaki/`, incluindo os testes de cálculo e leitura do boletim. Sem login, as notas mantêm as chaves `aprovae:*` no navegador. Com login, o caderno da conta usa a API centralizada e o botão **Salvar na conta**, separado por ano letivo. A importação das notas locais é explícita; PDFs continuam no dispositivo.
 
-O Pegaki usa a paleta do site e as preferências `agenda:theme` e `agenda:neon`. O link **Aparência** abre as configurações gerais, incluindo rosa, roxo, escuro, cyberpunk, neon e acessibilidade.
+O Notaki usa a paleta do site e as preferências `agenda:theme` e `agenda:neon`. O link **Aparência** abre as configurações gerais, incluindo rosa, roxo, escuro, cyberpunk, neon e acessibilidade.
 
 ## Agenda da turma
 

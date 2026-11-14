@@ -83,7 +83,7 @@ function Report({ rows, student, issued }: { rows: ReportRow[]; student: { name:
       }}
     >
       <div style={{ position: "relative", height: 107 }}>
-        {/* Marca do Pegaki no lugar do logo da escola: este boletim não é o documento oficial. */}
+        {/* Marca do Notaki no lugar do logo da escola: este boletim não é o documento oficial. */}
         <div
           style={{
             position: "absolute",
@@ -98,7 +98,7 @@ function Report({ rows, student, issued }: { rows: ReportRow[]; student: { name:
           }}
         >
           <GraduationCap size={34} strokeWidth={2} aria-hidden />
-          <span style={{ fontFamily: '"Poppins", system-ui, sans-serif', fontSize: 18, fontWeight: 600 }}>Pegaki</span>
+          <span style={{ fontFamily: '"Poppins", system-ui, sans-serif', fontSize: 18, fontWeight: 600 }}>Notaki</span>
         </div>
         <div style={{ position: "absolute", left: 257, top: 23, fontSize: 20, lineHeight: "20px", fontWeight: "bold" }}>
           Boletim Escolar
@@ -130,7 +130,7 @@ function Report({ rows, student, issued }: { rows: ReportRow[]; student: { name:
             <td />
           </tr>
           <tr style={{ height: 19 }}>
-            <td style={info}>UNIDADE: Gerado pelo Pegaki (não substitui o boletim oficial)</td>
+            <td style={info}>UNIDADE: Gerado pelo Notaki (não substitui o boletim oficial)</td>
             <td style={{ ...info, textAlign: "right", fontSize: 9 }}>EMISSÃO: {issued}</td>
           </tr>
         </tbody>

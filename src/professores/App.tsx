@@ -11,7 +11,6 @@ import {
   KeyRound,
   LoaderCircle,
   LogOut,
-  Menu,
   Plus,
   Search,
   Settings,
@@ -22,7 +21,6 @@ import {
 } from 'lucide-react'
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut, type User } from 'firebase/auth'
 import { FirebaseError } from 'firebase/app'
-import { PageHeading } from './PageHeading'
 import { AccountSiteNavigation } from '../AccountSiteNavigation'
 import { requestPasswordReset } from './passwordReset'
 import { ProfileDialog } from './ProfileDialog'
@@ -257,32 +255,18 @@ function App() {
 
   return (
     <div className="app-shell">
-      <AccountSiteNavigation active="professores" />
-      <button
-        type="button"
-        className="menu-trigger"
-        aria-label="Abrir menu"
-        aria-haspopup="dialog"
-        aria-expanded={menuOpen}
-        onClick={() => setMenuOpen(true)}
-      >
-        <Menu size={22} strokeWidth={2.3} aria-hidden="true" />
-      </button>
+      <AccountSiteNavigation active="professores" menu={{ open: menuOpen, onOpen: () => setMenuOpen(true) }} />
 
       <main id="inicio" className="main-content">
         <div className="professor-controls interface-panel">
-          <PageHeading
-            icon={CalendarDays}
-            title="Encontre seu professor"
-            description="Consulte a grade por turma ou pesquise um professor, matéria ou local."
-          />
+          <h1 className="professor-title">Encontre seu professor</h1>
 
           <section className="search-section" aria-label="Pesquisar professores">
             <div className="search-box">
-              <Search size={22} aria-hidden="true" />
+              <Search size={18} aria-hidden="true" />
               <input
                 id="main-search"
-                aria-label="Buscar professor, matéria ou turma"
+                aria-label="Buscar professor, matéria, turma ou local"
                 value={search}
                 onChange={(event) => {
                   const value = event.target.value

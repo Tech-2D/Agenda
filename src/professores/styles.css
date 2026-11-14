@@ -338,23 +338,6 @@ footer > button { border: 0; background: transparent; cursor: pointer; color: #7
 }
 
 /* Aparência compartilhada entre a busca, o menu e as configurações. */
-.menu-trigger {
-  position: absolute;
-  inset-block-start: 12px;
-  inset-inline-end: 12px;
-  width: 44px;
-  height: 44px;
-  display: grid;
-  place-items: center;
-  padding: 0;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--paper);
-  color: var(--ink);
-  cursor: pointer;
-}
-.menu-trigger:hover { border-color: var(--ink); background: color-mix(in srgb, var(--ink) 7%, var(--paper)); }
-.menu-trigger:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 .drawer-backdrop { position: fixed; inset: 0; z-index: 30; display: flex; justify-content: flex-end; background: rgba(9, 20, 48, .55); backdrop-filter: blur(6px); }
 .side-menu .dialog-header { background: white; }
 .menu-current-theme { margin-left: auto; color: #667893; font-size: 0.625rem; overflow-wrap: anywhere; }

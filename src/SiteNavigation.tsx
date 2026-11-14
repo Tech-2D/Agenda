@@ -1,8 +1,14 @@
 import { Calculator, CalendarDays, Columns3, KeyRound, MapPin } from 'lucide-react'
 import { sitePaths } from './sitePaths'
+import { SiteOptions } from './SiteOptions'
+import { SiteOptionsButton } from './SiteOptionsButton'
 import type { AdminRole } from './types'
 
-export function SiteNavigation({ active, role }: { active: 'agenda' | 'professores' | 'pegaki' | 'admin' | 'kanban'; role?: AdminRole }) {
+export function SiteNavigation({ active, role, menu }: {
+  active: 'agenda' | 'professores' | 'pegaki' | 'admin' | 'kanban'
+  role?: AdminRole
+  menu?: { open: boolean; onOpen: () => void; hasPending?: boolean }
+}) {
   const panelLabel = role === 'superadmin' ? 'Administração' : role === 'representante' ? 'Representante' : null
   return (
     <nav className="site-navigation" aria-label="Navegação principal">
@@ -10,10 +16,11 @@ export function SiteNavigation({ active, role }: { active: 'agenda' | 'professor
       <div className="site-navigation-pages">
         <a href={sitePaths.agenda} aria-current={active === 'agenda' ? 'page' : undefined}><CalendarDays size={17} aria-hidden="true" />Agenda</a>
         <a href={sitePaths.professores} aria-current={active === 'professores' ? 'page' : undefined}><MapPin size={17} aria-hidden="true" />Professores</a>
-        <a href={sitePaths.pegaki} aria-current={active === 'pegaki' ? 'page' : undefined}><Calculator size={17} aria-hidden="true" />Pegaki</a>
+        <a href={sitePaths.pegaki} aria-current={active === 'pegaki' ? 'page' : undefined}><Calculator size={17} aria-hidden="true" />Notaki</a>
         <a href={sitePaths.kanban} aria-current={active === 'kanban' ? 'page' : undefined}><Columns3 size={17} aria-hidden="true" />Kanban</a>
         {(panelLabel || active === 'admin') && <a href={sitePaths.admin} aria-current={active === 'admin' ? 'page' : undefined}><KeyRound size={17} aria-hidden="true" />{panelLabel ?? 'Painel'}</a>}
       </div>
+      {menu ? <SiteOptionsButton {...menu} /> : <SiteOptions />}
     </nav>
   )
 }

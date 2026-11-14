@@ -13,7 +13,7 @@ export function YearPicker({ onPick }: { onPick: (y: Year) => void }) {
         />
         <div className="relative mx-auto max-w-3xl animate-fade-up text-center">
           <div className="mb-6 inline-flex items-center gap-2 text-lg font-semibold">
-            <GraduationCap size={30} aria-hidden /> Pegaki
+            <GraduationCap size={30} aria-hidden /> Notaki
           </div>
           <h1 className="text-2xl font-semibold sm:text-4xl">De qual ano do Tech você é?</h1>
           <p className="mt-3 text-sm text-on-brand/80 sm:text-base">

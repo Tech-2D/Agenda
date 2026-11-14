@@ -100,12 +100,6 @@
   box-shadow: 0 1px 3px rgb(18 34 77 / .12);
 }
 
-.app-shell .menu-trigger {
-  z-index: 16;
-  border-radius: var(--radius-interface-control);
-  box-shadow: var(--interface-elevation);
-}
-
 :is(.primary-button, .secondary-button, .icon-button, .side-menu-list button, .side-menu-list a) {
   border-radius: var(--radius-interface-control);
 }
@@ -131,20 +125,20 @@
   }
 }
 
-.professor-controls .interface-heading { margin-bottom: 1rem; padding-inline-end: 2.875rem; }
-.professor-controls .interface-heading h1 { font-size: clamp(1.375rem, 1.07rem + 1.05vw, 1.875rem); }
-.professor-controls .search-section { margin-bottom: .875rem; }
-.professor-controls .search-box { border-color: var(--line); border-radius: var(--radius-interface-control); }
+.app-shell .professor-controls { padding: clamp(.75rem, 1.5vw, 1rem); }
+.professor-title { margin: 0 0 .625rem; color: var(--interface-text); font-size: clamp(1.15rem, 1rem + .6vw, 1.45rem); font-weight: 750; letter-spacing: -.025em; line-height: 1.2; }
+.professor-controls .search-section { gap: .625rem; margin-bottom: .625rem; }
+.professor-controls .search-section .search-box { width: 100%; min-width: 0; height: 44px; padding-inline: .75rem; gap: .625rem; background: var(--paper); border-color: var(--line); border-radius: var(--radius-interface-control); }
 .professor-controls .search-box:focus-within { outline: 2px solid var(--interface-accent); outline-offset: 2px; }
 .professor-controls .search-box input { background: transparent; }
-.professor-controls .schedule-filters { margin-bottom: 0; }
+.professor-controls .schedule-filters { gap: .625rem; margin-bottom: 0; }
 .professor-controls .schedule-filters select {
   border-color: var(--line);
   border-radius: var(--radius-interface-control);
   background: var(--interface-surface);
   color: var(--interface-text);
 }
-.professor-controls .schedule-filters label { color: var(--ink-soft); }
+.professor-controls .schedule-filters label { gap: .25rem; min-width: 0; color: var(--ink-soft); }
 .app-shell .schedule-section { margin-top: 1.5rem; }
 .app-shell .schedule-section .section-heading { margin-bottom: .875rem; }
 .app-shell .schedule-section .section-heading > span {
@@ -166,8 +160,6 @@
 .timetable .lesson-teacher { font-size: .6875rem; }
 .timetable .lesson-meta, .timetable .lesson-location { font-size: .625rem; }
 @media (max-width: 640px) {
-  .professor-controls .interface-heading { align-items: flex-start; }
-  .professor-controls .search-section { gap: .625rem; }
   .professor-controls .search-section .view-switcher { width: 100%; }
 }
 
