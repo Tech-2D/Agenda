@@ -25,9 +25,6 @@ createRoot(document.getElementById("root")!).render(
       <div className="pegaki-shell">
         <AccountSiteNavigation active="pegaki" />
         <App />
-        {SQL_ENABLED && <footer className="mx-auto max-w-3xl px-4 py-4 text-xs text-muted">
-          Os registros de acesso ficam disponíveis por 90 dias.
-        </footer>}
       </div>
     </SiteSession>
   </StrictMode>,
